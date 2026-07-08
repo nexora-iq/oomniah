@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مفاجأة خاصة ✨</title>
+    <style>
+        /* (نفس الـ CSS مالتك بالضبط بدون أي تغيير، ابقيه كما هو) */
+        :root { --bg-color: #3d2a30; --pink-main: #ff7898; --pink-glow: rgba(255, 120, 152, 0.6); --text-white: #ffffff; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; user-select: none; }
+        body { background-color: var(--bg-color); min-height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; }
+        .deep-background { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; }
+        .bg-img { position: absolute; object-fit: contain; opacity: 0.15; pointer-events: none; filter: grayscale(20%); }
+        .img-top-left { top: -5%; left: -12%; width: 400px; transform: rotate(-12deg); }
+        .img-center { top: 50%; left: 50%; width: 500px; transform: translate(-50%, -50%) rotate(8deg); }
+        .img-bottom-right { bottom: -5%; right: -12%; width: 400px; transform: rotate(-10deg); }
+        .bg-bows-container { position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none; z-index: 1; }
+        .static-bow { position: absolute; opacity: 0.3; }
+        .falling-bow { position: absolute; top: -50px; pointer-events: none; z-index: 2; animation: fall linear forwards; }
+        @keyframes fall { to { transform: translateY(110vh) rotate(360deg); } }
+        .click-heart { position: absolute; pointer-events: none; color: #ff7898; font-size: 0.9rem; text-shadow: none; animation: clickFloat 0.8s ease-out forwards; z-index: 9999; }
+        @keyframes clickFloat { 0% { transform: translate(-50%, -50%) scale(0.5) translateY(0); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.2) translateY(-50px) translateX(var(--random-x, 0px)); opacity: 0; } }
+        .app-container { width: 100%; max-width: 430px; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; z-index: 5; }
+        .card { width: 100%; display: none; flex-direction: column; align-items: center; animation: fadeIn 0.4s ease-in-out forwards; }
+        .card.active { display: flex; }
+        .image-box { width: 105%; aspect-ratio: 1 / 1; border-radius: 24px; overflow: hidden; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4); margin-bottom: 25px; background: #ffeef2; border: none; }
+        .image-box img { width: 100%; height: 100%; object-fit: cover; }
+        #heartTrigger { font-size: 7.5rem; cursor: pointer; color: #ff7898; filter: drop-shadow(0 0 25px rgba(255, 120, 152, 0.8)); display: none; animation: heartBeat 2.5s infinite ease-in-out; }
+        @keyframes heartBeat { 0% { transform: scale(1); } 14% { transform: scale(1.06); } 28% { transform: scale(1); } 42% { transform: scale(1.04); } 70% { transform: scale(1); } 100% { transform: scale(1); } }
+        .question-bar { background-color: #0b090a; color: var(--text-white); padding: 14px 30px; border-radius: 16px; font-size: 1.1rem; font-weight: 500; text-align: center; min-width: 220px; margin-bottom: 25px; border: 2px solid #ff7898; box-shadow: 0 4px 15px rgba(0,0,0,0.4); transition: box-shadow 0.3s ease, border-color 0.3s ease; }
+        .question-bar.typing-active { border-color: var(--pink-main); box-shadow: 0 0 20px var(--pink-glow), inset 0 0 10px rgba(255, 120, 152, 0.2); animation: borderPulse 1s infinite alternate; }
+        @keyframes borderPulse { 0% { box-shadow: 0 0 10px var(--pink-glow); } 100% { box-shadow: 0 0 25px var(--pink-main); } }
+        .btn-reply { background-color: var(--pink-main); color: var(--text-white); border: none; padding: 14px 55px; border-radius: 25px; font-size: 1.1rem; font-weight: bold; cursor: pointer; box-shadow: 0 0 15px var(--pink-glow); transition: transform 0.1s, opacity 0.3s ease; opacity: 0; pointer-events: none; }
+        .btn-reply.show { opacity: 1; pointer-events: auto; }
+        .start-circle { width: 70px; height: 70px; background: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 2rem; margin-bottom: 25px; box-shadow: 0 0 25px rgba(255, 255, 255, 0.6); animation: strongPulse 1.2s infinite ease-in-out; }
+        @keyframes strongPulse { 0% { transform: scale(1); box-shadow: 0 0 15px rgba(255, 255, 255, 0.5); } 50% { transform: scale(1.2); box-shadow: 0 0 35px rgba(255, 120, 152, 0.8); } 100% { transform: scale(1); box-shadow: 0 0 15px rgba(255, 255, 255, 0.5); } }
+        .start-text { color: var(--text-white); font-size: 1.6rem; font-weight: bold; cursor: pointer; text-shadow: 0 0 10px rgba(255,120,152,0.5); }
+        .player-card { width: 100%; background: rgba(255, 255, 255, 0.05); border: 2.5px solid rgba(255, 120, 152, 0.35); backdrop-filter: blur(15px); border-radius: 40px; padding: 35px 25px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 15px 35px rgba(0,0,0,0.4), 0 0 25px rgba(255, 120, 152, 0.15); position: relative; }
+        .player-card::before { content: '💗'; position: absolute; top: 20px; right: 25px; font-size: 1.1rem; opacity: 0.9; }
+        .player-header { color: var(--text-white); font-size: 1.3rem; font-weight: bold; margin-bottom: 25px; display: flex; align-items: center; gap: 8px; }
+        .player-art { width: 200px; height: 200px; border-radius: 28px; overflow: hidden; margin-bottom: 30px; border: none; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+        .player-art img { width: 100%; height: 100%; object-fit: cover; }
+        .progress-container { width: 95%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 25px; }
+        .progress-bar { width: 100%; height: 5px; background: rgba(255,255,255,0.15); border-radius: 10px; position: relative; cursor: pointer; }
+        .progress-current { width: 0%; height: 100%; background: var(--pink-main); border-radius: 10px; box-shadow: 0 0 10px var(--pink-main); transition: width 0.1s linear; }
+        .time-info { display: flex; justify-content: space-between; color: rgba(255,255,255,0.5); font-size: 0.85rem; }
+        .controls { display: flex; align-items: center; justify-content: center; gap: 25px; width: 100%; }
+        .control-btn { background: none; border: none; color: rgba(255, 255, 255, 0.8); font-size: 1.6rem; cursor: pointer; transition: color 0.2s; }
+        .control-btn:active { color: var(--pink-main); }
+        .play-pause { width: 65px; height: 65px; background: var(--pink-main); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.4rem; box-shadow: 0 6px 20px rgba(255, 120, 152, 0.4); cursor: pointer; transition: transform 0.1s; }
+        .play-pause:active { transform: scale(0.95); }
+        .btn-restart { background: var(--pink-main); color: white; border: none; padding: 14px 50px; border-radius: 25px; font-weight: bold; font-size: 1.1rem; box-shadow: 0 5px 15px rgba(0,0,0,0.3); cursor: pointer; margin-top: 35px; transition: transform 0.2s; }
+        .btn-restart:active { transform: scale(0.95); }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+    <div class="deep-background">
+        <img src="bg-image1.png" class="bg-img img-top-left" alt="">
+        <img src="bg-image2.png" class="bg-img img-center" alt="">
+        <img src="bg-image3.png" class="bg-img img-bottom-right" alt="">
+    </div>
+
+    <div class="bg-bows-container" id="bgBows">
+        <span class="static-bow" style="top: 15%; left: 20%; font-size: 25px; color: #ff7898;">🎀</span>
+        <span class="static-bow" style="top: 30%; right: 15%; font-size: 40px; color: #ff7898;">🎀</span>
+        <span class="static-bow" style="top: 65%; left: 12%; font-size: 20px; color: #ff7898;">🎀</span>
+        <span class="static-bow" style="top: 75%; right: 20%; font-size: 35px; color: #ff7898;">🎀</span>
+    </div>
+
+    <div class="app-container">
+        
+        <div class="card active" id="card0" style="justify-content: center; height: 100%;" onclick="startAppWithMusic()">
+            <div class="start-circle">❤️</div>
+            <div class="start-text">انتِ <span id="dyn-recipient1">...</span> ؟</div>
+        </div>
+
+        <div class="card" id="card1">
+            <div class="image-box"><img src="kit1.png" alt="Hello Kitty Winking"></div>
+            <div class="question-bar" id="dyn-q1" data-text="هلو"></div>
+            <button class="btn-reply" onclick="nextCard(2)">هلووووو</button>
+        </div>
+
+        <div class="card" id="card2">
+            <div class="image-box"><img src="kit2.png" alt="Hello Kitty Thinking"></div>
+            <div class="question-bar" data-text="عندي سؤال الج"></div>
+            <button class="btn-reply" onclick="nextCard(3)">شنو السؤال!</button>
+        </div>
+
+        <div class="card" id="card3">
+            <div class="image-box"><img src="kit3.png" alt="Hello Kitty Shy"></div>
+            <div class="question-bar" data-text="هاج هاي ورد 🌷 قبل السؤال"></div>
+            <button class="btn-reply" onclick="nextCard(4)">كيوتتتتت</button>
+        </div>
+
+        <div class="card" id="card4">
+            <div class="image-box"><img src="kit4.jpeg" alt="Hello Kitty Cute"></div>
+            <div class="question-bar" id="dyn-q4" data-text="تحبين ... لو لا 🫣"></div>
+            <button class="btn-reply" onclick="nextCard(5)">مدري</button>
+        </div>
+
+        <div class="card" id="card5">
+            <div class="image-box"><img src="kit5.jpeg" alt="Hello Kitty Angry/Sad"></div>
+            <div class="question-bar" id="dyn-q5" data-text="شنو مدرييي!!! تحبين ... لو لا 🤨"></div>
+            <button class="btn-reply" onclick="nextCard(6)">اممممم?</button>
+        </div>
+
+        <div class="card" id="card6">
+            <div class="image-box"><img src="kit6.jpeg" alt="Hello Kitty Love"></div>
+            <div class="question-bar" id="dyn-q6" data-text="اذا تحبين ... دوسي على القلب 🫣"></div>
+            <div id="heartTrigger" onclick="nextCard(7)">🩷</div>
+        </div>
+
+        <div class="card" id="card7">
+            <div class="question-bar" id="dyn-message" style="height: auto; padding: 25px 20px;" data-text="رسالة مخصصة هنا..."></div>
+            <button class="btn-reply" onclick="nextCard(8)">اعشقج واضح 🥺❤️</button>
+        </div>
+
+        <div class="card" id="card8">
+            <div class="player-card">
+                <div class="player-header">🎵 أغنيتنا المفضلة</div>
+                <div class="player-art"><img src="music-art.jpeg" alt="Music"></div>
+                
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar"><div class="progress-current" id="progressCurrent"></div></div>
+                    <div class="time-info">
+                        <span id="currentTime">0:00</span>
+                        <span id="durationTime">0:00</span>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button class="control-btn">⏮</button>
+                    <div class="play-pause" id="playPauseBtn">⏸</div>
+                    <button class="control-btn">⏭</button>
+                </div>
+            </div>
+            <button class="btn-restart" onclick="restartApp()">العودة للبداية 🤍</button>
+        </div>
+
+    </div>
+
+    <div id="youtube-player" style="display: none;"></div>
+
+    <script>
+        // 1. استخراج البيانات من الرابط (المُرسلة من نظامك React)
+        const urlParams = new URLSearchParams(window.location.search);
+        const sender = urlParams.get('sender') || 'مختار';
+        const recipient = urlParams.get('recipient') || 'روان';
+        const message = urlParams.get('message') || 'أن شاء الله راح يجي يوم وتصيرين إلي ما اعرف يمته يجي هل يوم بس إلي أعرفه أنو احبج وما أحب غيرج🩷.';
+        const ytUrl = urlParams.get('yt') || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+        const startTime = parseInt(urlParams.get('start')) || 40;
+
+        // دالة لاستخراج ID الفيديو من رابط اليوتيوب
+        function getYoutubeId(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : 'dQw4w9WgXcQ';
+        }
+
+        // 2. تحديث النصوص داخل الثيم بالبيانات الديناميكية
+        document.getElementById('dyn-recipient1').innerText = recipient;
+        document.getElementById('dyn-q1').setAttribute('data-text', `هلو ${recipient}`);
+        document.getElementById('dyn-q4').setAttribute('data-text', `تحبين ${sender} لو لا 🫣`);
+        document.getElementById('dyn-q5').setAttribute('data-text', `شنو مدرييي!!! تحبين ${sender} لو لا 🤨`);
+        document.getElementById('dyn-q6').setAttribute('data-text', `اذا تحبين ${sender} دوسي على القلب 🫣`);
+        document.getElementById('dyn-message').setAttribute('data-text', message);
+
+        // 3. تهيئة مشغل يوتيوب المخفي
+        let player;
+        let ytReady = false;
+        
+        // تحميل مكتبة YouTube Iframe API
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('youtube-player', {
+                height: '0',
+                width: '0',
+                videoId: getYoutubeId(ytUrl),
+                playerVars: { 'autoplay': 0, 'controls': 0, 'start': startTime, 'playsinline': 1 },
+                events: {
+                    'onReady': () => { ytReady = true; },
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        }
+
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const progressCurrent = document.getElementById('progressCurrent');
+        const currentTimeEl = document.getElementById('currentTime');
+        const durationTimeEl = document.getElementById('durationTime');
+        const progressContainer = document.getElementById('progressContainer');
+        let progressInterval;
+
+        function startAppWithMusic() {
+            if (ytReady && player) {
+                player.seekTo(startTime);
+                player.playVideo();
+                playPauseBtn.innerText = '⏸';
+                startProgressTracker();
+            }
+            nextCard(1);
+        }
+
+        function toggleAudio() {
+            if (!ytReady || !player) return;
+            const state = player.getPlayerState();
+            if (state === YT.PlayerState.PLAYING) {
+                player.pauseVideo();
+                playPauseBtn.innerText = '▶';
+            } else {
+                player.playVideo();
+                playPauseBtn.innerText = '⏸';
+            }
+        }
+
+        playPauseBtn.addEventListener('click', toggleAudio);
+
+        // تتبع الوقت لليوتيوب وتحديث شريط التقدم
+        function startProgressTracker() {
+            clearInterval(progressInterval);
+            progressInterval = setInterval(() => {
+                if (player && player.getPlayerState() === YT.PlayerState.PLAYING) {
+                    const currentTime = player.getCurrentTime();
+                    const actualDuration = player.getDuration() || 251;
+
+                    // إعادة التشغيل إذا انتهت الأغنية
+                    if (currentTime >= actualDuration - 0.5) {
+                        player.seekTo(startTime);
+                        player.playVideo();
+                    }
+
+                    const totalDuration = actualDuration - startTime;
+                    const currentProgress = currentTime - startTime;
+                    const progressPercent = Math.max(0, Math.min(100, (currentProgress / totalDuration) * 100));
+                    
+                    progressCurrent.style.width = `${progressPercent}%`;
+
+                    let displayTime = Math.max(0, currentTime - startTime);
+                    let currentMins = Math.floor(displayTime / 60);
+                    let currentSecs = Math.floor(displayTime % 60);
+                    if (currentSecs < 10) currentSecs = '0' + currentSecs;
+                    currentTimeEl.innerText = `${currentMins}:${currentSecs}`;
+
+                    let durationMins = Math.floor(totalDuration / 60);
+                    let durationSecs = Math.floor(totalDuration % 60);
+                    if (durationSecs < 10) durationSecs = '0' + durationSecs;
+                    durationTimeEl.innerText = `${durationMins}:${durationSecs}`;
+                }
+            }, 500);
+        }
+
+        function onPlayerStateChange(event) {
+            if (event.data === YT.PlayerState.PLAYING) {
+                playPauseBtn.innerText = '⏸';
+            } else if (event.data === YT.PlayerState.PAUSED) {
+                playPauseBtn.innerText = '▶';
+            }
+        }
+
+        progressContainer.addEventListener('click', (e) => {
+            if (!ytReady || !player) return;
+            const width = progressContainer.clientWidth;
+            const clickX = e.offsetX;
+            const actualDuration = player.getDuration() || 251;
+            const totalDuration = actualDuration - startTime;
+            
+            const newTime = startTime + ((clickX / width) * totalDuration);
+            player.seekTo(newTime);
+            player.playVideo();
+            playPauseBtn.innerText = '⏸';
+        });
+
+        function restartApp() {
+            if (ytReady && player) {
+                player.seekTo(startTime);
+                player.playVideo();
+                playPauseBtn.innerText = '⏸';
+            }
+            nextCard(0);
+        }
+
+        // --- باقي دوال الأنيميشن والفيونكات (كما هي بالضبط) ---
+        function createFallingBow() {
+            const bowSymbols = ['🎀', '🎀']; 
+            const colors = ['#ff7898', '#ffeef2'];
+            const bow = document.createElement('div');
+            bow.className = 'falling-bow';
+            bow.innerText = bowSymbols[Math.floor(Math.random() * bowSymbols.length)];
+            bow.style.color = colors[Math.floor(Math.random() * colors.length)];
+            bow.style.left = Math.random() * 100 + 'vw';
+            bow.style.fontSize = Math.random() * 18 + 15 + 'px';
+            bow.style.animationDuration = Math.random() * 3 + 4 + 's';
+            bow.style.opacity = Math.random() * 0.4 + 0.3;
+            document.body.appendChild(bow);
+            setTimeout(() => { bow.remove(); }, 7000);
+        }
+        setInterval(createFallingBow, 1600);
+
+        document.addEventListener('click', function(e) {
+            if(e.target.classList.contains('start-circle') || e.target.classList.contains('btn-restart')) return;
+            for (let i = 0; i < 4; i++) {
+                const heart = document.createElement('div');
+                heart.className = 'click-heart';
+                heart.innerText = '💗'; 
+                heart.style.left = e.clientX + 'px';
+                heart.style.top = e.clientY + 'px';
+                const randomX = (Math.random() * 60 - 30) + 'px';
+                heart.style.setProperty('--random-x', randomX);
+                heart.style.animationDelay = (i * 0.08) + 's';
+                document.body.appendChild(heart);
+                setTimeout(() => { heart.remove(); }, 800);
+            }
+        });
+
+        function typeWriter(element, text, index, callback) {
+            if (index < text.length) {
+                element.innerHTML += text.charAt(index);
+                setTimeout(function() { typeWriter(element, text, index + 1, callback); }, 70);
+            } else if (callback) { callback(); }
+        }
+
+        function nextCard(cardIndex) {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(card => card.classList.remove('active'));
+            const targetCard = document.getElementById('card' + cardIndex);
+            if (targetCard) {
+                targetCard.classList.add('active');
+                const qBar = targetCard.querySelector('.question-bar');
+                const replyBtn = targetCard.querySelector('.btn-reply');
+                const heartTrigger = targetCard.querySelector('#heartTrigger');
+                if (qBar && qBar.getAttribute('data-text')) {
+                    const fullText = qBar.getAttribute('data-text');
+                    qBar.innerHTML = '';
+                    qBar.classList.add('typing-active');
+                    if(replyBtn) replyBtn.classList.remove('show');
+                    if(heartTrigger) heartTrigger.style.display = 'none';
+                    typeWriter(qBar, fullText, 0, function() {
+                        qBar.classList.remove('typing-active');
+                        if(replyBtn) replyBtn.classList.add('show');
+                        if(heartTrigger) heartTrigger.style.display = 'block';
+                    });
+                }
+            }
+        }
+    </script>
+</body>
+</html>

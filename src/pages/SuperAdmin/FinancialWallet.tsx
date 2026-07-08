@@ -1,0 +1,213 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../supabase';
+
+export default function FinancialWallet() {
+  const [posData, setPosData] = useState<any[]>([]);
+  const [totalUncleared, setTotalUncleared] = useState(0);
+  const [timeFilter, setTimeFilter] = useState('all');
+  const [finLogs, setFinLogs] = useState<any[]>([]);
+
+  const fetchData = async () => {
+    const { data: branches } = await supabase.from('points_of_sale').select(`
+      id, name,
+      gift_links ( id, price, is_cleared, created_at, themes(name) )
+    `);
+
+    const { data: sysLogs } = await supabase
+      .from('system_logs')
+      .select('*')
+      .eq('action_type', 'تصفية مالية');
+
+    const now = new Date();
+    const filterDate = new Date();
+    if (timeFilter === 'hour') filterDate.setHours(now.getHours() - 1);
+    if (timeFilter === 'day') filterDate.setDate(now.getDate() - 1);
+    if (timeFilter === 'week') filterDate.setDate(now.getDate() - 7);
+    if (timeFilter === 'month') filterDate.setMonth(now.getMonth() - 1);
+    if (timeFilter === 'year') filterDate.setFullYear(now.getFullYear() - 1);
+
+    let grandTotal = 0;
+    let allFinancialEvents: any[] = [];
+
+    if (branches) {
+      const calculatedBranches = branches.map(branch => {
+        const validLinks = branch.gift_links?.filter((l: any) => {
+          const linkDate = new Date(l.created_at);
+          const isWithinTime = timeFilter === 'all' ? true : linkDate >= filterDate;
+          
+          if (isWithinTime) {
+            allFinancialEvents.push({
+              id: l.id,
+              type: 'sale',
+              desc: `تم بيع ${l.themes?.name || 'رابط'} في ${branch.name}`,
+              amount: l.price,
+              date: l.created_at,
+              is_cleared: l.is_cleared
+            });
+          }
+          return l.is_cleared === false && isWithinTime;
+        }) || [];
+
+        const currentDebt = validLinks.reduce((sum: number, link: any) => sum + Number(link.price || 0), 0);
+        grandTotal += currentDebt;
+        
+        return { ...branch, currentDebt, pendingLinksCount: validLinks.length };
+      });
+      
+      setPosData(calculatedBranches);
+      setTotalUncleared(grandTotal);
+    }
+
+    if (sysLogs) {
+      sysLogs.forEach(log => {
+        const logDate = new Date(log.created_at);
+        if (timeFilter === 'all' || logDate >= filterDate) {
+          allFinancialEvents.push({
+            id: log.id,
+            type: 'clearance',
+            desc: log.details,
+            amount: 0,
+            date: log.created_at
+          });
+        }
+      });
+    }
+
+    allFinancialEvents.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    setFinLogs(allFinancialEvents);
+  };
+
+  useEffect(() => { fetchData(); }, [timeFilter]);
+
+  const handleClearance = async (posId: string, posName: string, amount: number) => {
+    if(amount === 0) return alert('الحساب مصفر مسبقاً ضمن هذا النطاق الزمني.');
+    
+    const confirm = window.confirm(`هل أنت متأكد من استلام مبلغ (${amount.toLocaleString()} د.ع) وتصفية حساب ${posName}؟`);
+    if (confirm) {
+      await supabase.from('gift_links').update({ is_cleared: true }).eq('pos_id', posId).eq('is_cleared', false);
+      
+      await supabase.from('system_logs').insert([{ 
+        admin_name: 'المدير العام', pos_name: posName, action_type: 'تصفية مالية', 
+        details: `تمت تصفية مبلغ ${amount.toLocaleString()} د.ع لفرع ${posName}` 
+      }]);
+      
+      fetchData();
+    }
+  };
+
+  // دالة التصدير إلى إكسل
+  const exportFinToExcel = () => {
+    const headers = ["النوع", "التفاصيل", "المبلغ", "التاريخ"];
+    const rows = finLogs.map(log => [
+      log.type === 'sale' ? 'مبيعات' : 'تصفية',
+      log.desc,
+      log.type === 'sale' ? log.amount : 0,
+      new Date(log.date).toLocaleString('en-IQ')
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
+    const link = document.createElement("a");
+    link.href = encodeURI(csvContent);
+    link.download = `السجل_المالي_${new Date().toLocaleDateString()}.csv`;
+    link.click();
+  };
+
+  return (
+    <div style={container}>
+      <style>{`@media print { .no-print { display: none !important; } }`}</style>
+
+      <div style={headerSection} className="no-print">
+        <h3 style={title}>الدفتر المالي وتصفية الأرباح 💰</h3>
+        <div style={filterRibbon}>
+          <button onClick={() => setTimeFilter('all')} style={timeFilter === 'all' ? activeFilterBtn : filterBtn}>كل الأوقات</button>
+          <button onClick={() => setTimeFilter('year')} style={timeFilter === 'year' ? activeFilterBtn : filterBtn}>هذه السنة</button>
+          <button onClick={() => setTimeFilter('month')} style={timeFilter === 'month' ? activeFilterBtn : filterBtn}>هذا الشهر</button>
+          <button onClick={() => setTimeFilter('week')} style={timeFilter === 'week' ? activeFilterBtn : filterBtn}>هذا الأسبوع</button>
+          <button onClick={() => setTimeFilter('day')} style={timeFilter === 'day' ? activeFilterBtn : filterBtn}>اليوم</button>
+          <button onClick={() => setTimeFilter('hour')} style={timeFilter === 'hour' ? activeFilterBtn : filterBtn}>آخر ساعة</button>
+        </div>
+      </div>
+      
+      <div style={totalBox}>
+        <div style={{ fontSize: '14px', color: '#666' }}>إجمالي الأرباح المعلقة (قيد التحصيل) حسب الفلتر</div>
+        <div style={{ fontSize: '36px', color: '#ff4d4d', fontWeight: '900' }}>{totalUncleared.toLocaleString()} د.ع</div>
+      </div>
+
+      <div style={cardsContainer} className="no-print">
+        {posData.map(pos => (
+          <div key={pos.id} style={card}>
+            <h4 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: 'bold' }}>{pos.name}</h4>
+            <div style={{ fontSize: '13px', color: '#555', marginBottom: '15px' }}>
+              الروابط غير المصفاة: <span style={{fontWeight:'bold'}}>{pos.pendingLinksCount}</span>
+            </div>
+            <div style={{ fontSize: '24px', color: '#00cc66', fontWeight: 'bold', marginBottom: '20px' }}>
+              {pos.currentDebt.toLocaleString()} د.ع
+            </div>
+            <button onClick={() => handleClearance(pos.id, pos.name, pos.currentDebt)} style={clearBtn}>
+              💸 استلام وتصفية الحساب
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div style={logsContainer}>
+        {/* الأزرار صارت هنا وبمكانها الصحيح */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <h4 style={{ margin: 0, fontSize: '16px', color: '#111' }}>🧾 سجل الحركات المالية:</h4>
+          <div style={{ display: 'flex', gap: '8px' }} className="no-print">
+            <button onClick={() => window.print()} style={{ background: '#fff', border: '1px solid #ddd', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>🖨️ طباعة</button>
+            <button onClick={exportFinToExcel} style={{ background: '#00cc66', border: 'none', color: '#fff', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>📊 إكسل</button>
+          </div>
+        </div>
+        
+        <div style={tableWrapper}>
+          <table style={table}>
+            <tbody>
+              {finLogs.map((log, index) => (
+                <tr key={index} style={tdRow}>
+                  <td style={{ ...td, width: '40px', textAlign: 'center' }}>
+                    {log.type === 'clearance' ? '💰' : '🔗'}
+                  </td>
+                  <td style={td}>
+                    <strong style={{ color: log.type === 'clearance' ? '#00cc66' : '#111' }}>{log.desc}</strong>
+                    {log.type === 'sale' && (
+                      <span style={{ fontSize: '11px', color: log.is_cleared ? '#00cc66' : '#ff4d4d', marginRight: '10px' }}>
+                        ({log.is_cleared ? 'مُصفى' : 'قيد التحصيل'})
+                      </span>
+                    )}
+                  </td>
+                  <td style={{ ...td, fontWeight: 'bold', color: log.type === 'sale' ? '#ff4d4d' : '#00cc66', textAlign: 'left' }}>
+                    {log.type === 'sale' ? `+${log.amount?.toLocaleString() || 0} د.ع` : 'تصفية'}
+                  </td>
+                  <td style={{ ...td, color: '#888', fontSize: '11px', textAlign: 'left' }} dir="ltr">
+                    {new Date(log.date).toLocaleString('en-IQ')}
+                  </td>
+                </tr>
+              ))}
+              {finLogs.length === 0 && <tr><td colSpan={4} style={emptyText}>لا توجد حركات مالية في هذا الوقت.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const container: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '20px' };
+const headerSection: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '15px' };
+const title: React.CSSProperties = { margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#111' };
+
+const filterRibbon: React.CSSProperties = { display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '5px' };
+const filterBtn: React.CSSProperties = { background: '#fff', border: '1px solid #ddd', padding: '8px 16px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px', color: '#555', fontWeight: 'bold', whiteSpace: 'nowrap' };
+const activeFilterBtn: React.CSSProperties = { ...filterBtn, background: '#111', color: '#fff', border: '1px solid #111' };
+
+const totalBox: React.CSSProperties = { background: '#fff5f7', padding: '30px', borderRadius: '16px', border: '1px solid #ffe1e8', textAlign: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' };
+const cardsContainer: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' };
+const card: React.CSSProperties = { background: '#fff', padding: '25px', borderRadius: '16px', border: '1px solid #eee', textAlign: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' };
+const clearBtn: React.CSSProperties = { width: '100%', background: '#111', color: '#fff', border: 'none', padding: '12px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', transition: '0.2s' };
+
+const logsContainer: React.CSSProperties = { background: '#fff', padding: '20px', borderRadius: '16px', border: '1px solid #eee', marginTop: '10px' };
+const tableWrapper: React.CSSProperties = { maxHeight: '300px', overflowY: 'auto' };
+const table: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };
+const tdRow: React.CSSProperties = { borderBottom: '1px solid #f9f9f9' };
+const td: React.CSSProperties = { padding: '12px 10px', fontSize: '13px' };
+const emptyText: React.CSSProperties = { padding: '20px', textAlign: 'center', color: '#999', fontSize: '13px' };
