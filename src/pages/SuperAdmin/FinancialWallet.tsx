@@ -3,13 +3,14 @@ import { supabase } from '../../supabase';
 
 export default function FinancialWallet() {
   const [posData, setPosData] = useState<any[]>([]);
-  const [totalUncleared, setTotalUncleared] = useState(0);
+  const [totalUncleared, setTotalUncleared] = useState(0); // هذا صار يمثل "الصافي" المطلوب جمعه
   const [timeFilter, setTimeFilter] = useState('all');
   const [finLogs, setFinLogs] = useState<any[]>([]);
 
   const fetchData = async () => {
+    // 1. جلب نسبة الفرع (share_percentage) لمعرفة حصته
     const { data: branches } = await supabase.from('points_of_sale').select(`
-      id, name,
+      id, name, share_percentage,
       gift_links ( id, price, is_cleared, created_at, themes(name) )
     `);
 
@@ -26,11 +27,12 @@ export default function FinancialWallet() {
     if (timeFilter === 'month') filterDate.setMonth(now.getMonth() - 1);
     if (timeFilter === 'year') filterDate.setFullYear(now.getFullYear() - 1);
 
-    let grandTotal = 0;
+    let grandTotalNet = 0;
     let allFinancialEvents: any[] = [];
 
     if (branches) {
       const calculatedBranches = branches.map(branch => {
+        // فلترة الروابط وجلب الروابط غير المصفاة فقط ضمن الوقت المحدد
         const validLinks = branch.gift_links?.filter((l: any) => {
           const linkDate = new Date(l.created_at);
           const isWithinTime = timeFilter === 'all' ? true : linkDate >= filterDate;
@@ -48,14 +50,28 @@ export default function FinancialWallet() {
           return l.is_cleared === false && isWithinTime;
         }) || [];
 
-        const currentDebt = validLinks.reduce((sum: number, link: any) => sum + Number(link.price || 0), 0);
-        grandTotal += currentDebt;
+        // 2. 🧮 الحسابات المالية الدقيقة للفرع
+        const totalGross = validLinks.reduce((sum: number, link: any) => sum + Number(link.price || 0), 0); // المبيعات الكلية
+        const posShare = (totalGross * (branch.share_percentage || 0)) / 100; // حصة الفرع
+        const netDebt = totalGross - posShare; // الصافي المطلوب استلامه (أرباح النظام)
+
+        // 3. 🎯 جمع أرقام الروابط (IDs) حتى نصفيها هي فقط وليس كل القاعدة
+        const linkIdsToClear = validLinks.map((l: any) => l.id);
+
+        grandTotalNet += netDebt;
         
-        return { ...branch, currentDebt, pendingLinksCount: validLinks.length };
+        return { 
+          ...branch, 
+          totalGross, 
+          posShare, 
+          netDebt, 
+          pendingLinksCount: validLinks.length,
+          linkIdsToClear
+        };
       });
       
       setPosData(calculatedBranches);
-      setTotalUncleared(grandTotal);
+      setTotalUncleared(grandTotalNet);
     }
 
     if (sysLogs) {
@@ -79,23 +95,32 @@ export default function FinancialWallet() {
 
   useEffect(() => { fetchData(); }, [timeFilter]);
 
-  const handleClearance = async (posId: string, posName: string, amount: number) => {
-    if(amount === 0) return alert('الحساب مصفر مسبقاً ضمن هذا النطاق الزمني.');
+  // 4. 🚀 دالة التصفية الذكية (تصفي فقط الروابط المحددة بالفلتر)
+  const handleClearance = async (posId: string, posName: string, netAmount: number, totalGross: number, linkIds: string[]) => {
+    if(linkIds.length === 0 || netAmount === 0) return alert('الحساب مصفر مسبقاً ضمن هذا النطاق الزمني.');
     
-    const confirm = window.confirm(`هل أنت متأكد من استلام مبلغ (${amount.toLocaleString()} د.ع) وتصفية حساب ${posName}؟`);
+    const confirm = window.confirm(
+      `هل أنت متأكد من استلام مبلغ الصافي (${netAmount.toLocaleString()} د.ع) من أصل مبيعات (${totalGross.toLocaleString()} د.ع) وتصفية حساب ${posName}؟`
+    );
+    
     if (confirm) {
-      await supabase.from('gift_links').update({ is_cleared: true }).eq('pos_id', posId).eq('is_cleared', false);
+      // تحديث الروابط المعنية فقط (لتجنب تصفية روابط خارج النطاق الزمني)
+      await supabase.from('gift_links')
+        .update({ is_cleared: true })
+        .in('id', linkIds);
       
+      // توثيق العملية في سجل النظام
       await supabase.from('system_logs').insert([{ 
-        admin_name: 'المدير العام', pos_name: posName, action_type: 'تصفية مالية', 
-        details: `تمت تصفية مبلغ ${amount.toLocaleString()} د.ع لفرع ${posName}` 
+        admin_name: 'السوبر أدمن', 
+        pos_name: posName, 
+        action_type: 'تصفية مالية', 
+        details: `استلام صافي ${netAmount.toLocaleString()} د.ع من إجمالي مبيعات ${totalGross.toLocaleString()} د.ع لفرع ${posName}` 
       }]);
       
       fetchData();
     }
   };
 
-  // دالة التصدير إلى إكسل
   const exportFinToExcel = () => {
     const headers = ["النوع", "التفاصيل", "المبلغ", "التاريخ"];
     const rows = finLogs.map(log => [
@@ -128,7 +153,7 @@ export default function FinancialWallet() {
       </div>
       
       <div style={totalBox}>
-        <div style={{ fontSize: '14px', color: '#666' }}>إجمالي الأرباح المعلقة (قيد التحصيل) حسب الفلتر</div>
+        <div style={{ fontSize: '14px', color: '#666' }}>إجمالي صافي الأرباح (المطلوب استلامها) حسب الفلتر</div>
         <div style={{ fontSize: '36px', color: '#ff4d4d', fontWeight: '900' }}>{totalUncleared.toLocaleString()} د.ع</div>
       </div>
 
@@ -136,21 +161,37 @@ export default function FinancialWallet() {
         {posData.map(pos => (
           <div key={pos.id} style={card}>
             <h4 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: 'bold' }}>{pos.name}</h4>
-            <div style={{ fontSize: '13px', color: '#555', marginBottom: '15px' }}>
+            
+            <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '8px', marginBottom: '15px' }}>
+              <div style={{ fontSize: '12px', color: '#555', display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                <span>إجمالي المبيعات:</span>
+                <strong>{pos.totalGross.toLocaleString()} د.ع</strong>
+              </div>
+              <div style={{ fontSize: '12px', color: '#ff69b4', display: 'flex', justifyContent: 'space-between' }}>
+                <span>حصة الفرع ({pos.share_percentage || 0}%):</span>
+                <strong>{pos.posShare.toLocaleString()} د.ع</strong>
+              </div>
+            </div>
+
+            <div style={{ fontSize: '13px', color: '#555', marginBottom: '5px' }}>
               الروابط غير المصفاة: <span style={{fontWeight:'bold'}}>{pos.pendingLinksCount}</span>
             </div>
-            <div style={{ fontSize: '24px', color: '#00cc66', fontWeight: 'bold', marginBottom: '20px' }}>
-              {pos.currentDebt.toLocaleString()} د.ع
+            
+            <div style={{ fontSize: '22px', color: '#00cc66', fontWeight: '900', marginBottom: '20px' }}>
+              الصافي: {pos.netDebt.toLocaleString()} د.ع
             </div>
-            <button onClick={() => handleClearance(pos.id, pos.name, pos.currentDebt)} style={clearBtn}>
-              💸 استلام وتصفية الحساب
+
+            <button 
+              onClick={() => handleClearance(pos.id, pos.name, pos.netDebt, pos.totalGross, pos.linkIdsToClear)} 
+              style={clearBtn}
+            >
+              💸 استلام وتصفية الصافي
             </button>
           </div>
         ))}
       </div>
 
       <div style={logsContainer}>
-        {/* الأزرار صارت هنا وبمكانها الصحيح */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
           <h4 style={{ margin: 0, fontSize: '16px', color: '#111' }}>🧾 سجل الحركات المالية:</h4>
           <div style={{ display: 'flex', gap: '8px' }} className="no-print">
@@ -192,7 +233,7 @@ export default function FinancialWallet() {
   );
 }
 
-const container: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '20px' };
+const container: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '20px', direction: 'rtl', fontFamily: 'sans-serif' };
 const headerSection: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '15px' };
 const title: React.CSSProperties = { margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#111' };
 

@@ -8,7 +8,9 @@ import Login from './pages/Login';
 import Viewer from './pages/Viewer';
 import SuperAdmin from './pages/SuperAdmin/SuperAdmin';
 
-// 🛡️ مكون حماية السوبر أدمن (الجدار الناري)
+ import AdminDashboard from './pages/POS'; 
+
+// 🛡️ مكون حماية السوبر أدمن (للصلاحيات الكاملة)
 const RequireSuperAdmin = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
@@ -37,14 +39,52 @@ const RequireSuperAdmin = ({ children }: { children: ReactNode }) => {
   return <>{children}</>; 
 };
 
+// 🛡️ مكون حماية أدمن نقطة البيع (يسمح للسوبر أدمن وللـ pos_admin)
+const RequirePosAdmin = ({ children }: { children: ReactNode }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setIsAuthenticated(false);
+        return;
+      }
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+        
+      setIsAuthenticated(profile?.role === 'pos_admin' || profile?.role === 'super_admin');
+    };
+    checkAuth();
+  }, []);
+
+  if (isAuthenticated === null) return <div style={{ height: '100vh', background: '#000' }}></div>; 
+  if (isAuthenticated === false) return <Navigate to="/secure-portal-access" replace />; 
+  
+  return <>{children}</>; 
+};
+
 export default function App() {
   return (
     <Router>
       <Routes>
         <Route path="/secure-portal-access" element={<Login />} />
         
-        {/* التعديل صار هنا: شلنا كلمة pos المزعجة وصار الرابط مباشر باسم الفرع */}
-        <Route path="/:slug" element={<POS />} /> 
+        {/* 🔗 مسار أدمن نقطة البيع (الجديد) */}
+        {/* افتح التعليق أدناه بعد أن تستورد صفحة الأدمن */}
+        {/* <Route 
+          path="/admin" 
+          element={
+            <RequirePosAdmin>
+              <AdminDashboard />
+            </RequirePosAdmin>
+          } 
+        /> 
+        */}
         
         <Route 
           path="/master-dashboard" 
@@ -54,7 +94,8 @@ export default function App() {
             </RequireSuperAdmin>
           } 
         />
-        
+
+        <Route path="/:slug" element={<POS />} /> 
         <Route path="/:themeSlug/:shortId" element={<Viewer />} />
         <Route path="*" element={<ErrorPage />} />
       </Routes>

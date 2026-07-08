@@ -14,45 +14,51 @@ export default function Login() {
     setLoading(true);
     setError('');
 
-    // 1. الدخول عبر سيرفرات Supabase (البيانات مشفرة ولا توجد كلمات سر في الكود)
+    // 1. الدخول عبر سيرفرات Supabase
     const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
     
-    if (authError) {
+    if (authError || !data.user) {
       setError('بيانات الدخول غير صحيحة ❌');
       setLoading(false);
       return;
     } 
     
-    if (data.user) {
-      // 2. فحص الصلاحية (Role) من قاعدة البيانات
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role, points_of_sale(slug)')
-        .eq('id', data.user.id)
-        .single();
-        
-      if (profileError || !profile) {
-        setError('حسابك غير مكتمل الإعداد في النظام.');
-        setLoading(false);
-        return;
-      }
+    // 2. فحص الصلاحية (Role) من قاعدة البيانات
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role, points_of_sale(slug)')
+      .eq('id', data.user.id)
+      .single();
+      
+    if (profileError || !profile) {
+      setError('حسابك غير مكتمل الإعداد في النظام.');
+      setLoading(false);
+      return;
+    }
 
-      const resProfile = profile as any;
+    const resProfile = profile as any;
 
-      // 3. التوجيه الذكي حسب الصلاحية
-      if (resProfile.role === 'super_admin') {
-        // إذا كان المدير (السوبر أدمن)
-        navigate('/master-dashboard');
-      } else {
-        // إذا كان موظف مبيعات عادي
-        if (resProfile.points_of_sale) {
-          const pos = resProfile.points_of_sale;
-          const slug = Array.isArray(pos) ? pos[0]?.slug : pos?.slug;
-navigate(`/${slug}`);
+    // 3. التوجيه الذكي حسب الصلاحية (تم حل المشكلة هنا)
+    if (resProfile.role === 'super_admin') {
+      // السوبر أدمن
+      navigate('/master-dashboard');
+    } else if (resProfile.role === 'pos_admin') {
+      // مدير نقطة البيع (يولد الروابط)
+      navigate('/admin');
+    } else {
+      // موظف مبيعات عادي
+      if (resProfile.points_of_sale) {
+        const pos = resProfile.points_of_sale;
+        const slug = Array.isArray(pos) ? pos[0]?.slug : pos?.slug;
+        if (slug) {
+          navigate(`/${slug}`);
         } else {
-          setError('حسابك غير مربوط بنقطة بيع.');
+          setError('لم يتم العثور على رابط نقطة البيع.');
           setLoading(false);
         }
+      } else {
+        setError('حسابك غير مربوط بنقطة بيع.');
+        setLoading(false);
       }
     }
   };

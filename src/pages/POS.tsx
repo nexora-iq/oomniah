@@ -2,6 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 
+const DURATION_PRICES = {
+  daily: { label: 'يومي', price: 5000 },
+  weekly: { label: 'أسبوعي', price: 10000 },
+  monthly: { label: 'شهري', price: 15000 }
+};
+
+type DurationType = 'daily' | 'weekly' | 'monthly';
+
 export default function POS() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
@@ -10,6 +18,7 @@ export default function POS() {
   const [adminName, setAdminName] = useState('');
   const [posName, setPosName] = useState('');
   const [posId, setPosId] = useState<string | null>(null);
+  const [sharePercentage, setSharePercentage] = useState<number>(0); 
   const [themes, setThemes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -17,16 +26,14 @@ export default function POS() {
 
   const [formData, setFormData] = useState({
     theme_id: '', sender_name: '', recipient_name: '', recipient_gender: 'female',
-    song_url: '', song_start_seconds: 0, message: '', duration_type: 'daily'
+    song_url: '', song_start_seconds: 0, message: '', duration_type: 'daily' as DurationType
   });
 
   useEffect(() => {
     const init = async () => {
-      // 1. التحقق من الجلسة
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return navigate('/secure-portal-access');
 
-      // 2. 🛡️ جلب اسم الموظف + الجدار الناري (التحقق من الحظر)
       const { data: profile } = await supabase
         .from('profiles')
         .select('fullname, is_blocked')
@@ -42,20 +49,24 @@ export default function POS() {
         setAdminName(profile.fullname);
       }
 
-      // 3. جلب اسم نقطة البيع الفعلي
-      const { data: posData } = await supabase.from('points_of_sale').select('id, name').eq('slug', slug).single();
+      const { data: posData } = await supabase
+        .from('points_of_sale')
+        .select('id, name, share_percentage')
+        .eq('slug', slug)
+        .single();
+        
       if (posData) {
         setPosId(posData.id);
         setPosName(posData.name);
+        setSharePercentage(posData.share_percentage || 0);
       } else {
         setPosName(slug || 'نقطة بيع غير معروفة');
       }
 
-      // 4. 🎨 جلب الثيمات الفعالة فقط (تجاهل المعطلة من الإدارة)
       const { data: th } = await supabase
         .from('themes')
         .select('*')
-        .eq('status', 'active'); // 👈 الفلتر السحري
+        .eq('status', 'active');
         
       if (th) {
         setThemes(th);
@@ -63,14 +74,12 @@ export default function POS() {
       }
 
       setLoading(false);
-      
-      // الأنيميشن الفخم لمدة 3 ثواني
-      setTimeout(() => {
-        setShowSplash(false);
-      }, 3000);
+      setTimeout(() => setShowSplash(false), 3000);
     };
     init();
   }, [slug, navigate]);
+
+  const currentPrice = DURATION_PRICES[formData.duration_type].price;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,22 +91,23 @@ export default function POS() {
 
     const shortId = Math.random().toString(36).substring(2, 10);
     const { data: { session } } = await supabase.auth.getSession();
-    const actualPrice = selTheme?.price_iqd || selTheme?.price || 0; // لضمان قراءة السعر الصحيح
 
-    // 💰 إضافة البيانات المالية والأمنية الكاملة للرابط
+    // إرسال البيانات لداتابيس الروابط (نحفظ السعر ونسبة الفرع لغرض تصفية الحسابات بنهاية الشهر)
     const { data, error } = await supabase.from('gift_links').insert([{
       pos_id: posId, 
       theme_id: formData.theme_id, 
-      created_by: session?.user?.id, // 👈 ربط الرابط بالموظف للإحصائيات
+      created_by: session?.user?.id,
       sender_name: formData.sender_name,
       recipient_name: formData.recipient_name, 
       recipient_gender: formData.recipient_gender,
       song_url: formData.song_url, 
       song_start_seconds: formData.song_start_seconds,
       message: formData.message, 
-      price: actualPrice, // 👈 تسجيل السعر للوحة المالية
-      status: 'active', // 👈 لتفعيل خيار الطوارئ من السوبر أدمن
-      is_cleared: false, // 👈 لضمان نزولها قيد التحصيل
+      duration_type: formData.duration_type,
+      price: currentPrice, 
+      pos_share_percentage: sharePercentage, // نحفظ نسبة الفرع وقت التوليد
+      status: 'active', 
+      is_cleared: false, 
       expires_at: expiresAt.toISOString(), 
       short_id: shortId
     }]).select('short_id').single();
@@ -105,12 +115,11 @@ export default function POS() {
     if (error) {
       alert(`حدث خطأ أثناء التوليد: ${error.message}`);
     } else if (data) {
-      // 🔒 تسجيل الحركة بسجل النظام السري
       await supabase.from('system_logs').insert([{
         admin_name: adminName,
         pos_name: posName,
         action_type: 'توليد رابط',
-        details: `توليد ثيم (${selTheme?.name}) للزبون ${formData.sender_name} بسعر ${actualPrice.toLocaleString()} د.ع`
+        details: `توليد ثيم (${selTheme?.name}) للزبون ${formData.sender_name} | السعر: ${currentPrice} د.ع`
       }]);
 
       const themeSlug = selTheme?.slug || 'gift';
@@ -119,24 +128,12 @@ export default function POS() {
     }
   };
 
-  // شاشة الدخول الفاخرة (أنيميشن هيبة)
   if (showSplash || loading) return (
     <div style={splashContainer}>
       <style>{`
-        @keyframes lineLoad {
-          0% { width: 0%; opacity: 0; }
-          20% { opacity: 1; }
-          80% { width: 250px; opacity: 1; }
-          100% { width: 100vw; opacity: 0; }
-        }
-        @keyframes textFade {
-          0% { opacity: 0; transform: translateY(15px); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-        .luxury-line {
-          height: 3px; background: #ff69b4; box-shadow: 0 0 15px rgba(255,105,180,0.6);
-          animation: lineLoad 3s cubic-bezier(0.77, 0, 0.175, 1) forwards; margin: 30px auto 0;
-        }
+        @keyframes lineLoad { 0% { width: 0%; opacity: 0; } 20% { opacity: 1; } 80% { width: 250px; opacity: 1; } 100% { width: 100vw; opacity: 0; } }
+        @keyframes textFade { 0% { opacity: 0; transform: translateY(15px); } 100% { opacity: 1; transform: translateY(0); } }
+        .luxury-line { height: 3px; background: #ff69b4; box-shadow: 0 0 15px rgba(255,105,180,0.6); animation: lineLoad 3s cubic-bezier(0.77, 0, 0.175, 1) forwards; margin: 30px auto 0; }
         .fade-in { opacity: 0; animation: textFade 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
         .delay-1 { animation-delay: 0.3s; }
         .delay-2 { animation-delay: 0.6s; }
@@ -165,15 +162,15 @@ export default function POS() {
           <div style={group}>
             <label style={label}>نوع الثيم</label>
             <select name="theme_id" value={formData.theme_id} onChange={e => setFormData({...formData, theme_id: e.target.value})} style={input}>
-              {themes.map(t => <option key={t.id} value={t.id}>{t.name} - {(t.price_iqd || t.price || 0).toLocaleString()} د.ع</option>)}
+              {themes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </div>
           <div style={group}>
-            <label style={label}>المدة</label>
-            <select name="duration_type" value={formData.duration_type} onChange={e => setFormData({...formData, duration_type: e.target.value})} style={input}>
-              <option value="daily">يومي</option>
-              <option value="weekly">أسبوعي</option>
-              <option value="monthly">شهري</option>
+            <label style={label}>المدة والسعر</label>
+            <select name="duration_type" value={formData.duration_type} onChange={e => setFormData({...formData, duration_type: e.target.value as DurationType})} style={input}>
+              <option value="daily">يومي (5,000 د.ع)</option>
+              <option value="weekly">أسبوعي (10,000 د.ع)</option>
+              <option value="monthly">شهري (15,000 د.ع)</option>
             </select>
           </div>
         </div>
@@ -188,6 +185,14 @@ export default function POS() {
         <div style={row}>
            <input type="text" placeholder="رابط الأغنية" required onChange={e => setFormData({...formData, song_url: e.target.value})} style={{...input, flex: 2}} />
            <input type="number" placeholder="البدء (ث)" onChange={e => setFormData({...formData, song_start_seconds: Number(e.target.value)})} style={{...input, flex: 1}} />
+        </div>
+
+        {/* 📊 عرض السعر المطلوب من الزبون فقط */}
+        <div style={financeBoxStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: '#555', fontSize: '16px', fontWeight: 'bold' }}>المبلغ المطلوب من الزبون:</span>
+            <strong style={{ color: '#ff69b4', fontSize: '20px' }}>{currentPrice.toLocaleString()} د.ع</strong>
+          </div>
         </div>
 
         <button type="submit" style={submitBtn}>توليد الرابط 🔗</button>
@@ -225,3 +230,4 @@ const modalOverlay: React.CSSProperties = { position: 'fixed', top: 0, left: 0, 
 const modalContent: React.CSSProperties = { background: '#fff', padding: '40px', borderRadius: '16px', border: '1px solid #ff69b4', textAlign: 'center', width: '100%', maxWidth: '450px', boxShadow: '0 15px 40px rgba(255, 105, 180, 0.15)' };
 const urlDisplay: React.CSSProperties = { background: '#fff', padding: '18px', borderRadius: '8px', border: '1px dashed #ff69b4', color: '#ff69b4', marginBottom: '25px', direction: 'ltr', overflowX: 'auto', fontSize: '16px' };
 const copyBtn: React.CSSProperties = { background: '#ff69b4', color: '#fff', padding: '16px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '18px', width: '100%' };
+const financeBoxStyle: React.CSSProperties = { background: '#fff5f7', padding: '15px 20px', borderRadius: '12px', border: '1px solid #ffb3d9', marginTop: '10px' };

@@ -9,6 +9,9 @@ export default function LiveAnalytics() {
     partnerShares: [] as any[]
   });
   const [loading, setLoading] = useState(true);
+  
+  // 📅 إضافة حالة لتصفية الوقت (كل الأوقات أو هذا الشهر)
+  const [timeFilter, setTimeFilter] = useState<'all' | 'month'>('month');
 
   const fetchLiveStats = async () => {
     setLoading(true);
@@ -19,10 +22,17 @@ export default function LiveAnalytics() {
       .select('*')
       .order('created_at', { ascending: true });
 
-    // 2. جلب جميع الروابط الكلية المتولدة بالنظام
-    const { data: allLinks, error } = await supabase
-      .from('gift_links')
-      .select('price, pos_id');
+    // 2. بناء استعلام الروابط بناءً على الفلتر الزمني
+    let linksQuery = supabase.from('gift_links').select('price, pos_id, created_at');
+    
+    if (timeFilter === 'month') {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      linksQuery = linksQuery.gte('created_at', startOfMonth.toISOString());
+    }
+
+    const { data: allLinks, error } = await linksQuery;
 
     if (error) {
       console.error("خطأ في جلب البيانات الإحصائية:", error);
@@ -36,7 +46,7 @@ export default function LiveAnalytics() {
         id: b.id,
         name: b.name,
         slug: b.slug,
-        isFirstBranch: index === 0, // الفرع الأول المعتمد link.love
+        isFirstBranch: index === 0, // الفرع الأول المعتمد (الرئيسي)
         revenue: 0,
         count: 0
       }));
@@ -81,9 +91,9 @@ export default function LiveAnalytics() {
         totalRevenue: grandTotalRevenue,
         posBreakdown: branchStats,
         partnerShares: [
-          { name: "حسين ايهاب نعيم", amount: husseinTotal, formula: "35% من الفرع الأول + ثلث الـ 50% من الفروع الأخرى" },
-          { name: "الشريك الثاني", amount: partner2Total, formula: "35% من الفرع الأول + ثلث الـ 50% من الفروع الأخرى" },
-          { name: "الشريك الثالث", amount: partner3Total, formula: "30% من الفرع الأول + ثلث الـ 50% من الفروع الأخرى" }
+          { name: "حسين ايهاب نعيم", amount: husseinTotal, formula: "35% (الرئيسي) + ثلث الـ 50% (الفروع)" },
+          { name: "الشريك الثاني", amount: partner2Total, formula: "35% (الرئيسي) + ثلث الـ 50% (الفروع)" },
+          { name: "الشريك الثالث", amount: partner3Total, formula: "30% (الرئيسي) + ثلث الـ 50% (الفروع)" }
         ]
       });
     }
@@ -92,21 +102,36 @@ export default function LiveAnalytics() {
 
   useEffect(() => {
     fetchLiveStats();
-  }, []);
+  }, [timeFilter]); // 🔄 يتحدث تلقائياً عند تغيير الفلتر الزمني
 
   if (loading) {
-    return <div style={{ padding: '25px', textAlign: 'center', color: '#666', fontSize: '13px' }}>جاري معالجة الحسابات التراكمية الفورية... ⏳</div>;
+    return <div style={{ padding: '25px', textAlign: 'center', color: '#666', fontSize: '15px', fontWeight: 'bold' }}>جاري معالجة الحسابات الفورية... ⏳</div>;
   }
 
   return (
     <div style={container}>
-      {/* الهيدر الرئيسي للمركز الإحصائي */}
+      {/* الهيدر الرئيسي للمركز الإحصائي مع أزرار الفلترة */}
       <div style={headerSection}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <h2 style={title}>الإحصائيات والأرباح الفورية 📊</h2>
-          <span style={liveBadge}>● تراكمي أزلي</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+          <div>
+            <h2 style={title}>الإحصائيات والأرباح 📊</h2>
+            <p style={desc}>شاشة المراقبة الكبرى للمشروع. الأرقام هنا معصومة من التصفير وتوفر تحليلاً دقيقاً للحصص.</p>
+          </div>
+          <div style={filterContainer}>
+            <button 
+              style={timeFilter === 'month' ? activeBtn : inactiveBtn} 
+              onClick={() => setTimeFilter('month')}
+            >
+              هذا الشهر
+            </button>
+            <button 
+              style={timeFilter === 'all' ? activeBtn : inactiveBtn} 
+              onClick={() => setTimeFilter('all')}
+            >
+              كل الأوقات (تراكمي)
+            </button>
+          </div>
         </div>
-        <p style={desc}>شاشة المراقبة الكبرى للمشروع. الأرقام هنا معصومة من التصفير وتوفر تحليلاً دقيقاً لحصص الأرباح.</p>
       </div>
 
       {/* العدادات العامة الكبرى */}
@@ -114,7 +139,7 @@ export default function LiveAnalytics() {
         <div style={statCardMain}>
           <div style={cardIcon}>💰</div>
           <div>
-            <div style={cardLabel}>المجموع العام للإيرادات</div>
+            <div style={cardLabel}>الإيرادات ({timeFilter === 'month' ? 'الشهرية' : 'الكلية'})</div>
             <div style={cardValueMain}>{stats.totalRevenue.toLocaleString()} د.ع</div>
           </div>
         </div>
@@ -122,7 +147,7 @@ export default function LiveAnalytics() {
         <div style={statCardMain}>
           <div style={cardIcon}>🔗</div>
           <div>
-            <div style={cardLabel}>مجموع الروابط المبيعة كلياً</div>
+            <div style={cardLabel}>الروابط المبيعة ({timeFilter === 'month' ? 'الشهرية' : 'الكلية'})</div>
             <div style={cardValueMain}>{stats.totalLinks.toLocaleString()} رابط</div>
           </div>
         </div>
@@ -144,8 +169,8 @@ export default function LiveAnalytics() {
         ))}
       </div>
 
-      {/* توزيع الحصص وفق المعادلة الجديدة */}
-      <h3 style={sectionSubTitle}>👥 المحفظة الرقمية لتوزيع حصص الشركاء الثلاثة:</h3>
+      {/* توزيع الحصص وفق المعادلة */}
+      <h3 style={sectionSubTitle}>👥 المحفظة الرقمية لتوزيع حصص الشركاء:</h3>
       <div style={subGrid}>
         {stats.partnerShares.map((partner, index) => (
           <div key={index} style={partnerCard}>
@@ -162,12 +187,15 @@ export default function LiveAnalytics() {
   );
 }
 
-// الستايلات المدمجة والاحترافية لتتناسب مع الرؤية الجديدة للوحة
-const container: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '20px' };
+// الستايلات
+const container: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '20px', direction: 'rtl', fontFamily: 'sans-serif' };
 const headerSection: React.CSSProperties = { background: '#fff', padding: '20px 25px', borderRadius: '12px', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' };
-const title: React.CSSProperties = { margin: 0, fontSize: '18px', color: '#111', fontWeight: '900' };
+const title: React.CSSProperties = { margin: 0, fontSize: '20px', color: '#111', fontWeight: '900' };
 const desc: React.CSSProperties = { margin: '5px 0 0 0', fontSize: '13px', color: '#666' };
-const liveBadge: React.CSSProperties = { background: '#fff5f7', color: '#ff4d4d', padding: '2px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', border: '1px solid #ffe1e8' };
+
+const filterContainer: React.CSSProperties = { display: 'flex', gap: '10px', background: '#f8f9fa', padding: '5px', borderRadius: '10px', border: '1px solid #eee' };
+const activeBtn: React.CSSProperties = { background: '#ff69b4', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', transition: '0.3s' };
+const inactiveBtn: React.CSSProperties = { background: 'transparent', color: '#666', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', transition: '0.3s' };
 
 const mainGrid: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' };
 const statCardMain: React.CSSProperties = { background: '#ffffff', padding: '25px', borderRadius: '16px', border: '1px solid #dcdcdc', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.04)', display: 'flex', alignItems: 'center', gap: '20px' };
@@ -175,16 +203,16 @@ const cardIcon: React.CSSProperties = { fontSize: '30px', background: '#f8f9fa',
 const cardLabel: React.CSSProperties = { fontSize: '13px', color: '#666', fontWeight: 'bold' };
 const cardValueMain: React.CSSProperties = { fontSize: '24px', color: '#111', fontWeight: '900', marginTop: '4px' };
 
-const sectionSubTitle: React.CSSProperties = { margin: '10px 0 0 0', fontSize: '14px', color: '#222', fontWeight: 'bold' };
+const sectionSubTitle: React.CSSProperties = { margin: '10px 0 0 0', fontSize: '16px', color: '#222', fontWeight: 'bold' };
 const subGrid: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '15px' };
 
 const posStatCard: React.CSSProperties = { background: '#ffffff', padding: '20px', borderRadius: '14px', border: '1px solid #dcdcdc', boxShadow: '0 6px 18px rgba(0,0,0,0.02)' };
-const posNameText: React.CSSProperties = { fontSize: '13px', fontWeight: 'bold', color: '#111' };
-const posCountBadge: React.CSSProperties = { background: '#f0f7ff', color: '#007bff', fontSize: '11px', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' };
-const posRevenueText: React.CSSProperties = { fontSize: '20px', color: '#00cc66', fontWeight: '900', marginTop: '10px' };
+const posNameText: React.CSSProperties = { fontSize: '14px', fontWeight: 'bold', color: '#111' };
+const posCountBadge: React.CSSProperties = { background: '#f0f7ff', color: '#007bff', fontSize: '12px', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold' };
+const posRevenueText: React.CSSProperties = { fontSize: '22px', color: '#00cc66', fontWeight: '900', marginTop: '10px' };
 
 const partnerCard: React.CSSProperties = { background: '#ffffff', padding: '20px', borderRadius: '14px', border: '1px solid #dcdcdc', boxShadow: '0 6px 18px rgba(0,0,0,0.02)' };
-const partnerName: React.CSSProperties = { fontSize: '14px', fontWeight: 'bold', color: '#111' };
+const partnerName: React.CSSProperties = { fontSize: '15px', fontWeight: 'bold', color: '#111' };
 const formulaBadge: React.CSSProperties = { background: '#f8f9fa', color: '#555', fontSize: '11px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #ddd' };
 const partnerAmount: React.CSSProperties = { fontSize: '22px', color: '#ff4d4d', fontWeight: '900' };
-const partnerSubText: React.CSSProperties = { fontSize: '11px', color: '#777', marginTop: '6px', fontStyle: 'italic' };
+const partnerSubText: React.CSSProperties = { fontSize: '12px', color: '#777', marginTop: '8px', fontStyle: 'italic' };
