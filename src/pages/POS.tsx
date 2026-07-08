@@ -91,8 +91,7 @@ export default function POS() {
 
     const shortId = Math.random().toString(36).substring(2, 10);
     const { data: { session } } = await supabase.auth.getSession();
-
-    // إرسال البيانات لداتابيس الروابط (نحفظ السعر ونسبة الفرع لغرض تصفية الحسابات بنهاية الشهر)
+// 💰 إضافة البيانات المالية والأمنية الكاملة للرابط
     const { data, error } = await supabase.from('gift_links').insert([{
       pos_id: posId, 
       theme_id: formData.theme_id, 
@@ -104,14 +103,14 @@ export default function POS() {
       song_start_seconds: formData.song_start_seconds,
       message: formData.message, 
       duration_type: formData.duration_type,
-      price: currentPrice, 
-      pos_share_percentage: sharePercentage, // نحفظ نسبة الفرع وقت التوليد
+      price: currentPrice,           // السعر اللي نستخدمه في الحسابات
+      price_at_sale: currentPrice,   // <--- هذا هو العمود اللي مسبب المشكلة، ضفناه!
+      pos_share_percentage: sharePercentage, 
       status: 'active', 
       is_cleared: false, 
       expires_at: expiresAt.toISOString(), 
       short_id: shortId
     }]).select('short_id').single();
-
     if (error) {
       alert(`حدث خطأ أثناء التوليد: ${error.message}`);
     } else if (data) {
