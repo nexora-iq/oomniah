@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>هدية خاصة لك ✨</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; }
+        
+        body { background-color: #ffeef2; min-height: 100dvh; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; perspective: 1500px; }
+        
+        /* الفيونكات المتساقطة */
+        .falling-bows-container { position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+        .falling-bow { position: absolute; font-size: 1rem; top: -20px; animation: fallLinear infinite linear; opacity: 0.45; }
+        @keyframes fallLinear {
+            0% { transform: translateY(0) rotate(0deg); }
+            100% { transform: translateY(105dvh) rotate(360deg); }
+        }
+
+        /* المشهد العام */
+        .gift-scene { position: relative; width: 100%; max-width: 400px; height: 450px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; z-index: 10; padding-bottom: 50px; transition: opacity 0.5s ease; }
+        .gift-hint { color: #4a3b40; font-size: 1.3rem; font-weight: bold; margin-bottom: 110px; text-align: center; text-shadow: 0 1px 2px rgba(255,255,255,0.6); animation: bounceHint 1.5s infinite alternate; z-index: 5; line-height: 1.5; }
+        @keyframes bounceHint { from { transform: translateY(0); } to { transform: translateY(-8px); } }
+        
+        /* الحاوية الرئيسية */
+        .box-container { 
+            position: relative; width: 160px; height: 160px; 
+            transform-style: preserve-3d; 
+            transform: rotateX(-20deg) rotateY(35deg); 
+            cursor: pointer; 
+        }
+        
+        /* الظل السفلي */
+        .box-shadow { 
+            position: absolute; bottom: -30px; left: -20px; width: 200px; height: 200px; 
+            background: rgba(140, 25, 45, 0.25); border-radius: 50%; filter: blur(16px); 
+            transform: rotateX(90deg) translateZ(-80px); pointer-events: none; 
+        }
+
+        /* 1. جسم الصندوق */
+        .gift-box-body { position: absolute; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform 0.3s; }
+        
+        .face { position: absolute; width: 160px; height: 160px; background: #ff8fa3; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
+        .face::after, .lid-face::after { content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; }
+        .face.right::after, .lid-face.right::after { background: rgba(255,255,255,0.15); }
+        .face.left::after, .lid-face.left::after { background: rgba(0,0,0,0.12); }
+        .face.back::after, .lid-face.back::after { background: rgba(0,0,0,0.2); }
+        .face.bottom::after { background: rgba(0,0,0,0.4); }
+
+        .face.front  { transform: rotateY(0deg) translateZ(80px); }
+        .face.back   { transform: rotateY(180deg) translateZ(80px); }
+        .face.right  { transform: rotateY(90deg) translateZ(80px); }
+        .face.left   { transform: rotateY(-90deg) translateZ(80px); }
+        .face.bottom { transform: rotateX(-90deg) translateZ(80px); background: #e67e91; }
+        .face.top    { transform: rotateX(90deg) translateZ(80px); background: #fca1b2; } 
+
+        /* 2. الغطاء الحقيقي */
+        .gift-box-lid { position: absolute; width: 100%; height: 100%; transform-style: preserve-3d; transition: all 0.8s ease-in; z-index: 10; }
+        
+        .lid-face { position: absolute; background: #ff9cb0; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; }
+        
+        .lid-face.top {
+            width: 170px; height: 170px; left: -5px; top: -5px; 
+            transform: rotateX(90deg) translateZ(82px); 
+            transform-style: preserve-3d; 
+        }
+        
+        .lid-face.side { width: 170px; height: 45px; left: -5px; top: -2px; }
+        .lid-face.front { transform: rotateY(0deg) translateZ(85px); }
+        .lid-face.back  { transform: rotateY(180deg) translateZ(85px); }
+        .lid-face.right { transform: rotateY(90deg) translateZ(85px); }
+        .lid-face.left  { transform: rotateY(-90deg) translateZ(85px); }
+
+        /* الأشرطة البيضاء */
+        .ribbon-v { position: absolute; left: 55px; width: 50px; height: 100%; background: #ffffff; }
+        .lid-ribbon-v { position: absolute; left: 60px; width: 50px; height: 100%; background: #ffffff; }
+        .lid-ribbon-h { position: absolute; top: 60px; width: 100%; height: 50px; background: #ffffff; }
+
+        /* الفيونكة */
+        .bow-on-top {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) rotateX(-90deg) translateY(-25px);
+            font-size: 5rem;
+            z-index: 1000;
+            text-shadow: 0 8px 15px rgba(0,0,0,0.3);
+            animation: bowPulse 2s infinite alternate ease-in-out;
+        }
+        @keyframes bowPulse {
+            from { transform: translate(-50%, -50%) rotateX(-90deg) translateY(-25px) scale(1); }
+            to { transform: translate(-50%, -50%) rotateX(-90deg) translateY(-30px) scale(1.05); }
+        }
+
+        /* أنيميشن طيران القبغ */
+        .lid-fly-away { transform: translateY(-400px) rotateX(45deg) rotateY(60deg) scale(0.5); opacity: 0; }
+
+        /* الاهتزاز */
+        .box-container.shake { animation: boxShake 0.6s ease-in-out infinite; }
+        @keyframes boxShake {
+            0% { transform: rotateX(-20deg) rotateY(35deg) translate(0, 0); }
+            20% { transform: rotateX(-18deg) rotateY(25deg) translate(-4px, 2px); }
+            40% { transform: rotateX(-22deg) rotateY(45deg) translate(4px, -2px); }
+            60% { transform: rotateX(-18deg) rotateY(30deg) translate(-4px, 1px); }
+            80% { transform: rotateX(-22deg) rotateY(40deg) translate(5px, 3px); }
+            100% { transform: rotateX(-20deg) rotateY(35deg) translate(0, 0); }
+        }
+        
+        .box-explode { transform: scale(0) rotateY(540deg); opacity: 0; transition: all 0.9s cubic-bezier(0.6, -0.28, 0.735, 0.045); }
+
+        /* الانفجار الضخم جداً */
+        .bows-explosion-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; pointer-events: none; z-index: 9999; }
+        .burst-bow { 
+            position: absolute; left: 50%; top: 50%; pointer-events: none; 
+            animation: blastOut 2s cubic-bezier(0.1, 0.8, 0.15, 1) forwards; 
+            will-change: transform, opacity; 
+        }
+        @keyframes blastOut {
+            0% { transform: translate(-50%, -50%) scale(0.1) rotate(0deg); opacity: 1; }
+            40% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(var(--scale)) rotate(var(--rot)); opacity: 0; }
+        }
+
+        /* كرت عرض الرسالة */
+        .message-card { 
+            position: fixed; 
+            top: 50%; left: 50%; 
+            transform: translate(-50%, -150vh); 
+            width: 92%; max-width: 390px; background: #fff0f3; border-radius: 24px; 
+            box-shadow: 0 15px 40px rgba(180,140,150,0.3); padding: 35px 24px 22px 24px; 
+            transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            z-index: 50; 
+            text-align: center; display: flex; flex-direction: column; gap: 15px; border: 2px solid #ffccd5; 
+            will-change: transform;
+        }
+        .message-card.show { 
+            transform: translate(-50%, -50%); 
+        }
+
+        /* الستيكرات */
+        .gif-sticker {
+            position: absolute;
+            width: 70px;
+            height: auto;
+            z-index: 60;
+            pointer-events: none; 
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15));
+        }
+        .sticker-tr { top: -25px; right: -20px; transform: rotate(12deg); }
+        .sticker-bl { bottom: -25px; left: -20px; transform: rotate(-12deg); }
+        
+        .header-names { font-size: 1.35rem; font-weight: bold; color: #222222; display: flex; justify-content: center; align-items: center; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid #ffccd5; }
+        .header-names .from-tag { font-size: 0.95rem; color: #555; background: #ffe3e8; padding: 4px 12px; border-radius: 20px; font-weight: 600; }
+        .letter-content { text-align: right; color: #333333; font-size: 1.02rem; line-height: 1.75; white-space: pre-line; }
+        .poem-block { text-align: center; font-style: italic; color: #ff477e; margin: 12px 0; font-weight: 600; line-height: 1.5; }
+        
+        /* زر الإنستغرام */
+        .instagram-btn {
+            align-self: center; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+            background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+            color: #ffffff; text-decoration: none; font-weight: 600; font-size: 0.9rem; padding: 8px 16px;
+            border-radius: 12px; box-shadow: 0 4px 10px rgba(220, 39, 67, 0.25); transition: all 0.3s ease;
+            margin-top: 5px; border: none; cursor: pointer; width: auto;
+        }
+        .instagram-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(220, 39, 67, 0.4); }
+        .instagram-icon { width: 15px; height: 15px; fill: #ffffff; }
+
+        #yt-audio-player { position: fixed; bottom: 0; right: 0; width: 1px; height: 1px; opacity: 0.001; z-index: -9999; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <div class="falling-bows-container" id="fallingBowsContainer"></div>
+
+    <div class="gift-scene" id="giftScene">
+        <div class="gift-hint" id="hintText"></div> 
+        
+        <div class="box-container" id="boxContainer" onclick="openGiftBox()">
+            <div class="box-shadow"></div>
+            
+            <div class="gift-box-body" id="mainBox">
+                <div class="face front"><div class="ribbon-v"></div></div>
+                <div class="face back"><div class="ribbon-v"></div></div>
+                <div class="face left"><div class="ribbon-v"></div></div>
+                <div class="face right"><div class="ribbon-v"></div></div>
+                <div class="face bottom"></div>
+                <div class="face top"></div>
+            </div>
+            
+            <div class="gift-box-lid" id="boxLid">
+                <div class="lid-face top">
+                    <div class="lid-ribbon-v"></div>
+                    <div class="lid-ribbon-h"></div>
+                    <div class="bow-on-top">🎀</div>
+                </div>
+                <div class="lid-face side front"><div class="lid-ribbon-v"></div></div>
+                <div class="lid-face side back"><div class="lid-ribbon-v"></div></div>
+                <div class="lid-face side left"><div class="lid-ribbon-v"></div></div>
+                <div class="lid-face side right"><div class="lid-ribbon-v"></div></div>
+            </div>
+            
+        </div>
+    </div>
+
+    <div class="bows-explosion-container" id="explosionContainer"></div>
+
+    <div class="message-card" id="messageCard">
+        <img src="./kitty-box-steckr1.gif" alt="Sticker" class="gif-sticker sticker-tr">
+        <img src="./kitty-box-steckr1.gif" alt="Sticker" class="gif-sticker sticker-bl">
+        
+        <div class="header-names">
+            <span id="renderTo"></span>
+            <span class="from-tag" id="renderFrom"></span>
+        </div>
+        <div class="letter-content" id="renderMessage"></div>
+        
+        <a href="" target="_blank" class="instagram-btn" id="instagramLink">
+            <svg class="instagram-icon" viewBox="0 0 24 24">
+                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+            </svg>
+            <span>أبتكر هديتك من هنا </span>
+        </a>
+    </div>
+
+    <div id="yt-audio-player"></div>
+
+    <script>
+        // 1. استلام البيانات من الرابط (المُرسلة من Viewer.tsx)
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        const db_sender = urlParams.get('sender') || "شخص مجهول";
+        const db_recipient = urlParams.get('recipient') || "صديقي";
+        const db_message = urlParams.get('message') || "رسالة خاصة لك...";
+        const rawYtUrl = urlParams.get('yt') || "";
+        const startTime = parseInt(urlParams.get('start') || "0", 10);
+        const db_instagram_url = "https://www.instagram.com/link.love1?igsh=dDRjd2d3MTN1dm92";
+
+        // 2. دالة لاستخراج ID الفيديو من أي رابط يوتيوب
+        function extractVideoID(url) {
+            if (!url) return 'qtK4XLAVDVc'; 
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : 'qtK4XLAVDVc';
+        }
+        const videoId = extractVideoID(rawYtUrl);
+        
+        // 3. تعيين النصوص بالواجهة
+        document.getElementById('hintText').innerHTML = `أرسل إليكِ ${db_sender} رسالة 🎀<br>انقر على الصندوق لفتحها`;
+        document.getElementById('renderTo').innerText = db_recipient + " ✨";
+        document.getElementById('renderFrom').innerText = "من: " + db_sender + " 💙";
+        document.getElementById('renderMessage').innerHTML = db_message.replace(/\n/g, '<br>');
+        document.getElementById('instagramLink').href = db_instagram_url;
+
+        function createFallingBows() {
+            const container = document.getElementById('fallingBowsContainer');
+            const bowSymbols = ['🎀', '💝', '💕'];
+            const maxBowsCount = 30; 
+
+            for (let i = 0; i < maxBowsCount; i++) {
+                const bow = document.createElement('div');
+                bow.className = 'falling-bow';
+                bow.innerText = bowSymbols[Math.floor(Math.random() * bowSymbols.length)];
+                bow.style.left = Math.random() * 100 + 'vw';
+                bow.style.animationDelay = Math.random() * 8 + 's';
+                bow.style.animationDuration = (Math.random() * 4 + 4) + 's'; 
+                bow.style.fontSize = (Math.random() * 0.4 + 0.8) + 'rem'; 
+                container.appendChild(bow);
+            }
+        }
+        createFallingBows();
+
+        let player;
+        let isPlayerReady = false;
+
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('yt-audio-player', {
+                videoId: videoId,
+                playerVars: { 'autoplay': 0, 'controls': 0, 'start': startTime, 'playsinline': 1 },
+                events: { 
+                    'onReady': function() { isPlayerReady = true; },
+                    'onStateChange': function(event) {
+                        if (event.data === 0) {
+                            player.seekTo(startTime);
+                            player.playVideo();
+                        }
+                    }
+                }
+            });
+        }
+
+        let isOpened = false;
+
+        function openGiftBox() {
+            if (isOpened) return;
+            isOpened = true;
+
+            if (isPlayerReady && player) {
+                player.unMute();
+                player.setVolume(100);
+                player.seekTo(startTime);
+                player.playVideo();
+            }
+
+            const boxContainer = document.getElementById('boxContainer');
+            const mainBox = document.getElementById('mainBox');
+            const boxLid = document.getElementById('boxLid');
+            const hintText = document.getElementById('hintText');
+            const giftScene = document.getElementById('giftScene');
+            const messageCard = document.getElementById('messageCard');
+
+            hintText.style.opacity = '0';
+            boxContainer.classList.add('shake');
+
+            setTimeout(() => {
+                boxContainer.classList.remove('shake'); 
+                boxLid.classList.add('lid-fly-away');   
+
+                setTimeout(() => {
+                    mainBox.classList.add('box-explode'); 
+                    
+                    triggerMegaBowExplosion();
+
+                    setTimeout(() => {
+                        giftScene.style.opacity = '0';
+                        giftScene.style.display = 'none';
+                        messageCard.classList.add('show');
+                    }, 800);
+
+                }, 400);
+
+            }, 600);
+        }
+
+        function triggerMegaBowExplosion() {
+            const container = document.getElementById('explosionContainer');
+            const fragment = document.createDocumentFragment(); 
+            const bowPool = ['🎀', '🔴', '💝', '💕', '🎀', ]; 
+            
+            const isMobile = window.innerWidth < 600;
+            const totalBows = isMobile ? 120 : 220; 
+
+            for (let i = 0; i < totalBows; i++) {
+                const el = document.createElement('div');
+                el.className = 'burst-bow';
+                el.innerText = bowPool[Math.floor(Math.random() * bowPool.length)];
+
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * Math.max(window.innerWidth, window.innerHeight) * 1.2;
+                
+                const tx = Math.cos(angle) * distance + 'px';
+                const ty = Math.sin(angle) * distance + 'px';
+                
+                const scale = (Math.random() * 3.5 + 2.0).toFixed(2);
+                const rot = Math.floor(Math.random() * 1080 - 540) + 'deg';
+                const delay = (Math.random() * 0.15).toFixed(2) + 's';
+
+                el.style.setProperty('--tx', tx);
+                el.style.setProperty('--ty', ty);
+                el.style.setProperty('--scale', scale);
+                el.style.setProperty('--rot', rot);
+                el.style.animationDelay = delay;
+
+                fragment.appendChild(el);
+            }
+            
+            container.appendChild(fragment);
+
+            setTimeout(() => { container.innerHTML = ''; }, 2500);
+        }
+    </script>
+</body>
+</html>
