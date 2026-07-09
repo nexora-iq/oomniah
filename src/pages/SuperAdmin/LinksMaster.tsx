@@ -5,14 +5,18 @@ export default function LinksMaster() {
   const [links, setLinks] = useState<any[]>([]);
 
   const fetchLinks = async () => {
-    // جلب البيانات بدقة مع الموظف والسعر
-    const { data } = await supabase.from('gift_links').select(`
-      id, price, status, created_at,
+    // 🛠️ جلب البيانات مع price_at_sale والعلاقات الصحيحة بدون أسماء معقدة
+    const { data, error } = await supabase.from('gift_links').select(`
+      id, price, price_at_sale, status, created_at,
       themes ( name ),
-      profiles!gift_links_created_by_fkey ( fullname ),
+      profiles:created_by ( fullname ),
       points_of_sale ( name )
     `).order('created_at', { ascending: false });
     
+    if (error) {
+      console.error("Error fetching links:", error);
+    }
+
     if (data) setLinks(data);
   };
 
@@ -26,11 +30,20 @@ export default function LinksMaster() {
 
   const exportToExcel = () => {
     const headers = ["ID", "الثيم", "السعر", "الفرع", "الموظف", "التاريخ", "الحالة"];
-    const rows = links.map(l => [
-      l.id.split('-')[0], l.themes?.name || '-', l.price || 0, 
-      l.points_of_sale?.name || '-', l.profiles?.fullname || 'غير معروف',
-      new Date(l.created_at).toLocaleString('en-IQ'), l.status === 'active' ? 'فعال' : 'معطل'
-    ]);
+    const rows = links.map(l => {
+      // التأكد من جلب السعر الصحيح للرابط
+      const actualPrice = Number(l.price_at_sale || l.price || 0);
+      return [
+        l.id.split('-')[0], 
+        l.themes?.name || '-', 
+        actualPrice, 
+        l.points_of_sale?.name || '-', 
+        l.profiles?.fullname || 'غير معروف',
+        new Date(l.created_at).toLocaleString('en-IQ'), 
+        l.status === 'active' ? 'فعال' : 'معطل'
+      ];
+    });
+    
     const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
     const link = document.createElement("a");
     link.href = encodeURI(csvContent);
@@ -57,30 +70,35 @@ export default function LinksMaster() {
             <tr><th style={th}>معرف الرابط</th><th style={th}>الثيم والسعر</th><th style={th}>الفرع والموظف</th><th style={th}>تاريخ التوليد</th><th style={th}>الحالة</th><th className="no-print" style={th}>إجراء طوارئ</th></tr>
           </thead>
           <tbody>
-            {links.map(link => (
-              <tr key={link.id} style={tdRow}>
-                <td style={{ ...td, fontFamily: 'monospace', color: '#888' }}>{link.id.split('-')[0]}</td>
-                <td style={td}>
-                  <strong>{link.themes?.name}</strong><br/>
-                  <span style={{ color: '#00cc66', fontWeight: 'bold' }}>{link.price?.toLocaleString()} د.ع</span>
-                </td>
-                <td style={td}>
-                  <span style={{ color: '#007bff', fontWeight: 'bold' }}>{link.points_of_sale?.name}</span><br/>
-                  <span style={{ fontSize: '11px', color: '#555' }}>👤 {link.profiles?.fullname || 'غير معروف'}</span>
-                </td>
-                <td style={td} dir="ltr">{new Date(link.created_at).toLocaleString('en-IQ')}</td>
-                <td style={td}>
-                  <span style={link.status === 'active' ? badgeActive : badgeInactive}>
-                    {link.status === 'active' ? '🟢 شغال' : '🔴 معطل'}
-                  </span>
-                </td>
-                <td className="no-print" style={td}>
-                  <button onClick={() => toggleStatus(link.id, link.status)} style={link.status === 'active' ? btnDisable : btnEnable}>
-                    {link.status === 'active' ? 'تعطيل ❌' : 'تفعيل ✅'}
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {links.map(link => {
+              // التأكد من عرض السعر الصحيح
+              const actualPrice = Number(link.price_at_sale || link.price || 0);
+
+              return (
+                <tr key={link.id} style={tdRow}>
+                  <td style={{ ...td, fontFamily: 'monospace', color: '#888' }}>{link.id.split('-')[0]}</td>
+                  <td style={td}>
+                    <strong>{link.themes?.name}</strong><br/>
+                    <span style={{ color: '#00cc66', fontWeight: 'bold' }}>{actualPrice.toLocaleString()} د.ع</span>
+                  </td>
+                  <td style={td}>
+                    <span style={{ color: '#007bff', fontWeight: 'bold' }}>{link.points_of_sale?.name}</span><br/>
+                    <span style={{ fontSize: '11px', color: '#555' }}>👤 {link.profiles?.fullname || 'غير معروف'}</span>
+                  </td>
+                  <td style={td} dir="ltr">{new Date(link.created_at).toLocaleString('en-IQ')}</td>
+                  <td style={td}>
+                    <span style={link.status === 'active' ? badgeActive : badgeInactive}>
+                      {link.status === 'active' ? '🟢 شغال' : '🔴 معطل'}
+                    </span>
+                  </td>
+                  <td className="no-print" style={td}>
+                    <button onClick={() => toggleStatus(link.id, link.status)} style={link.status === 'active' ? btnDisable : btnEnable}>
+                      {link.status === 'active' ? 'تعطيل ❌' : 'تفعيل ✅'}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
             {links.length === 0 && <tr><td colSpan={6} style={emptyText}>لا توجد روابط مولدة.</td></tr>}
           </tbody>
         </table>

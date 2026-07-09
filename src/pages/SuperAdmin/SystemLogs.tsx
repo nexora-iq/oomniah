@@ -3,12 +3,24 @@ import { supabase } from '../../supabase';
 
 export default function SystemLogs() {
   const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState('all');
 
   useEffect(() => {
     const fetchLogs = async () => {
-      const { data } = await supabase.from('system_logs').select('*').order('created_at', { ascending: false });
+      setLoading(true);
+      // جلب السجلات من الداتابيس
+      const { data, error } = await supabase
+        .from('system_logs')
+        .select('*')
+        .order('created_at', { ascending: false });
       
+      if (error) {
+        console.error("Error fetching system logs:", error);
+        setLoading(false);
+        return;
+      }
+
       if (data) {
         const now = new Date();
         const filterDate = new Date();
@@ -18,10 +30,15 @@ export default function SystemLogs() {
         if (timeFilter === 'month') filterDate.setMonth(now.getMonth() - 1);
         if (timeFilter === 'year') filterDate.setFullYear(now.getFullYear() - 1);
 
-        const filtered = timeFilter === 'all' ? data : data.filter(log => new Date(log.created_at) >= filterDate);
+        const filtered = timeFilter === 'all' 
+          ? data 
+          : data.filter(log => new Date(log.created_at) >= filterDate);
+          
         setLogs(filtered);
       }
+      setLoading(false);
     };
+    
     fetchLogs();
   }, [timeFilter]);
 
@@ -41,7 +58,6 @@ export default function SystemLogs() {
 
   return (
     <div style={container}>
-      {/* ستايل مخصص للطباعة لإخفاء الأزرار الجانبية */}
       <style>{`@media print { .no-print { display: none !important; } }`}</style>
       
       <div style={headerSection} className="no-print">
@@ -66,29 +82,33 @@ export default function SystemLogs() {
       </div>
       
       <div style={tableContainer}>
-        <table style={table}>
-          <thead style={thRow}>
-            <tr><th style={th}>الموظف</th><th style={th}>الفرع</th><th style={th}>نوع الحركة</th><th style={th}>التفاصيل</th><th style={th}>الوقت والتاريخ</th></tr>
-          </thead>
-          <tbody>
-            {logs.map(log => (
-              <tr key={log.id} style={tdRow}>
-                <td style={td}><strong>{log.admin_name}</strong></td>
-                <td style={td}>{log.pos_name}</td>
-                <td style={td}><span style={badgeAction}>{log.action_type}</span></td>
-                <td style={td}>{log.details}</td>
-                <td style={td} dir="ltr">{new Date(log.created_at).toLocaleString('en-IQ')}</td>
-              </tr>
-            ))}
-            {logs.length === 0 && <tr><td colSpan={5} style={emptyText}>لا توجد حركات مسجلة.</td></tr>}
-          </tbody>
-        </table>
+        {loading ? (
+           <div style={emptyText}>جاري تحميل السجلات...</div>
+        ) : (
+          <table style={table}>
+            <thead style={thRow}>
+              <tr><th style={th}>الموظف</th><th style={th}>الفرع</th><th style={th}>نوع الحركة</th><th style={th}>التفاصيل</th><th style={th}>الوقت والتاريخ</th></tr>
+            </thead>
+            <tbody>
+              {logs.map(log => (
+                <tr key={log.id} style={tdRow}>
+                  <td style={td}><strong>{log.admin_name}</strong></td>
+                  <td style={td}>{log.pos_name}</td>
+                  <td style={td}><span style={badgeAction}>{log.action_type}</span></td>
+                  <td style={td}>{log.details}</td>
+                  <td style={td} dir="ltr">{new Date(log.created_at).toLocaleString('en-IQ')}</td>
+                </tr>
+              ))}
+              {logs.length === 0 && <tr><td colSpan={5} style={emptyText}>لا توجد حركات مسجلة. جرب توليد رابط جديد.</td></tr>}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
 }
 
-const container: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '15px' };
+const container: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '15px', direction: 'rtl', fontFamily: 'sans-serif' };
 const headerSection: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '15px 20px', borderRadius: '10px', border: '1px solid #eee' };
 const title: React.CSSProperties = { margin: '0 0 4px 0', fontSize: '18px', fontWeight: 'bold' };
 const desc: React.CSSProperties = { margin: 0, fontSize: '12px', color: '#666' };

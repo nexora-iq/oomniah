@@ -3,99 +3,111 @@ import { supabase } from '../../supabase';
 
 export default function FinancialWallet() {
   const [posData, setPosData] = useState<any[]>([]);
-  const [totalUncleared, setTotalUncleared] = useState(0); // هذا صار يمثل "الصافي" المطلوب جمعه
+  const [totalUncleared, setTotalUncleared] = useState(0); 
   const [timeFilter, setTimeFilter] = useState('all');
   const [finLogs, setFinLogs] = useState<any[]>([]);
 
   const fetchData = async () => {
-    // 1. جلب نسبة الفرع (share_percentage) لمعرفة حصته
-    const { data: branches } = await supabase.from('points_of_sale').select(`
-      id, name, share_percentage,
-      gift_links ( id, price, is_cleared, created_at, themes(name) )
-    `);
+    try {
+      // 1. جلب الفروع وروابطها (مع تضمين price_at_sale تحسباً لأي اختلافات بالداتابيس)
+      const { data: branches, error: branchError } = await supabase.from('points_of_sale').select(`
+        id, name, share_percentage,
+        gift_links ( id, price, price_at_sale, is_cleared, created_at, themes(name) )
+      `);
 
-    const { data: sysLogs } = await supabase
-      .from('system_logs')
-      .select('*')
-      .eq('action_type', 'تصفية مالية');
+      if (branchError) console.error("Error fetching branches:", branchError);
 
-    const now = new Date();
-    const filterDate = new Date();
-    if (timeFilter === 'hour') filterDate.setHours(now.getHours() - 1);
-    if (timeFilter === 'day') filterDate.setDate(now.getDate() - 1);
-    if (timeFilter === 'week') filterDate.setDate(now.getDate() - 7);
-    if (timeFilter === 'month') filterDate.setMonth(now.getMonth() - 1);
-    if (timeFilter === 'year') filterDate.setFullYear(now.getFullYear() - 1);
+      const { data: sysLogs } = await supabase
+        .from('system_logs')
+        .select('*')
+        .eq('action_type', 'تصفية مالية');
 
-    let grandTotalNet = 0;
-    let allFinancialEvents: any[] = [];
+      const now = new Date();
+      const filterDate = new Date();
+      if (timeFilter === 'hour') filterDate.setHours(now.getHours() - 1);
+      if (timeFilter === 'day') filterDate.setDate(now.getDate() - 1);
+      if (timeFilter === 'week') filterDate.setDate(now.getDate() - 7);
+      if (timeFilter === 'month') filterDate.setMonth(now.getMonth() - 1);
+      if (timeFilter === 'year') filterDate.setFullYear(now.getFullYear() - 1);
 
-    if (branches) {
-      const calculatedBranches = branches.map(branch => {
-        // فلترة الروابط وجلب الروابط غير المصفاة فقط ضمن الوقت المحدد
-        const validLinks = branch.gift_links?.filter((l: any) => {
-          const linkDate = new Date(l.created_at);
-          const isWithinTime = timeFilter === 'all' ? true : linkDate >= filterDate;
+      let grandTotalNet = 0;
+      let allFinancialEvents: any[] = [];
+
+      if (branches) {
+        const calculatedBranches = branches.map(branch => {
+          // فلترة الروابط وجلب الروابط غير المصفاة فقط ضمن الوقت المحدد
+          const validLinks = branch.gift_links?.filter((l: any) => {
+            const linkDate = new Date(l.created_at);
+            const isWithinTime = timeFilter === 'all' ? true : linkDate >= filterDate;
+            
+            // تحديد السعر الفعلي (نأخذ price_at_sale وإذا ماكو نأخذ price)
+            const actualPrice = Number(l.price_at_sale || l.price || 0);
+
+            if (isWithinTime) {
+              allFinancialEvents.push({
+                id: l.id,
+                type: 'sale',
+                desc: `تم بيع ${l.themes?.name || 'رابط'} في ${branch.name}`,
+                amount: actualPrice,
+                date: l.created_at,
+                is_cleared: l.is_cleared
+              });
+            }
+            return l.is_cleared === false && isWithinTime;
+          }) || [];
+
+          // 2. 🧮 الحسابات المالية الدقيقة للفرع
+          const totalGross = validLinks.reduce((sum: number, link: any) => {
+             const actualPrice = Number(link.price_at_sale || link.price || 0);
+             return sum + actualPrice;
+          }, 0); 
           
-          if (isWithinTime) {
+          const posShare = (totalGross * (branch.share_percentage || 0)) / 100; // حصة الفرع
+          const netDebt = totalGross - posShare; // الصافي المطلوب استلامه (أرباح النظام)
+
+          // 3. 🎯 جمع أرقام الروابط (IDs) حتى نصفيها هي فقط
+          const linkIdsToClear = validLinks.map((l: any) => l.id);
+
+          grandTotalNet += netDebt;
+          
+          return { 
+            ...branch, 
+            totalGross, 
+            posShare, 
+            netDebt, 
+            pendingLinksCount: validLinks.length,
+            linkIdsToClear
+          };
+        });
+        
+        setPosData(calculatedBranches);
+        setTotalUncleared(grandTotalNet);
+      }
+
+      if (sysLogs) {
+        sysLogs.forEach(log => {
+          const logDate = new Date(log.created_at);
+          if (timeFilter === 'all' || logDate >= filterDate) {
             allFinancialEvents.push({
-              id: l.id,
-              type: 'sale',
-              desc: `تم بيع ${l.themes?.name || 'رابط'} في ${branch.name}`,
-              amount: l.price,
-              date: l.created_at,
-              is_cleared: l.is_cleared
+              id: log.id,
+              type: 'clearance',
+              desc: log.details,
+              amount: 0,
+              date: log.created_at
             });
           }
-          return l.is_cleared === false && isWithinTime;
-        }) || [];
+        });
+      }
 
-        // 2. 🧮 الحسابات المالية الدقيقة للفرع
-        const totalGross = validLinks.reduce((sum: number, link: any) => sum + Number(link.price || 0), 0); // المبيعات الكلية
-        const posShare = (totalGross * (branch.share_percentage || 0)) / 100; // حصة الفرع
-        const netDebt = totalGross - posShare; // الصافي المطلوب استلامه (أرباح النظام)
-
-        // 3. 🎯 جمع أرقام الروابط (IDs) حتى نصفيها هي فقط وليس كل القاعدة
-        const linkIdsToClear = validLinks.map((l: any) => l.id);
-
-        grandTotalNet += netDebt;
-        
-        return { 
-          ...branch, 
-          totalGross, 
-          posShare, 
-          netDebt, 
-          pendingLinksCount: validLinks.length,
-          linkIdsToClear
-        };
-      });
-      
-      setPosData(calculatedBranches);
-      setTotalUncleared(grandTotalNet);
+      allFinancialEvents.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setFinLogs(allFinancialEvents);
+    } catch (err) {
+      console.error("General error in FinancialWallet:", err);
     }
-
-    if (sysLogs) {
-      sysLogs.forEach(log => {
-        const logDate = new Date(log.created_at);
-        if (timeFilter === 'all' || logDate >= filterDate) {
-          allFinancialEvents.push({
-            id: log.id,
-            type: 'clearance',
-            desc: log.details,
-            amount: 0,
-            date: log.created_at
-          });
-        }
-      });
-    }
-
-    allFinancialEvents.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    setFinLogs(allFinancialEvents);
   };
 
   useEffect(() => { fetchData(); }, [timeFilter]);
 
-  // 4. 🚀 دالة التصفية الذكية (تصفي فقط الروابط المحددة بالفلتر)
   const handleClearance = async (posId: string, posName: string, netAmount: number, totalGross: number, linkIds: string[]) => {
     if(linkIds.length === 0 || netAmount === 0) return alert('الحساب مصفر مسبقاً ضمن هذا النطاق الزمني.');
     
@@ -104,12 +116,16 @@ export default function FinancialWallet() {
     );
     
     if (confirm) {
-      // تحديث الروابط المعنية فقط (لتجنب تصفية روابط خارج النطاق الزمني)
-      await supabase.from('gift_links')
+      const { error } = await supabase.from('gift_links')
         .update({ is_cleared: true })
         .in('id', linkIds);
+
+      if (error) {
+          console.error("Error updating clearance:", error);
+          alert("حدث خطأ أثناء التصفية. تحقق من الصلاحيات.");
+          return;
+      }
       
-      // توثيق العملية في سجل النظام
       await supabase.from('system_logs').insert([{ 
         admin_name: 'السوبر أدمن', 
         pos_name: posName, 
@@ -236,16 +252,13 @@ export default function FinancialWallet() {
 const container: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '20px', direction: 'rtl', fontFamily: 'sans-serif' };
 const headerSection: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '15px' };
 const title: React.CSSProperties = { margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#111' };
-
 const filterRibbon: React.CSSProperties = { display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '5px' };
 const filterBtn: React.CSSProperties = { background: '#fff', border: '1px solid #ddd', padding: '8px 16px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px', color: '#555', fontWeight: 'bold', whiteSpace: 'nowrap' };
 const activeFilterBtn: React.CSSProperties = { ...filterBtn, background: '#111', color: '#fff', border: '1px solid #111' };
-
 const totalBox: React.CSSProperties = { background: '#fff5f7', padding: '30px', borderRadius: '16px', border: '1px solid #ffe1e8', textAlign: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' };
 const cardsContainer: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' };
 const card: React.CSSProperties = { background: '#fff', padding: '25px', borderRadius: '16px', border: '1px solid #eee', textAlign: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' };
 const clearBtn: React.CSSProperties = { width: '100%', background: '#111', color: '#fff', border: 'none', padding: '12px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', transition: '0.2s' };
-
 const logsContainer: React.CSSProperties = { background: '#fff', padding: '20px', borderRadius: '16px', border: '1px solid #eee', marginTop: '10px' };
 const tableWrapper: React.CSSProperties = { maxHeight: '300px', overflowY: 'auto' };
 const table: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };

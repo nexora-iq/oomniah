@@ -12,20 +12,26 @@ export default function POSManagement() {
   const [instaUrl, setInstaUrl] = useState('');
 
   const fetchPOSData = async () => {
+    // 🛠️ جلب الفروع مع الروابط والموظفين بالطريقة الصحيحة لـ Supabase
     const { data: branches, error } = await supabase
       .from('points_of_sale')
       .select(`
         *,
-        profiles ( id, fullname, email ),
+        profiles:profiles!pos_id ( id, fullname, email ),
         gift_links ( id, themes ( name ) )
       `)
       .order('created_at', { ascending: true }); // ترتيب من الأقدم للأحدث
+
+    if (error) {
+      console.error("Error fetching POS data:", error);
+    }
 
     if (branches) {
       const enrichedBranches = branches.map(branch => {
         const salesMap: Record<string, number> = {};
         if (branch.gift_links) {
           branch.gift_links.forEach((link: any) => {
+            // التحقق من وجود الثيم
             const themeName = link.themes?.name || 'ثيم غير معروف';
             salesMap[themeName] = (salesMap[themeName] || 0) + 1;
           });
@@ -199,7 +205,6 @@ const headerSection: React.CSSProperties = { background: '#fff', padding: '20px 
 const title: React.CSSProperties = { margin: '0 0 5px 0', fontSize: '20px', color: '#111', fontWeight: '900' };
 const desc: React.CSSProperties = { margin: 0, fontSize: '13px', color: '#666' };
 
-// تمييز الفورم في حالة التعديل
 const addFormStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '15px', alignItems: 'end', background: '#fff', padding: '20px 25px', borderRadius: '12px', border: '1px solid #e0e0e0', transition: '0.3s' };
 const editFormStyle: React.CSSProperties = { ...addFormStyle, border: '2px solid #00cc66', background: '#f2fdf7', position: 'relative' };
 const editBadge: React.CSSProperties = { position: 'absolute', top: '-12px', right: '20px', background: '#00cc66', color: '#fff', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' };
