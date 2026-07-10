@@ -10,19 +10,16 @@ export default function LiveAnalytics() {
   });
   const [loading, setLoading] = useState(true);
   
-  // 📅 إضافة حالة لتصفية الوقت
   const [timeFilter, setTimeFilter] = useState<'all' | 'month'>('month');
 
   const fetchLiveStats = async () => {
     setLoading(true);
     
-    // 1. جلب الفروع
     const { data: branches } = await supabase
       .from('points_of_sale')
       .select('*')
       .order('created_at', { ascending: true });
 
-    // 2. بناء استعلام الروابط لجلب السعر الفعلي
     let linksQuery = supabase.from('gift_links').select('price, price_at_sale, pos_id, created_at');
     
     if (timeFilter === 'month') {
@@ -41,14 +38,10 @@ export default function LiveAnalytics() {
     }
 
     if (branches && allLinks) {
-      // هيكلة الفروع وتجهيز العدادات الخاصة بها
       const branchStats = branches.map((b) => ({
         id: b.id,
         name: b.name,
-        slug: b.slug,
-        sharePercentage: Number(b.share_percentage || 0), 
-        totalSales: 0, // إجمالي المبيعات الكلية من هذا الفرع
-        partnersTotalProfit: 0, // الأرباح الكلية للشركاء (بعد استقطاع نسبة الفرع)
+        totalSales: 0, 
         count: 0
       }));
 
@@ -57,7 +50,6 @@ export default function LiveAnalytics() {
       let abdullahTotal = 0;
       let muntadherTotal = 0;
 
-      // حساب المبيعات وتوزيعها على الفروع
       allLinks.forEach((link: any) => {
         const actualPrice = Number(link.price_at_sale || link.price || 0);
         grandTotalSales += actualPrice;
@@ -69,19 +61,10 @@ export default function LiveAnalytics() {
         }
       });
 
-      // 3. تطبيق المعادلة المالية المباشرة للشركاء
-      branchStats.forEach((branch) => {
-        // حساب حصة الفرع أولاً
-        const posShare = (branch.totalSales * branch.sharePercentage) / 100;
-        
-        // الأرباح الكلية الصافية التي ستتوزع على الشركاء
-        branch.partnersTotalProfit = branch.totalSales - posShare;
-
-        // توزيع الأرباح الكلية للشركاء بنسبة (35%، 35%، 30%)
-        husseinTotal += (branch.partnersTotalProfit * 35) / 100;
-        abdullahTotal += (branch.partnersTotalProfit * 35) / 100;
-        muntadherTotal += (branch.partnersTotalProfit * 30) / 100;
-      });
+      // توزيع المبيعات الكلية بنسبة 100% على الشركاء (بدون أي استقطاع للفروع)
+      husseinTotal = (grandTotalSales * 35) / 100;
+      abdullahTotal = (grandTotalSales * 35) / 100;
+      muntadherTotal = (grandTotalSales * 30) / 100;
 
       setStats({
         totalLinks: allLinks.length,
@@ -107,31 +90,19 @@ export default function LiveAnalytics() {
 
   return (
     <div style={container}>
-      {/* الهيدر الرئيسي */}
       <div style={headerSection}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
           <div>
             <h2 style={title}>إحصائيات الأرباح والمبيعات 📊</h2>
-            <p style={desc}>شاشة المراقبة المباشرة. يتم حساب الأرباح هنا بشكل فوري لجميع الشركاء.</p>
+            <p style={desc}>شاشة المراقبة المباشرة. يتم حساب الأرباح هنا بشكل فوري لجميع الشركاء بالكامل.</p>
           </div>
           <div style={filterContainer}>
-            <button 
-              style={timeFilter === 'month' ? activeBtn : inactiveBtn} 
-              onClick={() => setTimeFilter('month')}
-            >
-              هذا الشهر
-            </button>
-            <button 
-              style={timeFilter === 'all' ? activeBtn : inactiveBtn} 
-              onClick={() => setTimeFilter('all')}
-            >
-              كل الأوقات (تراكمي)
-            </button>
+            <button style={timeFilter === 'month' ? activeBtn : inactiveBtn} onClick={() => setTimeFilter('month')}>هذا الشهر</button>
+            <button style={timeFilter === 'all' ? activeBtn : inactiveBtn} onClick={() => setTimeFilter('all')}>كل الأوقات (تراكمي)</button>
           </div>
         </div>
       </div>
 
-      {/* العدادات العامة الكبرى */}
       <div style={mainGrid}>
         <div style={statCardMain}>
           <div style={cardIcon}>💰</div>
@@ -144,14 +115,13 @@ export default function LiveAnalytics() {
         <div style={statCardMain}>
           <div style={cardIcon}>🔗</div>
           <div>
-            <div style={cardLabel}>الروابط المبيعة ({timeFilter === 'month' ? 'الشهرية' : 'الكلية'})</div>
+            <div style={cardLabel}>الروابط المبيعة</div>
             <div style={cardValueMain}>{stats.totalLinks.toLocaleString()} رابط</div>
           </div>
         </div>
       </div>
 
-      {/* توزيع الحصص المباشر */}
-      <h3 style={sectionSubTitle}>👥 حصص الشركاء من الأرباح الكلية:</h3>
+      <h3 style={sectionSubTitle}>👥 حصص الشركاء من الأرباح الكلية (100%):</h3>
       <div style={subGrid}>
         {stats.partnerShares.map((partner, index) => (
           <div key={index} style={partnerCard}>
@@ -165,7 +135,6 @@ export default function LiveAnalytics() {
         ))}
       </div>
 
-      {/* تفصيل النقاط البيعية */}
       <h3 style={sectionSubTitle}>🏪 مصدر الأرباح (مبيعات الفروع الحالية):</h3>
       <div style={subGrid}>
         {stats.posBreakdown.map((pos, index) => (
@@ -174,16 +143,11 @@ export default function LiveAnalytics() {
               <span style={posNameText}>{pos.name}</span>
               <span style={posCountBadge}>{pos.count} رابط</span>
             </div>
-            <div style={{ fontSize: '13px', color: '#555', marginTop: '15px' }}>إجمالي المبيعات من هذا الفرع:</div>
+            <div style={{ fontSize: '13px', color: '#555', marginTop: '15px' }}>مساهمة الفرع في الأرباح:</div>
             <div style={posRevenueText}>{pos.totalSales.toLocaleString()} د.ع</div>
-            <div style={{ fontSize: '12px', color: '#ff69b4', marginTop: '8px', fontWeight: 'bold' }}>
-              أرباح الشركاء المستخلصة منه: {pos.partnersTotalProfit.toLocaleString()} د.ع
-            </div>
           </div>
         ))}
-        {stats.posBreakdown.length === 0 && <p style={{ color: '#999', fontSize: '14px', width: '100%', textAlign: 'center' }}>لا توجد بيانات للفروع.</p>}
       </div>
-
     </div>
   );
 }
@@ -194,8 +158,8 @@ const headerSection: React.CSSProperties = { background: '#fff', padding: '20px 
 const title: React.CSSProperties = { margin: 0, fontSize: '20px', color: '#111', fontWeight: '900' };
 const desc: React.CSSProperties = { margin: '5px 0 0 0', fontSize: '13px', color: '#666' };
 const filterContainer: React.CSSProperties = { display: 'flex', gap: '10px', background: '#f8f9fa', padding: '5px', borderRadius: '10px', border: '1px solid #eee' };
-const activeBtn: React.CSSProperties = { background: '#ff69b4', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', transition: '0.3s' };
-const inactiveBtn: React.CSSProperties = { background: 'transparent', color: '#666', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', transition: '0.3s' };
+const activeBtn: React.CSSProperties = { background: '#ff69b4', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' };
+const inactiveBtn: React.CSSProperties = { background: 'transparent', color: '#666', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' };
 const mainGrid: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' };
 const statCardMain: React.CSSProperties = { background: '#ffffff', padding: '25px', borderRadius: '16px', border: '1px solid #dcdcdc', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.04)', display: 'flex', alignItems: 'center', gap: '20px' };
 const cardIcon: React.CSSProperties = { fontSize: '30px', background: '#f8f9fa', padding: '10px', borderRadius: '12px', border: '1px solid #eee' };
