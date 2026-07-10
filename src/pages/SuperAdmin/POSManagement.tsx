@@ -4,15 +4,17 @@ import { supabase } from '../../supabase';
 export default function POSManagement() {
   const [posList, setPosList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   // حالة الفورم (لإضافة أو تعديل)
   const [editId, setEditId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [instaUrl, setInstaUrl] = useState('');
+  const [sharePercentage, setSharePercentage] = useState<number | ''>(''); // 💰 الحقل الجديد للنسبة
 
   const fetchPOSData = async () => {
-    // 🛠️ جلب الفروع مع الروابط والموظفين بالطريقة الصحيحة لـ Supabase
+    // 🛠️ جلب الفروع مع الروابط والموظفين
     const { data: branches, error } = await supabase
       .from('points_of_sale')
       .select(`
@@ -31,7 +33,6 @@ export default function POSManagement() {
         const salesMap: Record<string, number> = {};
         if (branch.gift_links) {
           branch.gift_links.forEach((link: any) => {
-            // التحقق من وجود الثيم
             const themeName = link.themes?.name || 'ثيم غير معروف';
             salesMap[themeName] = (salesMap[themeName] || 0) + 1;
           });
@@ -41,6 +42,7 @@ export default function POSManagement() {
       });
       setPosList(enrichedBranches);
     }
+    setInitialLoad(false);
   };
 
   useEffect(() => {
@@ -52,10 +54,12 @@ export default function POSManagement() {
     e.preventDefault();
     setLoading(true);
     
+    const finalShare = Number(sharePercentage) || 0;
+
     if (editId) {
       // 🛠️ عملية التعديل
       const { error } = await supabase.from('points_of_sale')
-        .update({ name, slug, instagram_url: instaUrl })
+        .update({ name, slug, instagram_url: instaUrl, share_percentage: finalShare })
         .eq('id', editId);
         
       if (error) alert(`خطأ في التعديل: ${error.message}`);
@@ -63,9 +67,9 @@ export default function POSManagement() {
     } else {
       // ➕ عملية الإضافة
       const { error } = await supabase.from('points_of_sale')
-        .insert([{ name, slug, instagram_url: instaUrl }]);
+        .insert([{ name, slug, instagram_url: instaUrl, share_percentage: finalShare }]);
         
-      if (error) alert(`خطأ: ${error.message} (تأكد أن الرابط غير مكرر)`);
+      if (error) alert(`خطأ: ${error.message} (تأكد أن الرابط المختصر غير مكرر)`);
       else resetForm();
     }
     
@@ -79,6 +83,7 @@ export default function POSManagement() {
     setName(pos.name);
     setSlug(pos.slug);
     setInstaUrl(pos.instagram_url || '');
+    setSharePercentage(pos.share_percentage || 0); // جلب النسبة القديمة
     // التمرير لأعلى الصفحة حتى تشوف الفورم
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -101,31 +106,52 @@ export default function POSManagement() {
     setName('');
     setSlug('');
     setInstaUrl('');
+    setSharePercentage('');
   };
+
+  if (initialLoad) return <div style={{ textAlign: 'center', padding: '50px', color: '#ff69b4', fontWeight: 'bold' }}>جاري تحميل إدارة الفروع... ⏳</div>;
 
   return (
     <div style={container}>
       <div style={headerSection}>
         <h2 style={title}>إدارة نقاط البيع 🏪</h2>
-        <p style={desc}>التحكم الكامل ومراقبة الفروع، الموظفين، ومبيعات الثيمات الحقيقية.</p>
+        <p style={desc}>التحكم الكامل ومراقبة الفروع، الموظفين، وضبط نسب أرباح الفروع لتوزيع الحسابات بدقة.</p>
       </div>
 
       <form onSubmit={handleSubmit} style={editId ? editFormStyle : addFormStyle}>
         {editId && <div style={editBadge}>جاري تعديل بيانات الفرع...</div>}
+        
         <div style={inputGroup}>
           <label style={label}>اسم النقطة (الفرع)</label>
-          <input type="text" required value={name} onChange={e => setName(e.target.value)} style={input} />
-        </div>
-        <div style={inputGroup}>
-          <label style={label}>الرابط المختصر (Slug)</label>
-          <input type="text" required value={slug} onChange={e => setSlug(e.target.value)} style={input} />
-        </div>
-        <div style={inputGroup}>
-          <label style={label}>رابط الانستغرام (اختياري)</label>
-          <input type="url" value={instaUrl} onChange={e => setInstaUrl(e.target.value)} style={input} />
+          <input type="text" required value={name} onChange={e => setName(e.target.value)} style={input} placeholder="مثال: فرع المنصور" />
         </div>
         
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+        <div style={inputGroup}>
+          <label style={label}>الرابط المختصر (Slug)</label>
+          <input type="text" required value={slug} onChange={e => setSlug(e.target.value)} style={input} placeholder="مثال: mansour" />
+        </div>
+
+        {/* 💰 الحقل الجديد لإدارة الحسابات */}
+        <div style={inputGroup}>
+          <label style={label}>حصة الفرع من المبيعات (%)</label>
+          <input 
+            type="number" 
+            min="0" 
+            max="100" 
+            required 
+            value={sharePercentage} 
+            onChange={e => setSharePercentage(e.target.value ? Number(e.target.value) : '')} 
+            style={input} 
+            placeholder="مثال: 50" 
+          />
+        </div>
+
+        <div style={inputGroup}>
+          <label style={label}>رابط الانستغرام (اختياري)</label>
+          <input type="url" value={instaUrl} onChange={e => setInstaUrl(e.target.value)} style={input} placeholder="https://instagram.com/..." />
+        </div>
+        
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flex: '1 1 200px' }}>
           <button type="submit" disabled={loading} style={editId ? updateBtn : addBtn}>
             {loading ? 'جاري المعالجة...' : (editId ? 'حفظ التعديلات ✔️' : '+ إضافة فرع')}
           </button>
@@ -142,10 +168,12 @@ export default function POSManagement() {
             <div style={cardHeader}>
               <div>
                 <h3 style={{ margin: '0 0 5px 0', color: '#111', fontSize: '18px', fontWeight: '900' }}>{pos.name}</h3>
-                <span style={badgeSlug}>/{pos.slug}</span>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <span style={badgeSlug}>/{pos.slug}</span>
+                  <span style={badgeShare}>حصة: {pos.share_percentage || 0}%</span>
+                </div>
               </div>
               
-              {/* أزرار التعديل والحذف الجديدة */}
               <div style={actionButtons}>
                 <button onClick={() => handleEditClick(pos)} style={actionBtnEdit}>✏️ تعديل</button>
                 <button onClick={() => handleDeleteClick(pos.id, pos.name)} style={actionBtnDelete}>🗑️ حذف</button>
@@ -199,28 +227,29 @@ export default function POSManagement() {
   );
 }
 
-// الستايلات
-const container: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '20px' };
+// الستايلات المعدلة لتكون متجاوبة (Responsive) وتستوعب الحقول الإضافية
+const container: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '20px', direction: 'rtl', fontFamily: 'sans-serif' };
 const headerSection: React.CSSProperties = { background: '#fff', padding: '20px 25px', borderRadius: '12px', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' };
 const title: React.CSSProperties = { margin: '0 0 5px 0', fontSize: '20px', color: '#111', fontWeight: '900' };
 const desc: React.CSSProperties = { margin: 0, fontSize: '13px', color: '#666' };
 
-const addFormStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '15px', alignItems: 'end', background: '#fff', padding: '20px 25px', borderRadius: '12px', border: '1px solid #e0e0e0', transition: '0.3s' };
+const addFormStyle: React.CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'flex-end', background: '#fff', padding: '20px 25px', borderRadius: '12px', border: '1px solid #e0e0e0', transition: '0.3s' };
 const editFormStyle: React.CSSProperties = { ...addFormStyle, border: '2px solid #00cc66', background: '#f2fdf7', position: 'relative' };
 const editBadge: React.CSSProperties = { position: 'absolute', top: '-12px', right: '20px', background: '#00cc66', color: '#fff', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' };
 
-const inputGroup: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '6px' };
+const inputGroup: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '6px', flex: '1 1 200px' };
 const label: React.CSSProperties = { fontSize: '12px', fontWeight: 'bold', color: '#333' };
-const input: React.CSSProperties = { padding: '12px', borderRadius: '8px', border: '1px solid #ccc', fontSize: '13px', outline: 'none', background: '#fff' };
+const input: React.CSSProperties = { padding: '12px', borderRadius: '8px', border: '1px solid #ccc', fontSize: '13px', outline: 'none', background: '#fff', width: '100%', boxSizing: 'border-box' };
 
-const addBtn: React.CSSProperties = { background: '#ff4d4d', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', height: '42px', width: '100%' };
-const updateBtn: React.CSSProperties = { background: '#00cc66', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', height: '42px', width: '100%' };
+const addBtn: React.CSSProperties = { background: '#ff4d4d', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', height: '42px', flex: 1 };
+const updateBtn: React.CSSProperties = { background: '#00cc66', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', height: '42px', flex: 1 };
 const cancelBtn: React.CSSProperties = { background: '#eee', color: '#555', border: 'none', padding: '12px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', height: '42px' };
 
 const cardsContainer: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '25px', paddingTop: '10px' };
 const posCard: React.CSSProperties = { background: '#ffffff', padding: '25px', borderRadius: '16px', border: '1px solid #dcdcdc', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.05)' };
 const cardHeader: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' };
-const badgeSlug: React.CSSProperties = { background: '#f0f0f0', color: '#555', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontFamily: 'monospace', fontWeight: 'bold' };
+const badgeSlug: React.CSSProperties = { background: '#f0f0f0', color: '#555', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold' };
+const badgeShare: React.CSSProperties = { background: '#fff0f3', color: '#ff477e', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' };
 
 const actionButtons: React.CSSProperties = { display: 'flex', gap: '8px' };
 const actionBtnEdit: React.CSSProperties = { background: '#fff', border: '1px solid #ddd', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#555', fontWeight: 'bold' };

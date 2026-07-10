@@ -11,7 +11,7 @@ export default function ThemesControl() {
   const [price, setPrice] = useState('');
 
   const fetchThemesData = async () => {
-    // استعلام دقيق يطابق الأعمدة الموجودة في قاعدة البيانات
+    // 🛠️ جلب الـ price_at_sale الخاص بالرابط حتى نحسب أرباح الثيم بدقة
     const { data: themes, error } = await supabase
       .from('themes')
       .select(`
@@ -21,7 +21,7 @@ export default function ThemesControl() {
         price_iqd,
         status,
         created_at,
-        gift_links ( id, price )
+        gift_links ( id, price_at_sale, price )
       `)
       .order('created_at', { ascending: false });
 
@@ -33,7 +33,10 @@ export default function ThemesControl() {
     if (themes) {
       const enrichedThemes = themes.map(theme => {
         const salesCount = theme.gift_links?.length || 0;
-        const totalRevenue = theme.gift_links?.reduce((sum: number, link: any) => sum + Number(link.price || 0), 0) || 0;
+        const totalRevenue = theme.gift_links?.reduce((sum: number, link: any) => {
+            const actualPrice = Number(link.price_at_sale || link.price || 0);
+            return sum + actualPrice;
+        }, 0) || 0;
         
         return { 
           ...theme, 
@@ -61,15 +64,32 @@ export default function ThemesControl() {
     if (error) {
       alert(`خطأ في الإضافة: ${error.message}`);
     } else {
+      // تسجيل الحركة في النظام
+      await supabase.from('system_logs').insert([{
+        admin_name: 'السوبر أدمن',
+        pos_name: 'لوحة التحكم',
+        action_type: 'إضافة ثيم',
+        details: `تمت إضافة ثيم جديد باسم (${name}) بسعر ${price} د.ع`
+      }]);
+
       setName(''); setSlug(''); setPrice('');
       fetchThemesData();
     }
     setLoading(false);
   };
 
-  const toggleStatus = async (id: string, currentStatus: string) => {
+  const toggleStatus = async (id: string, currentStatus: string, themeName: string) => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
     await supabase.from('themes').update({ status: newStatus }).eq('id', id);
+    
+    // تسجيل تغيير حالة الثيم
+    await supabase.from('system_logs').insert([{
+        admin_name: 'السوبر أدمن',
+        pos_name: 'لوحة التحكم',
+        action_type: newStatus === 'active' ? 'تفعيل ثيم' : 'تعطيل ثيم',
+        details: `تم ${newStatus === 'active' ? 'تفعيل' : 'إيقاف'} ثيم (${themeName})`
+    }]);
+
     fetchThemesData();
   };
 
@@ -106,7 +126,7 @@ export default function ThemesControl() {
               <th style={th}>الرابط</th>
               <th style={th}>السعر</th>
               <th style={th}>المبيعات</th>
-              <th style={th}>الأرباح</th>
+              <th style={th}>إجمالي الأرباح المجلوبة</th>
               <th style={th}>الحالة</th>
               <th style={th}>إجراء</th>
             </tr>
@@ -125,12 +145,13 @@ export default function ThemesControl() {
                   </span>
                 </td>
                 <td style={td}>
-                  <button onClick={() => toggleStatus(theme.id, theme.status)} style={theme.status === 'active' ? btnDisable : btnEnable}>
+                  <button onClick={() => toggleStatus(theme.id, theme.status, theme.name)} style={theme.status === 'active' ? btnDisable : btnEnable}>
                     {theme.status === 'active' ? 'تعطيل' : 'تفعيل'}
                   </button>
                 </td>
               </tr>
             ))}
+            {themesList.length === 0 && <tr><td colSpan={7} style={{ textAlign: 'center', padding: '20px', color: '#999' }}>لا توجد ثيمات مضافة.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -139,7 +160,7 @@ export default function ThemesControl() {
 }
 
 // الستايلات
-const container: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '15px' };
+const container: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '15px', direction: 'rtl', fontFamily: 'sans-serif' };
 const headerSection: React.CSSProperties = { background: '#fff', padding: '15px 20px', borderRadius: '10px', border: '1px solid #eee' };
 const title: React.CSSProperties = { margin: '0 0 4px 0', fontSize: '15px', fontWeight: 'bold' };
 const desc: React.CSSProperties = { margin: 0, fontSize: '12px', color: '#666' };
@@ -149,9 +170,9 @@ const label: React.CSSProperties = { fontSize: '11px', fontWeight: 'bold', color
 const input: React.CSSProperties = { padding: '8px 12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px' };
 const addBtn: React.CSSProperties = { background: '#ff4d4d', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' };
 const tableContainer: React.CSSProperties = { background: '#fff', borderRadius: '10px', border: '1px solid #eee', overflow: 'hidden' };
-const table: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };
+const table: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', textAlign: 'right' };
 const thRow: React.CSSProperties = { background: '#f8f9fa', borderBottom: '1px solid #eee' };
-const th: React.CSSProperties = { padding: '12px 15px', fontSize: '11px', color: '#444', textAlign: 'right' };
+const th: React.CSSProperties = { padding: '12px 15px', fontSize: '11px', color: '#444' };
 const tdRow: React.CSSProperties = { borderBottom: '1px solid #eee' };
 const td: React.CSSProperties = { padding: '12px 15px', fontSize: '12px', color: '#222' };
 const badgeSlug: React.CSSProperties = { background: '#f0f0f0', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontFamily: 'monospace' };

@@ -10,19 +10,19 @@ export default function LiveAnalytics() {
   });
   const [loading, setLoading] = useState(true);
   
-  // 📅 إضافة حالة لتصفية الوقت (كل الأوقات أو هذا الشهر)
+  // 📅 إضافة حالة لتصفية الوقت
   const [timeFilter, setTimeFilter] = useState<'all' | 'month'>('month');
 
   const fetchLiveStats = async () => {
     setLoading(true);
     
-    // 1. جلب الفروع مرتبة حسب تاريخ الإنشاء لمعرفة الفرع الأول دائماً
+    // 1. جلب الفروع
     const { data: branches } = await supabase
       .from('points_of_sale')
       .select('*')
       .order('created_at', { ascending: true });
 
-    // 2. بناء استعلام الروابط (نطلب price و price_at_sale)
+    // 2. بناء استعلام الروابط لجلب السعر الفعلي
     let linksQuery = supabase.from('gift_links').select('price, price_at_sale, pos_id, created_at');
     
     if (timeFilter === 'month') {
@@ -42,63 +42,55 @@ export default function LiveAnalytics() {
 
     if (branches && allLinks) {
       // هيكلة الفروع وتجهيز العدادات الخاصة بها
-      const branchStats = branches.map((b, index) => ({
+      const branchStats = branches.map((b) => ({
         id: b.id,
         name: b.name,
         slug: b.slug,
-        isFirstBranch: index === 0, // الفرع الأول المعتمد (الرئيسي)
-        sharePercentage: Number(b.share_percentage || 0), // حصة الفرع المسجلة بالداتابيس
-        revenue: 0, // إجمالي الإيرادات
-        netSystemRevenue: 0, // الصافي للنظام (بعد استقطاع حصة الفرع)
+        sharePercentage: Number(b.share_percentage || 0), 
+        totalSales: 0, // إجمالي المبيعات الكلية من هذا الفرع
+        partnersTotalProfit: 0, // الأرباح الكلية للشركاء (بعد استقطاع نسبة الفرع)
         count: 0
       }));
 
-      let grandTotalRevenue = 0;
+      let grandTotalSales = 0;
       let husseinTotal = 0;
-      let partner2Total = 0;
-      let partner3Total = 0;
+      let abdullahTotal = 0;
+      let muntadherTotal = 0;
 
-      // حساب الإيرادات وتوزيعها على الفروع
+      // حساب المبيعات وتوزيعها على الفروع
       allLinks.forEach((link: any) => {
-        // التأكد من أخذ السعر الحقيقي
         const actualPrice = Number(link.price_at_sale || link.price || 0);
-        grandTotalRevenue += actualPrice;
+        grandTotalSales += actualPrice;
 
         const targetBranch = branchStats.find(b => b.id === link.pos_id);
         if (targetBranch) {
-          targetBranch.revenue += actualPrice;
+          targetBranch.totalSales += actualPrice;
           targetBranch.count += 1;
         }
       });
 
-      // 3. تطبيق المعادلة المالية الذكية
+      // 3. تطبيق المعادلة المالية المباشرة للشركاء
       branchStats.forEach((branch) => {
-        // حساب الصافي العائد للنظام (الإجمالي - حصة الفرع)
-        const posShare = (branch.revenue * branch.sharePercentage) / 100;
-        branch.netSystemRevenue = branch.revenue - posShare;
+        // حساب حصة الفرع أولاً
+        const posShare = (branch.totalSales * branch.sharePercentage) / 100;
+        
+        // الأرباح الكلية الصافية التي ستتوزع على الشركاء
+        branch.partnersTotalProfit = branch.totalSales - posShare;
 
-        if (branch.isFirstBranch) {
-          // الفرع الأول (الرئيسي): تتوزع أرباحه الصافية بنسبة (35%، 35%، 30%)
-          husseinTotal += (branch.netSystemRevenue * 35) / 100;
-          partner2Total += (branch.netSystemRevenue * 35) / 100;
-          partner3Total += (branch.netSystemRevenue * 30) / 100;
-        } else {
-          // الفروع الأخرى (الوكلاء): حصة النظام منها تتوزع (35%، 35%، 30%)
-          // (إذا كنت تقصد 50% تنقسم بالتساوي، غير هذه المعادلة أدناه، لكن حسب طلبك الأخير: 35/35/30)
-          husseinTotal += (branch.netSystemRevenue * 35) / 100;
-          partner2Total += (branch.netSystemRevenue * 35) / 100;
-          partner3Total += (branch.netSystemRevenue * 30) / 100;
-        }
+        // توزيع الأرباح الكلية للشركاء بنسبة (35%، 35%، 30%)
+        husseinTotal += (branch.partnersTotalProfit * 35) / 100;
+        abdullahTotal += (branch.partnersTotalProfit * 35) / 100;
+        muntadherTotal += (branch.partnersTotalProfit * 30) / 100;
       });
 
       setStats({
         totalLinks: allLinks.length,
-        totalRevenue: grandTotalRevenue,
+        totalRevenue: grandTotalSales,
         posBreakdown: branchStats,
         partnerShares: [
-          { name: "حسين ايهاب نعيم", amount: husseinTotal, formula: "35% من صافي أرباح الفروع" },
-          { name: "عبدالله", amount: partner2Total, formula: "35% من صافي أرباح الفروع" },
-          { name: "منتظر", amount: partner3Total, formula: "30% من صافي أرباح الفروع" }
+          { name: "حسين ايهاب نعيم", amount: husseinTotal, formula: "35% من الأرباح الكلية" },
+          { name: "عبدالله", amount: abdullahTotal, formula: "35% من الأرباح الكلية" },
+          { name: "منتظر", amount: muntadherTotal, formula: "30% من الأرباح الكلية" }
         ]
       });
     }
@@ -110,7 +102,7 @@ export default function LiveAnalytics() {
   }, [timeFilter]);
 
   if (loading) {
-    return <div style={{ padding: '25px', textAlign: 'center', color: '#666', fontSize: '15px', fontWeight: 'bold' }}>جاري معالجة الحسابات الفورية... ⏳</div>;
+    return <div style={{ padding: '25px', textAlign: 'center', color: '#666', fontSize: '15px', fontWeight: 'bold' }}>جاري حساب الأرباح الكلية... ⏳</div>;
   }
 
   return (
@@ -119,8 +111,8 @@ export default function LiveAnalytics() {
       <div style={headerSection}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
           <div>
-            <h2 style={title}>الإحصائيات والأرباح 📊</h2>
-            <p style={desc}>شاشة المراقبة الكبرى للمشروع. الأرقام هنا معصومة من التصفير وتوفر تحليلاً دقيقاً للحصص.</p>
+            <h2 style={title}>إحصائيات الأرباح والمبيعات 📊</h2>
+            <p style={desc}>شاشة المراقبة المباشرة. يتم حساب الأرباح هنا بشكل فوري لجميع الشركاء.</p>
           </div>
           <div style={filterContainer}>
             <button 
@@ -144,7 +136,7 @@ export default function LiveAnalytics() {
         <div style={statCardMain}>
           <div style={cardIcon}>💰</div>
           <div>
-            <div style={cardLabel}>إجمالي الإيرادات (المبيعات الكلية)</div>
+            <div style={cardLabel}>إجمالي المبيعات الكلية</div>
             <div style={cardValueMain}>{stats.totalRevenue.toLocaleString()} د.ع</div>
           </div>
         </div>
@@ -158,14 +150,14 @@ export default function LiveAnalytics() {
         </div>
       </div>
 
-      {/* توزيع الحصص وفق المعادلة */}
-      <h3 style={sectionSubTitle}>👥 المحفظة الرقمية لتوزيع صافي أرباح الشركاء (بعد استقطاع حصة الفروع):</h3>
+      {/* توزيع الحصص المباشر */}
+      <h3 style={sectionSubTitle}>👥 حصص الشركاء من الأرباح الكلية:</h3>
       <div style={subGrid}>
         {stats.partnerShares.map((partner, index) => (
           <div key={index} style={partnerCard}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <span style={partnerName}>{partner.name}</span>
-              <span style={formulaBadge}>مُحدثة</span>
+              <span style={formulaBadge}>مُحدثة فورياً</span>
             </div>
             <div style={partnerAmount}>{Math.round(partner.amount).toLocaleString()} د.ع</div>
             <div style={partnerSubText}>{partner.formula}</div>
@@ -174,20 +166,22 @@ export default function LiveAnalytics() {
       </div>
 
       {/* تفصيل النقاط البيعية */}
-      <h3 style={sectionSubTitle}>🏪 أداء الفروع وحركتها المالية الإجمالية (إيرادات قبل الاستقطاع):</h3>
+      <h3 style={sectionSubTitle}>🏪 مصدر الأرباح (مبيعات الفروع الحالية):</h3>
       <div style={subGrid}>
         {stats.posBreakdown.map((pos, index) => (
           <div key={index} style={posStatCard}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={posNameText}>
-                {pos.name} {pos.isFirstBranch && <span style={{ color: '#ff4d4d', fontSize: '11px' }}>(الأساسي)</span>}
-              </span>
+              <span style={posNameText}>{pos.name}</span>
               <span style={posCountBadge}>{pos.count} رابط</span>
             </div>
-            <div style={posRevenueText}>{pos.revenue.toLocaleString()} د.ع</div>
-            <div style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>الصافي للنظام: {pos.netSystemRevenue.toLocaleString()} د.ع</div>
+            <div style={{ fontSize: '13px', color: '#555', marginTop: '15px' }}>إجمالي المبيعات من هذا الفرع:</div>
+            <div style={posRevenueText}>{pos.totalSales.toLocaleString()} د.ع</div>
+            <div style={{ fontSize: '12px', color: '#ff69b4', marginTop: '8px', fontWeight: 'bold' }}>
+              أرباح الشركاء المستخلصة منه: {pos.partnersTotalProfit.toLocaleString()} د.ع
+            </div>
           </div>
         ))}
+        {stats.posBreakdown.length === 0 && <p style={{ color: '#999', fontSize: '14px', width: '100%', textAlign: 'center' }}>لا توجد بيانات للفروع.</p>}
       </div>
 
     </div>
@@ -210,11 +204,11 @@ const cardValueMain: React.CSSProperties = { fontSize: '24px', color: '#111', fo
 const sectionSubTitle: React.CSSProperties = { margin: '10px 0 0 0', fontSize: '16px', color: '#222', fontWeight: 'bold' };
 const subGrid: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '15px' };
 const posStatCard: React.CSSProperties = { background: '#ffffff', padding: '20px', borderRadius: '14px', border: '1px solid #dcdcdc', boxShadow: '0 6px 18px rgba(0,0,0,0.02)' };
-const posNameText: React.CSSProperties = { fontSize: '14px', fontWeight: 'bold', color: '#111' };
+const posNameText: React.CSSProperties = { fontSize: '15px', fontWeight: 'bold', color: '#111' };
 const posCountBadge: React.CSSProperties = { background: '#f0f7ff', color: '#007bff', fontSize: '12px', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold' };
-const posRevenueText: React.CSSProperties = { fontSize: '22px', color: '#00cc66', fontWeight: '900', marginTop: '10px' };
+const posRevenueText: React.CSSProperties = { fontSize: '22px', color: '#00cc66', fontWeight: '900', marginTop: '4px' };
 const partnerCard: React.CSSProperties = { background: '#ffffff', padding: '20px', borderRadius: '14px', border: '1px solid #dcdcdc', boxShadow: '0 6px 18px rgba(0,0,0,0.02)' };
 const partnerName: React.CSSProperties = { fontSize: '15px', fontWeight: 'bold', color: '#111' };
 const formulaBadge: React.CSSProperties = { background: '#f8f9fa', color: '#555', fontSize: '11px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #ddd' };
-const partnerAmount: React.CSSProperties = { fontSize: '22px', color: '#ff4d4d', fontWeight: '900' };
+const partnerAmount: React.CSSProperties = { fontSize: '24px', color: '#ff4d4d', fontWeight: '900' };
 const partnerSubText: React.CSSProperties = { fontSize: '12px', color: '#777', marginTop: '8px', fontStyle: 'italic' };

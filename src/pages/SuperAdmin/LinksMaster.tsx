@@ -5,9 +5,9 @@ export default function LinksMaster() {
   const [links, setLinks] = useState<any[]>([]);
 
   const fetchLinks = async () => {
-    // 🛠️ جلب البيانات مع price_at_sale والعلاقات الصحيحة بدون أسماء معقدة
+    // 🛠️ جلب البيانات مع short_id و expires_at
     const { data, error } = await supabase.from('gift_links').select(`
-      id, price, price_at_sale, status, created_at,
+      id, short_id, price, price_at_sale, status, created_at, expires_at,
       themes ( name ),
       profiles:created_by ( fullname ),
       points_of_sale ( name )
@@ -29,18 +29,21 @@ export default function LinksMaster() {
   };
 
   const exportToExcel = () => {
-    const headers = ["ID", "الثيم", "السعر", "الفرع", "الموظف", "التاريخ", "الحالة"];
+    const headers = ["المعرف القصير", "الثيم", "السعر", "الفرع", "الموظف", "تاريخ الانشاء", "تاريخ الانتهاء", "الحالة الفعلية"];
     const rows = links.map(l => {
-      // التأكد من جلب السعر الصحيح للرابط
       const actualPrice = Number(l.price_at_sale || l.price || 0);
+      const isExpired = new Date(l.expires_at) < new Date();
+      const finalStatus = l.status === 'inactive' ? 'معطل يدوياً' : (isExpired ? 'منتهي الصلاحية' : 'فعال');
+
       return [
-        l.id.split('-')[0], 
+        l.short_id || l.id.split('-')[0], 
         l.themes?.name || '-', 
         actualPrice, 
         l.points_of_sale?.name || '-', 
         l.profiles?.fullname || 'غير معروف',
         new Date(l.created_at).toLocaleString('en-IQ'), 
-        l.status === 'active' ? 'فعال' : 'معطل'
+        new Date(l.expires_at).toLocaleString('en-IQ'), 
+        finalStatus
       ];
     });
     
@@ -56,7 +59,7 @@ export default function LinksMaster() {
       <div style={headerSection} className="no-print">
         <div>
           <h3 style={title}>الإدارة المباشرة للروابط 🔗</h3>
-          <p style={desc}>مراقبة الروابط وتفاصيلها (الموظف، السعر) وتصديرها.</p>
+          <p style={desc}>مراقبة الروابط وتفاصيلها (الموظف، السعر، مدة الصلاحية) وتصديرها.</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button onClick={() => window.print()} style={printBtn}>🖨️ طباعة</button>
@@ -67,33 +70,49 @@ export default function LinksMaster() {
       <div style={tableContainer}>
         <table style={table}>
           <thead style={thRow}>
-            <tr><th style={th}>معرف الرابط</th><th style={th}>الثيم والسعر</th><th style={th}>الفرع والموظف</th><th style={th}>تاريخ التوليد</th><th style={th}>الحالة</th><th className="no-print" style={th}>إجراء طوارئ</th></tr>
+            <tr>
+              <th style={th}>معرف الرابط</th>
+              <th style={th}>الثيم والسعر</th>
+              <th style={th}>الفرع والموظف</th>
+              <th style={th}>تاريخ الانتهاء</th>
+              <th style={th}>الحالة الفعلية</th>
+              <th className="no-print" style={th}>إجراء طوارئ</th>
+            </tr>
           </thead>
           <tbody>
             {links.map(link => {
-              // التأكد من عرض السعر الصحيح
               const actualPrice = Number(link.price_at_sale || link.price || 0);
+              // فحص الصلاحية الفعلي للرابط
+              const isExpired = new Date(link.expires_at) < new Date();
+              const displayStatus = link.status === 'inactive' ? 'معطل' : (isExpired ? 'منتهي' : 'فعال');
 
               return (
                 <tr key={link.id} style={tdRow}>
-                  <td style={{ ...td, fontFamily: 'monospace', color: '#888' }}>{link.id.split('-')[0]}</td>
+                  {/* عرض الـ short_id اللي يشوفه الموظف */}
+                  <td style={{ ...td, fontFamily: 'monospace', color: '#007bff', fontWeight: 'bold' }}>
+                    {link.short_id || link.id.split('-')[0]}
+                  </td>
                   <td style={td}>
                     <strong>{link.themes?.name}</strong><br/>
                     <span style={{ color: '#00cc66', fontWeight: 'bold' }}>{actualPrice.toLocaleString()} د.ع</span>
                   </td>
                   <td style={td}>
-                    <span style={{ color: '#007bff', fontWeight: 'bold' }}>{link.points_of_sale?.name}</span><br/>
+                    <span style={{ color: '#111', fontWeight: 'bold' }}>{link.points_of_sale?.name}</span><br/>
                     <span style={{ fontSize: '11px', color: '#555' }}>👤 {link.profiles?.fullname || 'غير معروف'}</span>
                   </td>
-                  <td style={td} dir="ltr">{new Date(link.created_at).toLocaleString('en-IQ')}</td>
+                  <td style={td} dir="ltr">
+                    <span style={{ color: isExpired ? '#ff4d4d' : '#555', fontWeight: isExpired ? 'bold' : 'normal' }}>
+                      {new Date(link.expires_at).toLocaleString('en-IQ')}
+                    </span>
+                  </td>
                   <td style={td}>
-                    <span style={link.status === 'active' ? badgeActive : badgeInactive}>
-                      {link.status === 'active' ? '🟢 شغال' : '🔴 معطل'}
+                    <span style={displayStatus === 'فعال' ? badgeActive : (displayStatus === 'منتهي' ? badgeExpired : badgeInactive)}>
+                      {displayStatus === 'فعال' ? '🟢 شغال' : (displayStatus === 'منتهي' ? '⏳ انتهى وقته' : '🔴 معطل يدوياً')}
                     </span>
                   </td>
                   <td className="no-print" style={td}>
                     <button onClick={() => toggleStatus(link.id, link.status)} style={link.status === 'active' ? btnDisable : btnEnable}>
-                      {link.status === 'active' ? 'تعطيل ❌' : 'تفعيل ✅'}
+                      {link.status === 'active' ? 'إيقاف إجباري ❌' : 'إعادة تفعيل ✅'}
                     </button>
                   </td>
                 </tr>
@@ -120,8 +139,9 @@ const thRow: React.CSSProperties = { background: '#f8f9fa', borderBottom: '1px s
 const th: React.CSSProperties = { padding: '12px 15px', fontSize: '12px', color: '#444' };
 const tdRow: React.CSSProperties = { borderBottom: '1px solid #eee' };
 const td: React.CSSProperties = { padding: '12px 15px', fontSize: '12px' };
-const badgeActive: React.CSSProperties = { color: '#00cc66', fontWeight: 'bold' };
-const badgeInactive: React.CSSProperties = { color: '#ff4d4d', fontWeight: 'bold' };
+const badgeActive: React.CSSProperties = { color: '#00cc66', fontWeight: 'bold', background: '#e6f9f0', padding: '4px 8px', borderRadius: '6px' };
+const badgeInactive: React.CSSProperties = { color: '#ff4d4d', fontWeight: 'bold', background: '#fff0f0', padding: '4px 8px', borderRadius: '6px' };
+const badgeExpired: React.CSSProperties = { color: '#f09433', fontWeight: 'bold', background: '#fff5eb', padding: '4px 8px', borderRadius: '6px' };
 const btnDisable: React.CSSProperties = { background: '#fff0f0', border: '1px solid #ffcccc', color: '#ff4d4d', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' };
 const btnEnable: React.CSSProperties = { background: '#e6f9f0', border: '1px solid #00cc66', color: '#00cc66', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' };
 const emptyText: React.CSSProperties = { padding: '20px', textAlign: 'center', color: '#999', fontSize: '12px' };

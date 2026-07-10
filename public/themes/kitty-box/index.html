@@ -152,7 +152,6 @@
         .header-names { font-size: 1.35rem; font-weight: bold; color: #222222; display: flex; justify-content: center; align-items: center; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid #ffccd5; }
         .header-names .from-tag { font-size: 0.95rem; color: #555; background: #ffe3e8; padding: 4px 12px; border-radius: 20px; font-weight: 600; }
         .letter-content { text-align: right; color: #333333; font-size: 1.02rem; line-height: 1.75; white-space: pre-line; }
-        .poem-block { text-align: center; font-style: italic; color: #ff477e; margin: 12px 0; font-weight: 600; line-height: 1.5; }
         
         /* زر الإنستغرام */
         .instagram-btn {
@@ -165,7 +164,8 @@
         .instagram-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(220, 39, 67, 0.4); }
         .instagram-icon { width: 15px; height: 15px; fill: #ffffff; }
 
-        #yt-audio-player { position: fixed; bottom: 0; right: 0; width: 1px; height: 1px; opacity: 0.001; z-index: -9999; pointer-events: none; }
+        /* مشغل الصوتيات المخفي للمنصة الهجينة */
+        #yt-audio-player { position: fixed; bottom: 0; right: 0; width: 1px; height: 1px; opacity: 0.001; z-index: -9999; pointer-events: none; display: none; }
     </style>
 </head>
 <body>
@@ -222,41 +222,79 @@
         </a>
     </div>
 
-    <div id="yt-audio-player"></div>
-
     <script>
-        // 1. استلام البيانات من الرابط (المُرسلة من Viewer.tsx)
+        // 1. استلام البيانات من نظام React (Viewer.tsx)
         const urlParams = new URLSearchParams(window.location.search);
-        
         const db_sender = urlParams.get('sender') || "شخص مجهول";
         const db_recipient = urlParams.get('recipient') || "صديقي";
-        const db_message = urlParams.get('message') || "رسالة خاصة لك...";
-        const rawYtUrl = urlParams.get('yt') || "";
+        const db_message = (urlParams.get('message') || "رسالة خاصة لك...").replace(/\n/g, '<br>');
+        const rawAudioUrl = urlParams.get('yt') || "";
         const startTime = parseInt(urlParams.get('start') || "0", 10);
         const db_instagram_url = "https://www.instagram.com/link.love1?igsh=dDRjd2d3MTN1dm92";
 
-        // 2. دالة لاستخراج ID الفيديو من أي رابط يوتيوب
-        function extractVideoID(url) {
-            if (!url) return 'qtK4XLAVDVc'; 
-            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-            const match = url.match(regExp);
-            return (match && match[2].length === 11) ? match[2] : 'qtK4XLAVDVc';
-        }
-        const videoId = extractVideoID(rawYtUrl);
-        
-        // 3. تعيين النصوص بالواجهة
+        // 2. تحديث النصوص بالواجهة
         document.getElementById('hintText').innerHTML = `أرسل إليكِ ${db_sender} رسالة 🎀<br>انقر على الصندوق لفتحها`;
         document.getElementById('renderTo').innerText = db_recipient + " ✨";
         document.getElementById('renderFrom').innerText = "من: " + db_sender + " 💙";
-        document.getElementById('renderMessage').innerHTML = db_message.replace(/\n/g, '<br>');
+        document.getElementById('renderMessage').innerHTML = db_message;
         document.getElementById('instagramLink').href = db_instagram_url;
 
+        // 3. نظام الصوت الهجين (يوتيوب أو MP3 أو بدون)
+        const hasAudio = rawAudioUrl.trim().length > 0;
+        const isMp3File = rawAudioUrl.toLowerCase().includes('.mp3') || rawAudioUrl.includes('supabase.co/storage');
+
+        let ytPlayer = null;
+        let localAudio = null;
+        let isAudioLoaded = false;
+
+        if (hasAudio) {
+            if (isMp3File) {
+                // مشغل الـ MP3
+                localAudio = document.createElement('audio');
+                localAudio.src = rawAudioUrl;
+                localAudio.preload = 'auto';
+                document.body.appendChild(localAudio);
+                isAudioLoaded = true;
+            } else {
+                // مشغل يوتيوب المخفي
+                function getYoutubeId(url) {
+                    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                    const match = url.match(regExp);
+                    return (match && match[2].length === 11) ? match[2] : 'qtK4XLAVDVc';
+                }
+
+                const tag = document.createElement('script');
+                tag.src = "https://www.youtube.com/iframe_api";
+                document.head.appendChild(tag);
+
+                window.onYouTubeIframeAPIReady = function() {
+                    let ytContainer = document.createElement('div');
+                    ytContainer.id = 'yt-audio-player';
+                    ytContainer.style.display = 'none';
+                    document.body.appendChild(ytContainer);
+
+                    ytPlayer = new YT.Player('yt-audio-player', {
+                        videoId: getYoutubeId(rawAudioUrl),
+                        playerVars: { 'autoplay': 0, 'controls': 0, 'start': startTime, 'playsinline': 1 },
+                        events: { 
+                            'onReady': () => { isAudioLoaded = true; },
+                            'onStateChange': (e) => {
+                                if (e.data === 0) { // إعادة عند الانتهاء
+                                    ytPlayer.seekTo(startTime);
+                                    ytPlayer.playVideo();
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        }
+
+        // --- باقي الأنيميشن الخاص بالفيونكات والانفجار ---
         function createFallingBows() {
             const container = document.getElementById('fallingBowsContainer');
             const bowSymbols = ['🎀', '💝', '💕'];
-            const maxBowsCount = 30; 
-
-            for (let i = 0; i < maxBowsCount; i++) {
+            for (let i = 0; i < 30; i++) {
                 const bow = document.createElement('div');
                 bow.className = 'falling-bow';
                 bow.innerText = bowSymbols[Math.floor(Math.random() * bowSymbols.length)];
@@ -269,41 +307,32 @@
         }
         createFallingBows();
 
-        let player;
-        let isPlayerReady = false;
-
-        const tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        const firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-        function onYouTubeIframeAPIReady() {
-            player = new YT.Player('yt-audio-player', {
-                videoId: videoId,
-                playerVars: { 'autoplay': 0, 'controls': 0, 'start': startTime, 'playsinline': 1 },
-                events: { 
-                    'onReady': function() { isPlayerReady = true; },
-                    'onStateChange': function(event) {
-                        if (event.data === 0) {
-                            player.seekTo(startTime);
-                            player.playVideo();
-                        }
-                    }
-                }
-            });
-        }
-
         let isOpened = false;
 
         function openGiftBox() {
             if (isOpened) return;
             isOpened = true;
 
-            if (isPlayerReady && player) {
-                player.unMute();
-                player.setVolume(100);
-                player.seekTo(startTime);
-                player.playVideo();
+            // تشغيل الصوت بقوة إذا كان الموظف أضافه
+            if (hasAudio && isAudioLoaded) {
+                if (isMp3File && localAudio) {
+                    localAudio.currentTime = startTime;
+                    localAudio.play().catch(e => console.log("Blocked:", e));
+                    
+                    // إعادة التشغيل الذاتية للملف الصوتي المحلي
+                    setInterval(() => {
+                        if (!localAudio.paused && localAudio.currentTime >= (localAudio.duration || 200) - 0.5) {
+                            localAudio.currentTime = startTime;
+                            localAudio.play();
+                        }
+                    }, 1000);
+
+                } else if (!isMp3File && ytPlayer) {
+                    ytPlayer.unMute();
+                    ytPlayer.setVolume(100);
+                    ytPlayer.seekTo(startTime);
+                    ytPlayer.playVideo();
+                }
             }
 
             const boxContainer = document.getElementById('boxContainer');
@@ -322,7 +351,6 @@
 
                 setTimeout(() => {
                     mainBox.classList.add('box-explode'); 
-                    
                     triggerMegaBowExplosion();
 
                     setTimeout(() => {
@@ -330,19 +358,15 @@
                         giftScene.style.display = 'none';
                         messageCard.classList.add('show');
                     }, 800);
-
                 }, 400);
-
             }, 600);
         }
 
         function triggerMegaBowExplosion() {
             const container = document.getElementById('explosionContainer');
             const fragment = document.createDocumentFragment(); 
-            const bowPool = ['🎀', '🔴', '💝', '💕', '🎀', ]; 
-            
-            const isMobile = window.innerWidth < 600;
-            const totalBows = isMobile ? 120 : 220; 
+            const bowPool = ['🎀', '🔴', '💝', '💕', '🎀']; 
+            const totalBows = window.innerWidth < 600 ? 120 : 220; 
 
             for (let i = 0; i < totalBows; i++) {
                 const el = document.createElement('div');
@@ -352,24 +376,15 @@
                 const angle = Math.random() * Math.PI * 2;
                 const distance = Math.random() * Math.max(window.innerWidth, window.innerHeight) * 1.2;
                 
-                const tx = Math.cos(angle) * distance + 'px';
-                const ty = Math.sin(angle) * distance + 'px';
-                
-                const scale = (Math.random() * 3.5 + 2.0).toFixed(2);
-                const rot = Math.floor(Math.random() * 1080 - 540) + 'deg';
-                const delay = (Math.random() * 0.15).toFixed(2) + 's';
-
-                el.style.setProperty('--tx', tx);
-                el.style.setProperty('--ty', ty);
-                el.style.setProperty('--scale', scale);
-                el.style.setProperty('--rot', rot);
-                el.style.animationDelay = delay;
+                el.style.setProperty('--tx', Math.cos(angle) * distance + 'px');
+                el.style.setProperty('--ty', Math.sin(angle) * distance + 'px');
+                el.style.setProperty('--scale', (Math.random() * 3.5 + 2.0).toFixed(2));
+                el.style.setProperty('--rot', Math.floor(Math.random() * 1080 - 540) + 'deg');
+                el.style.animationDelay = (Math.random() * 0.15).toFixed(2) + 's';
 
                 fragment.appendChild(el);
             }
-            
             container.appendChild(fragment);
-
             setTimeout(() => { container.innerHTML = ''; }, 2500);
         }
     </script>

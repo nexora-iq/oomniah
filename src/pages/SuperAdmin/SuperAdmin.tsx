@@ -23,6 +23,14 @@ export default function SuperAdmin() {
   }, []);
 
   const handleLogout = async () => {
+    // توثيق تسجيل الخروج
+    await supabase.from('system_logs').insert([{
+      admin_name: 'حسين ايهاب نعيم', // أو يمكنك جلب الاسم من الـ session
+      pos_name: 'لوحة التحكم الكبرى',
+      action_type: 'تسجيل خروج',
+      details: `قام السوبر أدمن بتسجيل الخروج من النظام`
+    }]);
+
     await supabase.auth.signOut();
     navigate('/secure-portal-access');
   };

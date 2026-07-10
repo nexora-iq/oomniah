@@ -23,6 +23,11 @@ export default function POS() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [generatedLink, setGeneratedLink] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false); 
+  const [uploadProgress, setUploadProgress] = useState(''); 
+
+  // حالة الملف الصوتي المرفوع
+  const [audioFile, setAudioFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState({
     theme_id: '', sender_name: '', recipient_name: '', recipient_gender: 'female',
@@ -60,7 +65,8 @@ export default function POS() {
         setPosName(posData.name);
         setSharePercentage(posData.share_percentage || 0);
       } else {
-        setPosName(slug || 'نقطة بيع غير معروفة');
+        alert("⚠️ خطأ أمني: رابط الفرع هذا غير مسجل في النظام.");
+        return navigate('/secure-portal-access');
       }
 
       const { data: th } = await supabase
@@ -68,13 +74,13 @@ export default function POS() {
         .select('*')
         .eq('status', 'active');
         
-      if (th) {
+      if (th && th.length > 0) {
         setThemes(th);
-        if (th.length > 0) setFormData(p => ({ ...p, theme_id: th[0].id }));
+        setFormData(p => ({ ...p, theme_id: th[0].id }));
       }
 
       setLoading(false);
-      setTimeout(() => setShowSplash(false), 3000);
+      setTimeout(() => setShowSplash(false), 2000);
     };
     init();
   }, [slug, navigate]);
@@ -83,6 +89,43 @@ export default function POS() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isGenerating) return; 
+    if (!posId || !formData.theme_id) {
+      alert("خطأ: بيانات الفرع أو الثيم غير مكتملة.");
+      return;
+    }
+
+    setIsGenerating(true);
+    setUploadProgress('جاري تجهيز البيانات...');
+
+    let finalSongUrl = formData.song_url.trim();
+
+    // 📁 الرفع الذكي للملف الصوتي في حال وجوده واختياره
+    if (audioFile) {
+      setUploadProgress('جاري رفع ملف الـ MP3 للمخزن... 📤');
+      const fileExt = audioFile.name.split('.').pop();
+      const uniqueFileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('songs')
+        .upload(uniqueFileName, audioFile);
+
+      if (uploadError) {
+        alert(`❌ فشل رفع ملف الصوت: ${uploadError.message}`);
+        setIsGenerating(false);
+        return;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('songs')
+        .getPublicUrl(uniqueFileName);
+
+      finalSongUrl = publicUrlData.publicUrl;
+    }
+
+    setUploadProgress('جاري تشفير وتوليد الرابط النهائي... 🔗');
+
     const selTheme = themes.find(t => t.id === formData.theme_id);
     const expiresAt = new Date();
     if (formData.duration_type === 'daily') expiresAt.setDate(expiresAt.getDate() + 1);
@@ -91,28 +134,30 @@ export default function POS() {
 
     const shortId = Math.random().toString(36).substring(2, 10);
     const { data: { session } } = await supabase.auth.getSession();
-// 💰 إضافة البيانات المالية والأمنية الكاملة للرابط
+
     const { data, error } = await supabase.from('gift_links').insert([{
       pos_id: posId, 
       theme_id: formData.theme_id, 
       created_by: session?.user?.id,
-      sender_name: formData.sender_name,
-      recipient_name: formData.recipient_name, 
+      sender_name: formData.sender_name.trim(),
+      recipient_name: formData.recipient_name.trim(), 
       recipient_gender: formData.recipient_gender,
-      song_url: formData.song_url, 
-      song_start_seconds: formData.song_start_seconds,
-      message: formData.message, 
+      song_url: finalSongUrl, 
+      song_start_seconds: Number(formData.song_start_seconds) || 0,
+      message: formData.message.trim(), 
       duration_type: formData.duration_type,
-      price: currentPrice,           // السعر اللي نستخدمه في الحسابات
-      price_at_sale: currentPrice,   // <--- هذا هو العمود اللي مسبب المشكلة، ضفناه!
+      price: currentPrice,           
+      price_at_sale: currentPrice,   
       pos_share_percentage: sharePercentage, 
       status: 'active', 
       is_cleared: false, 
       expires_at: expiresAt.toISOString(), 
       short_id: shortId
     }]).select('short_id').single();
+
     if (error) {
       alert(`حدث خطأ أثناء التوليد: ${error.message}`);
+      setIsGenerating(false);
     } else if (data) {
       await supabase.from('system_logs').insert([{
         admin_name: adminName,
@@ -124,6 +169,8 @@ export default function POS() {
       const themeSlug = selTheme?.slug || 'gift';
       setGeneratedLink(`${window.location.origin}/${themeSlug}/${data.short_id}`);
       setShowModal(true);
+      setIsGenerating(false);
+      setAudioFile(null); 
     }
   };
 
@@ -148,12 +195,28 @@ export default function POS() {
 
   return (
     <div style={posPage}>
+      <style>{`
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .spinner { border: 3px solid rgba(255,255,255,0.3); border-top: 3px solid #fff; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; margin-left: 8px; vertical-align: middle; }
+      `}</style>
+      
       <div style={topHeader}>
         <div style={badgeArea}>
             <span style={badge}>🏪 {posName}</span>
             <span style={badgeAdmin}>👤 {adminName}</span>
         </div>
-        <button onClick={() => supabase.auth.signOut().then(() => navigate('/secure-portal-access'))} style={logoutStyle}>تسجيل خروج</button>
+<button onClick={async () => {
+  // توثيق حركة الخروج في سجل النظام قبل تسجيل الخروج الفعلي
+  await supabase.from('system_logs').insert([{
+    admin_name: adminName || 'موظف',
+    pos_name: posName || 'نقطة بيع غير معروفة',
+    action_type: 'تسجيل خروج',
+    details: `قام الموظف (${adminName}) بتسجيل الخروج من فرع ${posName}`
+  }]);
+
+  await supabase.auth.signOut();
+  navigate('/secure-portal-access');
+}} style={logoutStyle}>تسجيل خروج</button>
       </div>
 
       <form onSubmit={handleSubmit} style={formStyle}>
@@ -181,12 +244,34 @@ export default function POS() {
 
         <textarea placeholder="رسالة المفاجأة..." required onChange={e => setFormData({...formData, message: e.target.value})} style={{...input, height: '100px', resize: 'none'}} />
 
-        <div style={row}>
-           <input type="text" placeholder="رابط الأغنية" required onChange={e => setFormData({...formData, song_url: e.target.value})} style={{...input, flex: 2}} />
-           <input type="number" placeholder="البدء (ث)" onChange={e => setFormData({...formData, song_start_seconds: Number(e.target.value)})} style={{...input, flex: 1}} />
+        {/* 🎵 قسم الأغنية الهجين الذكي والاختياري 100% */}
+        <div style={{ background: '#fafafa', padding: '15px', borderRadius: '12px', border: '1px dashed #ffd1dc' }}>
+          <label style={{ ...label, display: 'block', marginBottom: '8px' }}>صوت المفاجأة (اختياري - اترك الحقول فارغة لإلغاء الموسيقى):</label>
+          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+             <input 
+               type="text" 
+               placeholder="ضع رابط يوتيوب أو رابط MP3 مباشر" 
+               disabled={!!audioFile}
+               value={formData.song_url}
+               onChange={e => setFormData({...formData, song_url: e.target.value})} 
+               style={{...input, flex: 2, background: audioFile ? '#f0f0f0' : '#fff'}} 
+             />
+             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+               <input 
+                 type="file" 
+                 accept="audio/mp3, audio/*"
+                 disabled={!!formData.song_url}
+                 onChange={e => setAudioFile(e.target.files ? e.target.files[0] : null)}
+                 style={{ fontSize: '12px' }}
+               />
+               {audioFile && <span style={{ color: '#00cc66', fontSize: '11px', marginTop: '4px' }}>✓ جاهز للرفع والتوليد</span>}
+             </div>
+          </div>
+          <div style={{ marginTop: '10px' }}>
+             <input type="number" placeholder="ثانية بدء الأغنية (مثال: 40)" onChange={e => setFormData({...formData, song_start_seconds: Number(e.target.value)})} style={{...input, maxWidth: '200px'}} />
+          </div>
         </div>
 
-        {/* 📊 عرض السعر المطلوب من الزبون فقط */}
         <div style={financeBoxStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ color: '#555', fontSize: '16px', fontWeight: 'bold' }}>المبلغ المطلوب من الزبون:</span>
@@ -194,7 +279,9 @@ export default function POS() {
           </div>
         </div>
 
-        <button type="submit" style={submitBtn}>توليد الرابط 🔗</button>
+        <button type="submit" disabled={isGenerating} style={isGenerating ? submitBtnDisabled : submitBtn}>
+          {isGenerating ? <><span className="spinner"></span> {uploadProgress}</> : 'توليد الرابط 🔗'}
+        </button>
       </form>
 
       {showModal && (
@@ -211,7 +298,6 @@ export default function POS() {
   );
 }
 
-// الستايلات الفاخرة
 const splashContainer: React.CSSProperties = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#ffffff', direction: 'rtl', fontFamily: 'sans-serif', zIndex: 9999 };
 const posPage: React.CSSProperties = { background: '#ffffff', minHeight: '100vh', padding: '20px', direction: 'rtl', fontFamily: 'sans-serif' };
 const topHeader: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '800px', margin: '0 auto 30px', flexWrap: 'wrap', gap: '15px' };
@@ -224,6 +310,7 @@ const row: React.CSSProperties = { display: 'flex', gap: '15px', flexWrap: 'wrap
 const group: React.CSSProperties = { flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '8px' };
 const label: React.CSSProperties = { fontSize: '14px', color: '#666', fontWeight: 'bold' };
 const submitBtn: React.CSSProperties = { background: '#ff69b4', color: '#fff', padding: '16px', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold', border: 'none', cursor: 'pointer', marginTop: '10px', transition: '0.3s' };
+const submitBtnDisabled: React.CSSProperties = { ...submitBtn, background: '#ffb3d9', cursor: 'not-allowed' };
 const logoutStyle: React.CSSProperties = { background: '#fff', color: '#d32f2f', border: '1px solid #ffcccc', padding: '8px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' };
 const modalOverlay: React.CSSProperties = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(5px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' };
 const modalContent: React.CSSProperties = { background: '#fff', padding: '40px', borderRadius: '16px', border: '1px solid #ff69b4', textAlign: 'center', width: '100%', maxWidth: '450px', boxShadow: '0 15px 40px rgba(255, 105, 180, 0.15)' };

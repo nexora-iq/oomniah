@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مفاجأة خاصة ✨</title>
     <style>
-        /* (نفس الـ CSS مالتك بالضبط بدون أي تغيير، ابقيه كما هو) */
         :root { --bg-color: #3d2a30; --pink-main: #ff7898; --pink-glow: rgba(255, 120, 152, 0.6); --text-white: #ffffff; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; user-select: none; }
         body { background-color: var(--bg-color); min-height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; }
@@ -113,11 +112,11 @@
         </div>
 
         <div class="card" id="card7">
-            <div class="question-bar" id="dyn-message" style="height: auto; padding: 25px 20px;" data-text="رسالة مخصصة هنا..."></div>
-            <button class="btn-reply" onclick="nextCard(8)">اعشقج واضح 🥺❤️</button>
+            <div class="question-bar" id="dyn-message" style="height: auto; padding: 25px 20px; line-height: 1.6;" data-text="رسالة مخصصة هنا..."></div>
+            <button class="btn-reply" onclick="nextCard(8)">شكراً 🥺❤️</button>
         </div>
 
-        <div class="card" id="card8">
+        <div class="card" id="card8" id="musicCard">
             <div class="player-card">
                 <div class="player-header">🎵 أغنيتنا المفضلة</div>
                 <div class="player-art"><img src="music-art.jpeg" alt="Music"></div>
@@ -141,23 +140,15 @@
 
     </div>
 
-    <div id="youtube-player" style="display: none;"></div>
-
     <script>
-        // 1. استخراج البيانات من الرابط (المُرسلة من نظامك React)
+        // 1. استخراج البيانات من نظام React عن طريق الرابط
         const urlParams = new URLSearchParams(window.location.search);
-        const sender = urlParams.get('sender') || 'مختار';
-        const recipient = urlParams.get('recipient') || 'روان';
-        const message = urlParams.get('message') || 'أن شاء الله راح يجي يوم وتصيرين إلي ما اعرف يمته يجي هل يوم بس إلي أعرفه أنو احبج وما أحب غيرج🩷.';
-        const ytUrl = urlParams.get('yt') || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-        const startTime = parseInt(urlParams.get('start')) || 40;
-
-        // دالة لاستخراج ID الفيديو من رابط اليوتيوب
-        function getYoutubeId(url) {
-            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-            const match = url.match(regExp);
-            return (match && match[2].length === 11) ? match[2] : 'dQw4w9WgXcQ';
-        }
+        const sender = urlParams.get('sender') || 'شخص مجهول';
+        const recipient = urlParams.get('recipient') || 'صديقي';
+        // تحويل الأسطر الجديدة إلى <br> لتعمل مع دالة الكتابة
+        const message = (urlParams.get('message') || 'رسالة خاصة لك...').replace(/\n/g, '<br>');
+        const rawAudioUrl = urlParams.get('yt') || '';
+        const startTime = parseInt(urlParams.get('start')) || 0;
 
         // 2. تحديث النصوص داخل الثيم بالبيانات الديناميكية
         document.getElementById('dyn-recipient1').innerText = recipient;
@@ -167,27 +158,55 @@
         document.getElementById('dyn-q6').setAttribute('data-text', `اذا تحبين ${sender} دوسي على القلب 🫣`);
         document.getElementById('dyn-message').setAttribute('data-text', message);
 
-        // 3. تهيئة مشغل يوتيوب المخفي
-        let player;
-        let ytReady = false;
-        
-        // تحميل مكتبة YouTube Iframe API
-        const tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        const firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+        // 3. نظام الصوت الهجين (Hybrid Audio System)
+        const hasAudio = rawAudioUrl.trim().length > 0;
+        const isMp3File = rawAudioUrl.toLowerCase().includes('.mp3') || rawAudioUrl.includes('supabase.co/storage');
 
-        function onYouTubeIframeAPIReady() {
-            player = new YT.Player('youtube-player', {
-                height: '0',
-                width: '0',
-                videoId: getYoutubeId(ytUrl),
-                playerVars: { 'autoplay': 0, 'controls': 0, 'start': startTime, 'playsinline': 1 },
-                events: {
-                    'onReady': () => { ytReady = true; },
-                    'onStateChange': onPlayerStateChange
+        let ytPlayer = null;
+        let localAudio = null;
+        let isAudioLoaded = false;
+
+        if (hasAudio) {
+            if (isMp3File) {
+                // إنشاء مشغل الـ MP3 المحلّي/المرفوع
+                localAudio = document.createElement('audio');
+                localAudio.src = rawAudioUrl;
+                localAudio.preload = 'auto';
+                document.body.appendChild(localAudio);
+                isAudioLoaded = true;
+            } else {
+                // تهيئة مشغل يوتيوب المخفي
+                function getYoutubeId(url) {
+                    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                    const match = url.match(regExp);
+                    return (match && match[2].length === 11) ? match[2] : 'dQw4w9WgXcQ';
                 }
-            });
+
+                const tag = document.createElement('script');
+                tag.src = "https://www.youtube.com/iframe_api";
+                document.head.appendChild(tag);
+
+                window.onYouTubeIframeAPIReady = function() {
+                    let ytContainer = document.createElement('div');
+                    ytContainer.id = 'yt-audio-player';
+                    ytContainer.style.display = 'none';
+                    document.body.appendChild(ytContainer);
+                    
+                    ytPlayer = new YT.Player('yt-audio-player', {
+                        videoId: getYoutubeId(rawAudioUrl),
+                        playerVars: { 'autoplay': 0, 'controls': 0, 'start': startTime, 'playsinline': 1 },
+                        events: {
+                            'onReady': () => { isAudioLoaded = true; },
+                            'onStateChange': (e) => { 
+                                if(e.data === 0) { ytPlayer.seekTo(startTime); ytPlayer.playVideo(); } 
+                            }
+                        }
+                    });
+                }
+            }
+        } else {
+            // إخفاء كرت الموسيقى إذا لم يوجد رابط
+            document.getElementById('card8').innerHTML = '<button class="btn-restart" onclick="restartApp()" style="margin-top:50vh;">العودة للبداية 🤍</button>';
         }
 
         const playPauseBtn = document.getElementById('playPauseBtn');
@@ -198,94 +217,118 @@
         let progressInterval;
 
         function startAppWithMusic() {
-            if (ytReady && player) {
-                player.seekTo(startTime);
-                player.playVideo();
-                playPauseBtn.innerText = '⏸';
-                startProgressTracker();
+            if (hasAudio) {
+                if (isMp3File && localAudio) {
+                    localAudio.currentTime = startTime;
+                    localAudio.play().catch(e=>console.log(e));
+                    if(playPauseBtn) playPauseBtn.innerText = '⏸';
+                    startProgressTracker();
+                } else if (!isMp3File && ytPlayer) {
+                    ytPlayer.seekTo(startTime);
+                    ytPlayer.playVideo();
+                    if(playPauseBtn) playPauseBtn.innerText = '⏸';
+                    startProgressTracker();
+                }
             }
             nextCard(1);
         }
 
         function toggleAudio() {
-            if (!ytReady || !player) return;
-            const state = player.getPlayerState();
-            if (state === YT.PlayerState.PLAYING) {
-                player.pauseVideo();
-                playPauseBtn.innerText = '▶';
-            } else {
-                player.playVideo();
-                playPauseBtn.innerText = '⏸';
+            if (!hasAudio) return;
+            if (isMp3File && localAudio) {
+                if (localAudio.paused) { localAudio.play(); playPauseBtn.innerText = '⏸'; }
+                else { localAudio.pause(); playPauseBtn.innerText = '▶'; }
+            } else if (!isMp3File && ytPlayer) {
+                const state = ytPlayer.getPlayerState();
+                if (state === YT.PlayerState.PLAYING) { ytPlayer.pauseVideo(); playPauseBtn.innerText = '▶'; }
+                else { ytPlayer.playVideo(); playPauseBtn.innerText = '⏸'; }
             }
         }
 
-        playPauseBtn.addEventListener('click', toggleAudio);
+        if(playPauseBtn) playPauseBtn.addEventListener('click', toggleAudio);
 
-        // تتبع الوقت لليوتيوب وتحديث شريط التقدم
         function startProgressTracker() {
             clearInterval(progressInterval);
             progressInterval = setInterval(() => {
-                if (player && player.getPlayerState() === YT.PlayerState.PLAYING) {
-                    const currentTime = player.getCurrentTime();
-                    const actualDuration = player.getDuration() || 251;
+                let currentTime = 0;
+                let actualDuration = 0;
+                let isPlaying = false;
 
-                    // إعادة التشغيل إذا انتهت الأغنية
+                if (isMp3File && localAudio && !localAudio.paused) {
+                    currentTime = localAudio.currentTime;
+                    actualDuration = localAudio.duration || 200;
+                    isPlaying = true;
+                } else if (!isMp3File && ytPlayer && ytPlayer.getPlayerState && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
+                    currentTime = ytPlayer.getCurrentTime();
+                    actualDuration = ytPlayer.getDuration() || 200;
+                    isPlaying = true;
+                }
+
+                if (isPlaying) {
                     if (currentTime >= actualDuration - 0.5) {
-                        player.seekTo(startTime);
-                        player.playVideo();
+                        if (isMp3File) { localAudio.currentTime = startTime; localAudio.play(); }
+                        else { ytPlayer.seekTo(startTime); ytPlayer.playVideo(); }
                     }
 
                     const totalDuration = actualDuration - startTime;
                     const currentProgress = currentTime - startTime;
                     const progressPercent = Math.max(0, Math.min(100, (currentProgress / totalDuration) * 100));
                     
-                    progressCurrent.style.width = `${progressPercent}%`;
+                    if(progressCurrent) progressCurrent.style.width = `${progressPercent}%`;
 
                     let displayTime = Math.max(0, currentTime - startTime);
                     let currentMins = Math.floor(displayTime / 60);
                     let currentSecs = Math.floor(displayTime % 60);
                     if (currentSecs < 10) currentSecs = '0' + currentSecs;
-                    currentTimeEl.innerText = `${currentMins}:${currentSecs}`;
+                    if(currentTimeEl) currentTimeEl.innerText = `${currentMins}:${currentSecs}`;
 
                     let durationMins = Math.floor(totalDuration / 60);
                     let durationSecs = Math.floor(totalDuration % 60);
                     if (durationSecs < 10) durationSecs = '0' + durationSecs;
-                    durationTimeEl.innerText = `${durationMins}:${durationSecs}`;
+                    if(durationTimeEl) durationTimeEl.innerText = `${durationMins}:${durationSecs}`;
                 }
             }, 500);
         }
 
-        function onPlayerStateChange(event) {
-            if (event.data === YT.PlayerState.PLAYING) {
+        if(progressContainer) {
+            progressContainer.addEventListener('click', (e) => {
+                if (!hasAudio) return;
+                const width = progressContainer.clientWidth;
+                const clickX = e.offsetX;
+                
+                let actualDuration = 200;
+                if (isMp3File && localAudio) actualDuration = localAudio.duration || 200;
+                else if (!isMp3File && ytPlayer) actualDuration = ytPlayer.getDuration() || 200;
+
+                const totalDuration = actualDuration - startTime;
+                const newTime = startTime + ((clickX / width) * totalDuration);
+
+                if (isMp3File && localAudio) {
+                    localAudio.currentTime = newTime;
+                    localAudio.play();
+                } else if (!isMp3File && ytPlayer) {
+                    ytPlayer.seekTo(newTime);
+                    ytPlayer.playVideo();
+                }
                 playPauseBtn.innerText = '⏸';
-            } else if (event.data === YT.PlayerState.PAUSED) {
-                playPauseBtn.innerText = '▶';
-            }
+            });
         }
 
-        progressContainer.addEventListener('click', (e) => {
-            if (!ytReady || !player) return;
-            const width = progressContainer.clientWidth;
-            const clickX = e.offsetX;
-            const actualDuration = player.getDuration() || 251;
-            const totalDuration = actualDuration - startTime;
-            
-            const newTime = startTime + ((clickX / width) * totalDuration);
-            player.seekTo(newTime);
-            player.playVideo();
-            playPauseBtn.innerText = '⏸';
-        });
-
         function restartApp() {
-            if (ytReady && player) {
-                player.seekTo(startTime);
-                player.playVideo();
-                playPauseBtn.innerText = '⏸';
+            if (hasAudio) {
+                if (isMp3File && localAudio) {
+                    localAudio.currentTime = startTime;
+                    localAudio.play();
+                } else if (!isMp3File && ytPlayer) {
+                    ytPlayer.seekTo(startTime);
+                    ytPlayer.playVideo();
+                }
+                if(playPauseBtn) playPauseBtn.innerText = '⏸';
             }
             nextCard(0);
         }
 
-        // --- باقي دوال الأنيميشن والفيونكات (كما هي بالضبط) ---
+        // --- باقي دوال الأنيميشن والفيونكات ---
         function createFallingBow() {
             const bowSymbols = ['🎀', '🎀']; 
             const colors = ['#ff7898', '#ffeef2'];
@@ -318,10 +361,20 @@
             }
         });
 
+        // 📝 دالة كتابة متطورة تفهم الأسطر الطويلة <br>
         function typeWriter(element, text, index, callback) {
             if (index < text.length) {
+                if (text.charAt(index) === '<') {
+                    let endIndex = text.indexOf('>', index);
+                    if (endIndex !== -1) {
+                        element.innerHTML += text.substring(index, endIndex + 1);
+                        index = endIndex + 1;
+                        setTimeout(function() { typeWriter(element, text, index, callback); }, 40);
+                        return;
+                    }
+                }
                 element.innerHTML += text.charAt(index);
-                setTimeout(function() { typeWriter(element, text, index + 1, callback); }, 70);
+                setTimeout(function() { typeWriter(element, text, index + 1, callback); }, 40);
             } else if (callback) { callback(); }
         }
 

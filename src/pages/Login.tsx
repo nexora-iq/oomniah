@@ -23,10 +23,11 @@ export default function Login() {
       return;
     } 
     
-    // 2. فحص الصلاحية (Role) من قاعدة البيانات
+    // 2. فحص الصلاحية (Role) واسم الفرع (slug) المربوط به الموظف
+    // استخدمنا الجلب الصريح (profiles:profiles!pos_id) لتفادي أخطاء الـ Foreign Key
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('role, points_of_sale(slug)')
+      .select('role, pos_id, points_of_sale(slug)')
       .eq('id', data.user.id)
       .single();
       
@@ -38,26 +39,33 @@ export default function Login() {
 
     const resProfile = profile as any;
 
-    // 3. التوجيه الذكي حسب الصلاحية (تم حل المشكلة هنا)
+    // توثيق تسجيل الدخول في السجل الأمني
+    await supabase.from('system_logs').insert([{
+      admin_name: resProfile.fullname || 'موظف مجهول',
+      pos_name: Array.isArray(resProfile.points_of_sale) ? resProfile.points_of_sale[0]?.slug : (resProfile.points_of_sale?.slug || 'لوحة التحكم المركزية'),
+      action_type: 'تسجيل دخول',
+      details: `قام (${resProfile.fullname || 'الموظف'}) بتسجيل الدخول الآمن للنظام`
+    }]);
+
+    // 3. التوجيه الذكي حسب الصلاحية
     if (resProfile.role === 'super_admin') {
-      // السوبر أدمن
+      // السوبر أدمن يذهب إلى اللوحة الرئيسية
       navigate('/master-dashboard');
-    } else if (resProfile.role === 'pos_admin') {
-      // مدير نقطة البيع (يولد الروابط)
-      navigate('/admin');
     } else {
-      // موظف مبيعات عادي
+      // جميع الموظفين (pos_admin أو staff) يوجهون إلى فرعهم المخصص
       if (resProfile.points_of_sale) {
-        const pos = resProfile.points_of_sale;
-        const slug = Array.isArray(pos) ? pos[0]?.slug : pos?.slug;
+        const slug = Array.isArray(resProfile.points_of_sale) 
+                     ? resProfile.points_of_sale[0]?.slug 
+                     : resProfile.points_of_sale?.slug;
         if (slug) {
-          navigate(`/${slug}`);
+          // التوجيه الصحيح المحمي بمسار /branch/
+          navigate(`/branch/${slug}`);
         } else {
-          setError('لم يتم العثور على رابط نقطة البيع.');
+          setError('لم يتم العثور على الرابط المخصص لنقطة البيع الخاصة بك.');
           setLoading(false);
         }
       } else {
-        setError('حسابك غير مربوط بنقطة بيع.');
+        setError('حسابك غير مربوط بأي نقطة بيع حالياً.');
         setLoading(false);
       }
     }

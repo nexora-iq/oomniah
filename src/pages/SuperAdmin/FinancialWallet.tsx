@@ -6,13 +6,15 @@ export default function FinancialWallet() {
   const [totalUncleared, setTotalUncleared] = useState(0); 
   const [timeFilter, setTimeFilter] = useState('all');
   const [finLogs, setFinLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
+    setLoading(true);
     try {
-      // 1. جلب الفروع وروابطها (مع تضمين price_at_sale تحسباً لأي اختلافات بالداتابيس)
+      // 🛠️ جلب الفروع مع الروابط. إذا ما اجت الروابط، الخلل من اسم الـ Relation بالداتابيس.
       const { data: branches, error: branchError } = await supabase.from('points_of_sale').select(`
         id, name, share_percentage,
-        gift_links ( id, price, price_at_sale, is_cleared, created_at, themes(name) )
+        gift_links:gift_links!pos_id ( id, price, price_at_sale, is_cleared, created_at, themes(name) )
       `);
 
       if (branchError) console.error("Error fetching branches:", branchError);
@@ -20,7 +22,8 @@ export default function FinancialWallet() {
       const { data: sysLogs } = await supabase
         .from('system_logs')
         .select('*')
-        .eq('action_type', 'تصفية مالية');
+        .eq('action_type', 'تصفية مالية')
+        .order('created_at', { ascending: false });
 
       const now = new Date();
       const filterDate = new Date();
@@ -35,19 +38,17 @@ export default function FinancialWallet() {
 
       if (branches) {
         const calculatedBranches = branches.map(branch => {
-          // فلترة الروابط وجلب الروابط غير المصفاة فقط ضمن الوقت المحدد
+          // فلترة الروابط بناءً على الوقت
           const validLinks = branch.gift_links?.filter((l: any) => {
             const linkDate = new Date(l.created_at);
             const isWithinTime = timeFilter === 'all' ? true : linkDate >= filterDate;
-            
-            // تحديد السعر الفعلي (نأخذ price_at_sale وإذا ماكو نأخذ price)
             const actualPrice = Number(l.price_at_sale || l.price || 0);
 
             if (isWithinTime) {
               allFinancialEvents.push({
                 id: l.id,
                 type: 'sale',
-                desc: `تم بيع ${l.themes?.name || 'رابط'} في ${branch.name}`,
+                desc: `مبيعات (${l.themes?.name || 'ثيم'}) في ${branch.name}`,
                 amount: actualPrice,
                 date: l.created_at,
                 is_cleared: l.is_cleared
@@ -56,28 +57,18 @@ export default function FinancialWallet() {
             return l.is_cleared === false && isWithinTime;
           }) || [];
 
-          // 2. 🧮 الحسابات المالية الدقيقة للفرع
+          // 🧮 الحسابات المالية
           const totalGross = validLinks.reduce((sum: number, link: any) => {
-             const actualPrice = Number(link.price_at_sale || link.price || 0);
-             return sum + actualPrice;
+             return sum + Number(link.price_at_sale || link.price || 0);
           }, 0); 
           
-          const posShare = (totalGross * (branch.share_percentage || 0)) / 100; // حصة الفرع
-          const netDebt = totalGross - posShare; // الصافي المطلوب استلامه (أرباح النظام)
-
-          // 3. 🎯 جمع أرقام الروابط (IDs) حتى نصفيها هي فقط
+          const posShare = (totalGross * (branch.share_percentage || 0)) / 100;
+          const netDebt = totalGross - posShare; // أرباح النظام الصافية من هذا الفرع
           const linkIdsToClear = validLinks.map((l: any) => l.id);
 
           grandTotalNet += netDebt;
           
-          return { 
-            ...branch, 
-            totalGross, 
-            posShare, 
-            netDebt, 
-            pendingLinksCount: validLinks.length,
-            linkIdsToClear
-          };
+          return { ...branch, totalGross, posShare, netDebt, pendingLinksCount: validLinks.length, linkIdsToClear };
         });
         
         setPosData(calculatedBranches);
@@ -104,6 +95,7 @@ export default function FinancialWallet() {
     } catch (err) {
       console.error("General error in FinancialWallet:", err);
     }
+    setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, [timeFilter]);
@@ -111,17 +103,11 @@ export default function FinancialWallet() {
   const handleClearance = async (posId: string, posName: string, netAmount: number, totalGross: number, linkIds: string[]) => {
     if(linkIds.length === 0 || netAmount === 0) return alert('الحساب مصفر مسبقاً ضمن هذا النطاق الزمني.');
     
-    const confirm = window.confirm(
-      `هل أنت متأكد من استلام مبلغ الصافي (${netAmount.toLocaleString()} د.ع) من أصل مبيعات (${totalGross.toLocaleString()} د.ع) وتصفية حساب ${posName}؟`
-    );
+    const confirm = window.confirm(`تأكيد استلام مبلغ (${netAmount.toLocaleString()} د.ع) وتصفية حساب فرع ${posName}؟`);
     
     if (confirm) {
-      const { error } = await supabase.from('gift_links')
-        .update({ is_cleared: true })
-        .in('id', linkIds);
-
+      const { error } = await supabase.from('gift_links').update({ is_cleared: true }).in('id', linkIds);
       if (error) {
-          console.error("Error updating clearance:", error);
           alert("حدث خطأ أثناء التصفية. تحقق من الصلاحيات.");
           return;
       }
@@ -130,7 +116,7 @@ export default function FinancialWallet() {
         admin_name: 'السوبر أدمن', 
         pos_name: posName, 
         action_type: 'تصفية مالية', 
-        details: `استلام صافي ${netAmount.toLocaleString()} د.ع من إجمالي مبيعات ${totalGross.toLocaleString()} د.ع لفرع ${posName}` 
+        details: `تصفية مالية واستلام مبلغ ${netAmount.toLocaleString()} د.ع من إجمالي مبيعات ${totalGross.toLocaleString()} د.ع لـ ${posName}` 
       }]);
       
       fetchData();
@@ -152,6 +138,8 @@ export default function FinancialWallet() {
     link.click();
   };
 
+  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px', fontSize: '18px', fontWeight: 'bold', color: '#ff69b4' }}>جاري تحميل الدفتر المالي... ⏳</div>;
+
   return (
     <div style={container}>
       <style>{`@media print { .no-print { display: none !important; } }`}</style>
@@ -169,7 +157,7 @@ export default function FinancialWallet() {
       </div>
       
       <div style={totalBox}>
-        <div style={{ fontSize: '14px', color: '#666' }}>إجمالي صافي الأرباح (المطلوب استلامها) حسب الفلتر</div>
+        <div style={{ fontSize: '14px', color: '#666' }}>إجمالي الأرباح غير المستلمة (حصتك وحصة الشركاء معاً)</div>
         <div style={{ fontSize: '36px', color: '#ff4d4d', fontWeight: '900' }}>{totalUncleared.toLocaleString()} د.ع</div>
       </div>
 
@@ -180,7 +168,7 @@ export default function FinancialWallet() {
             
             <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '8px', marginBottom: '15px' }}>
               <div style={{ fontSize: '12px', color: '#555', display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                <span>إجمالي المبيعات:</span>
+                <span>المبيعات الكلية غير المصفاة:</span>
                 <strong>{pos.totalGross.toLocaleString()} د.ع</strong>
               </div>
               <div style={{ fontSize: '12px', color: '#ff69b4', display: 'flex', justifyContent: 'space-between' }}>
@@ -190,26 +178,28 @@ export default function FinancialWallet() {
             </div>
 
             <div style={{ fontSize: '13px', color: '#555', marginBottom: '5px' }}>
-              الروابط غير المصفاة: <span style={{fontWeight:'bold'}}>{pos.pendingLinksCount}</span>
+              عدد الروابط غير المصفاة: <span style={{fontWeight:'bold', color: pos.pendingLinksCount > 0 ? '#ff4d4d' : '#00cc66'}}>{pos.pendingLinksCount}</span>
             </div>
             
-            <div style={{ fontSize: '22px', color: '#00cc66', fontWeight: '900', marginBottom: '20px' }}>
-              الصافي: {pos.netDebt.toLocaleString()} د.ع
+            <div style={{ fontSize: '20px', color: '#00cc66', fontWeight: '900', marginBottom: '20px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
+              المطلوب استلامه: {pos.netDebt.toLocaleString()} د.ع
             </div>
 
             <button 
               onClick={() => handleClearance(pos.id, pos.name, pos.netDebt, pos.totalGross, pos.linkIdsToClear)} 
-              style={clearBtn}
+              style={pos.netDebt === 0 ? disabledClearBtn : clearBtn}
+              disabled={pos.netDebt === 0}
             >
-              💸 استلام وتصفية الصافي
+              💸 استلام وتصفير الديون
             </button>
           </div>
         ))}
+        {posData.length === 0 && <p style={{ color: '#999', fontSize: '14px', width: '100%', textAlign: 'center' }}>لا توجد فروع مسجلة.</p>}
       </div>
 
       <div style={logsContainer}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-          <h4 style={{ margin: 0, fontSize: '16px', color: '#111' }}>🧾 سجل الحركات المالية:</h4>
+          <h4 style={{ margin: 0, fontSize: '16px', color: '#111' }}>🧾 سجل الحركات المالية الدقيق:</h4>
           <div style={{ display: 'flex', gap: '8px' }} className="no-print">
             <button onClick={() => window.print()} style={{ background: '#fff', border: '1px solid #ddd', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>🖨️ طباعة</button>
             <button onClick={exportFinToExcel} style={{ background: '#00cc66', border: 'none', color: '#fff', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>📊 إكسل</button>
@@ -228,7 +218,7 @@ export default function FinancialWallet() {
                     <strong style={{ color: log.type === 'clearance' ? '#00cc66' : '#111' }}>{log.desc}</strong>
                     {log.type === 'sale' && (
                       <span style={{ fontSize: '11px', color: log.is_cleared ? '#00cc66' : '#ff4d4d', marginRight: '10px' }}>
-                        ({log.is_cleared ? 'مُصفى' : 'قيد التحصيل'})
+                        ({log.is_cleared ? 'مُصفى ومستلم' : 'دين قيد التحصيل'})
                       </span>
                     )}
                   </td>
@@ -259,6 +249,7 @@ const totalBox: React.CSSProperties = { background: '#fff5f7', padding: '30px', 
 const cardsContainer: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' };
 const card: React.CSSProperties = { background: '#fff', padding: '25px', borderRadius: '16px', border: '1px solid #eee', textAlign: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' };
 const clearBtn: React.CSSProperties = { width: '100%', background: '#111', color: '#fff', border: 'none', padding: '12px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', transition: '0.2s' };
+const disabledClearBtn: React.CSSProperties = { ...clearBtn, background: '#e0e0e0', color: '#999', cursor: 'not-allowed' };
 const logsContainer: React.CSSProperties = { background: '#fff', padding: '20px', borderRadius: '16px', border: '1px solid #eee', marginTop: '10px' };
 const tableWrapper: React.CSSProperties = { maxHeight: '300px', overflowY: 'auto' };
 const table: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };
