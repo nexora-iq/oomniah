@@ -23,11 +23,10 @@ export default function Login() {
       return;
     } 
     
-    // 2. فحص الصلاحية (Role) واسم الفرع (slug) المربوط به الموظف
-    // استخدمنا الجلب الصريح (profiles:profiles!pos_id) لتفادي أخطاء الـ Foreign Key
+    // 2. فحص الصلاحية وجلب (الاسم الكامل + اسم الفرع + رابط الفرع)
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('role, pos_id, points_of_sale(slug)')
+      .select('role, fullname, pos_id, points_of_sale(name, slug)')
       .eq('id', data.user.id)
       .single();
       
@@ -39,26 +38,31 @@ export default function Login() {
 
     const resProfile = profile as any;
 
-    // توثيق تسجيل الدخول في السجل الأمني
+    // 🎯 تحديد اسم الفرع الصحيح للسجل (لوحة تحكم كبرى للسوبر أدمن، واسم الفرع الحقيقي للموظف)
+    let exactPosName = 'لوحة التحكم الكبرى';
+    if (resProfile.role !== 'super_admin' && resProfile.points_of_sale) {
+      exactPosName = Array.isArray(resProfile.points_of_sale) 
+                   ? resProfile.points_of_sale[0]?.name 
+                   : resProfile.points_of_sale?.name;
+    }
+
+    // 3. توثيق تسجيل الدخول في السجل الأمني بالأسماء الدقيقة
     await supabase.from('system_logs').insert([{
-      admin_name: resProfile.fullname || 'موظف مجهول',
-      pos_name: Array.isArray(resProfile.points_of_sale) ? resProfile.points_of_sale[0]?.slug : (resProfile.points_of_sale?.slug || 'لوحة التحكم المركزية'),
+      admin_name: resProfile.fullname || 'موظف',
+      pos_name: exactPosName || 'نقطة بيع مجهولة',
       action_type: 'تسجيل دخول',
-      details: `قام (${resProfile.fullname || 'الموظف'}) بتسجيل الدخول الآمن للنظام`
+      details: `قام (${resProfile.fullname || 'الموظف'}) بتسجيل الدخول إلى ${exactPosName}`
     }]);
 
-    // 3. التوجيه الذكي حسب الصلاحية
+    // 4. التوجيه الذكي
     if (resProfile.role === 'super_admin') {
-      // السوبر أدمن يذهب إلى اللوحة الرئيسية
       navigate('/master-dashboard');
     } else {
-      // جميع الموظفين (pos_admin أو staff) يوجهون إلى فرعهم المخصص
       if (resProfile.points_of_sale) {
         const slug = Array.isArray(resProfile.points_of_sale) 
                      ? resProfile.points_of_sale[0]?.slug 
                      : resProfile.points_of_sale?.slug;
         if (slug) {
-          // التوجيه الصحيح المحمي بمسار /branch/
           navigate(`/branch/${slug}`);
         } else {
           setError('لم يتم العثور على الرابط المخصص لنقطة البيع الخاصة بك.');
