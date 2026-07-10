@@ -11,9 +11,8 @@ export default function FinancialWallet() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 🛠️ جلب الفروع مع الروابط. إذا ما اجت الروابط، الخلل من اسم الـ Relation بالداتابيس.
       const { data: branches, error: branchError } = await supabase.from('points_of_sale').select(`
-        id, name, share_percentage,
+        id, name,
         gift_links:gift_links!pos_id ( id, price, price_at_sale, is_cleared, created_at, themes(name) )
       `);
 
@@ -57,18 +56,16 @@ export default function FinancialWallet() {
             return l.is_cleared === false && isWithinTime;
           }) || [];
 
-          // 🧮 الحسابات المالية
+          // 🧮 الحسابات المالية (مبيعات الكلية = المطلوب استلامه 100%)
           const totalGross = validLinks.reduce((sum: number, link: any) => {
              return sum + Number(link.price_at_sale || link.price || 0);
           }, 0); 
           
-          const posShare = (totalGross * (branch.share_percentage || 0)) / 100;
-          const netDebt = totalGross - posShare; // أرباح النظام الصافية من هذا الفرع
           const linkIdsToClear = validLinks.map((l: any) => l.id);
 
-          grandTotalNet += netDebt;
+          grandTotalNet += totalGross;
           
-          return { ...branch, totalGross, posShare, netDebt, pendingLinksCount: validLinks.length, linkIdsToClear };
+          return { ...branch, totalGross, pendingLinksCount: validLinks.length, linkIdsToClear };
         });
         
         setPosData(calculatedBranches);
@@ -100,10 +97,10 @@ export default function FinancialWallet() {
 
   useEffect(() => { fetchData(); }, [timeFilter]);
 
-  const handleClearance = async (posId: string, posName: string, netAmount: number, totalGross: number, linkIds: string[]) => {
-    if(linkIds.length === 0 || netAmount === 0) return alert('الحساب مصفر مسبقاً ضمن هذا النطاق الزمني.');
+  const handleClearance = async (posId: string, posName: string, totalGross: number, linkIds: string[]) => {
+    if(linkIds.length === 0 || totalGross === 0) return alert('الحساب مصفر مسبقاً ضمن هذا النطاق الزمني.');
     
-    const confirm = window.confirm(`تأكيد استلام مبلغ (${netAmount.toLocaleString()} د.ع) وتصفية حساب فرع ${posName}؟`);
+    const confirm = window.confirm(`تأكيد استلام مبلغ الديون بالكامل (${totalGross.toLocaleString()} د.ع) وتصفية حساب فرع ${posName}؟`);
     
     if (confirm) {
       const { error } = await supabase.from('gift_links').update({ is_cleared: true }).in('id', linkIds);
@@ -116,7 +113,7 @@ export default function FinancialWallet() {
         admin_name: 'السوبر أدمن', 
         pos_name: posName, 
         action_type: 'تصفية مالية', 
-        details: `تصفية مالية واستلام مبلغ ${netAmount.toLocaleString()} د.ع من إجمالي مبيعات ${totalGross.toLocaleString()} د.ع لـ ${posName}` 
+        details: `تصفية مالية واستلام كامل المبلغ ${totalGross.toLocaleString()} د.ع من ${posName}` 
       }]);
       
       fetchData();
@@ -145,7 +142,7 @@ export default function FinancialWallet() {
       <style>{`@media print { .no-print { display: none !important; } }`}</style>
 
       <div style={headerSection} className="no-print">
-        <h3 style={title}>الدفتر المالي وتصفية الأرباح 💰</h3>
+        <h3 style={title}>الدفتر المالي وتصفية الديون 💰</h3>
         <div style={filterRibbon}>
           <button onClick={() => setTimeFilter('all')} style={timeFilter === 'all' ? activeFilterBtn : filterBtn}>كل الأوقات</button>
           <button onClick={() => setTimeFilter('year')} style={timeFilter === 'year' ? activeFilterBtn : filterBtn}>هذه السنة</button>
@@ -157,7 +154,7 @@ export default function FinancialWallet() {
       </div>
       
       <div style={totalBox}>
-        <div style={{ fontSize: '14px', color: '#666' }}>إجمالي الأرباح غير المستلمة (حصتك وحصة الشركاء معاً)</div>
+        <div style={{ fontSize: '14px', color: '#666' }}>إجمالي الديون (المطلوب استلامه بالكامل من الفروع)</div>
         <div style={{ fontSize: '36px', color: '#ff4d4d', fontWeight: '900' }}>{totalUncleared.toLocaleString()} د.ع</div>
       </div>
 
@@ -166,31 +163,23 @@ export default function FinancialWallet() {
           <div key={pos.id} style={card}>
             <h4 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: 'bold' }}>{pos.name}</h4>
             
-            <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '8px', marginBottom: '15px' }}>
-              <div style={{ fontSize: '12px', color: '#555', display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                <span>المبيعات الكلية غير المصفاة:</span>
-                <strong>{pos.totalGross.toLocaleString()} د.ع</strong>
-              </div>
-              <div style={{ fontSize: '12px', color: '#ff69b4', display: 'flex', justifyContent: 'space-between' }}>
-                <span>حصة الفرع ({pos.share_percentage || 0}%):</span>
-                <strong>{pos.posShare.toLocaleString()} د.ع</strong>
+            <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
+              <div style={{ fontSize: '13px', color: '#555', display: 'flex', justifyContent: 'space-between' }}>
+                <span>إجمالي المبيعات غير المستلمة:</span>
+                <strong style={{color: '#ff4d4d', fontSize: '15px'}}>{pos.totalGross.toLocaleString()} د.ع</strong>
               </div>
             </div>
 
-            <div style={{ fontSize: '13px', color: '#555', marginBottom: '5px' }}>
-              عدد الروابط غير المصفاة: <span style={{fontWeight:'bold', color: pos.pendingLinksCount > 0 ? '#ff4d4d' : '#00cc66'}}>{pos.pendingLinksCount}</span>
-            </div>
-            
-            <div style={{ fontSize: '20px', color: '#00cc66', fontWeight: '900', marginBottom: '20px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
-              المطلوب استلامه: {pos.netDebt.toLocaleString()} د.ع
+            <div style={{ fontSize: '13px', color: '#555', marginBottom: '15px' }}>
+              عدد الروابط قيد التحصيل: <span style={{fontWeight:'bold', color: pos.pendingLinksCount > 0 ? '#ff4d4d' : '#00cc66'}}>{pos.pendingLinksCount}</span>
             </div>
 
             <button 
-              onClick={() => handleClearance(pos.id, pos.name, pos.netDebt, pos.totalGross, pos.linkIdsToClear)} 
-              style={pos.netDebt === 0 ? disabledClearBtn : clearBtn}
-              disabled={pos.netDebt === 0}
+              onClick={() => handleClearance(pos.id, pos.name, pos.totalGross, pos.linkIdsToClear)} 
+              style={pos.totalGross === 0 ? disabledClearBtn : clearBtn}
+              disabled={pos.totalGross === 0}
             >
-              💸 استلام وتصفير الديون
+              💸 استلام وتصفير الحساب
             </button>
           </div>
         ))}
