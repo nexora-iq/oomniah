@@ -43,9 +43,9 @@ export default function Viewer() {
           recipient: data.recipient_name || 'صديقي',
           message: data.message || '',
           yt: data.song_url || '',
-          start: (data.song_start_seconds || 0).toString()
+          start: (data.song_start_seconds || 0).toString(),
+          gender: data.recipient_gender || 'female' // 👈 هذا السطر الجديد
         }).toString();
-
         // التوجيه المباشر لملف الثيم
         window.location.replace(`/themes/${themeSlug}/index.html?${queryParams}`);
         

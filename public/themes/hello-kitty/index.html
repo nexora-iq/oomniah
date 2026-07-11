@@ -72,7 +72,7 @@
         
         <div class="card active" id="card0" style="justify-content: center; height: 100%;" onclick="startAppWithMusic()">
             <div class="start-circle">❤️</div>
-            <div class="start-text">انتِ <span id="dyn-recipient1">...</span> ؟</div>
+            <div class="start-text"><span id="dyn-are-you">انتِ</span> <span id="dyn-recipient1">...</span> ؟</div>
         </div>
 
         <div class="card" id="card1">
@@ -83,13 +83,13 @@
 
         <div class="card" id="card2">
             <div class="image-box"><img src="kit2.png" alt="Hello Kitty Thinking"></div>
-            <div class="question-bar" data-text="عندي سؤال الج"></div>
+            <div class="question-bar" data-text="عندي سؤال"></div>
             <button class="btn-reply" onclick="nextCard(3)">شنو السؤال!</button>
         </div>
 
         <div class="card" id="card3">
             <div class="image-box"><img src="kit3.png" alt="Hello Kitty Shy"></div>
-            <div class="question-bar" data-text="هاج هاي ورد 🌷 قبل السؤال"></div>
+            <div class="question-bar" data-text="هاك هاي ورد 🌷 قبل السؤال"></div>
             <button class="btn-reply" onclick="nextCard(4)">كيوتتتتت</button>
         </div>
 
@@ -140,22 +140,56 @@
 
     </div>
 
+   
+    @keyframes modalFadeIn {
+        from {
+            opacity: 0;
+            transform: scale(0.9) translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+    
+    /* تأثيرات التمرير بالفأرة (Hover) */
+    #info-modal-overlay button:hover {
+        background: #e2e8f0 !important;
+        color: #0f172a !important;
+    }
+    #info-modal-overlay a:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(220, 39, 67, 0.5) !important;
+    }
+</style>
+
     <script>
         // 1. استخراج البيانات من نظام React عن طريق الرابط
         const urlParams = new URLSearchParams(window.location.search);
         const sender = urlParams.get('sender') || 'شخص مجهول';
         const recipient = urlParams.get('recipient') || 'صديقي';
-        // تحويل الأسطر الجديدة إلى <br> لتعمل مع دالة الكتابة
         const message = (urlParams.get('message') || 'رسالة خاصة لك...').replace(/\n/g, '<br>');
         const rawAudioUrl = urlParams.get('yt') || '';
         const startTime = parseInt(urlParams.get('start')) || 0;
+        
+        // 🎯 جلب الجنس (الافتراضي female لتجنب الأخطاء)
+        const gender = urlParams.get('gender') || 'female';
 
-        // 2. تحديث النصوص داخل الثيم بالبيانات الديناميكية
+        // 🎯 المنطق الذكي لتحديد الضمائر بناءً على الجنس
+        const isMale = (gender === 'male');
+        const textAreYou = isMale ? "انتَ" : "انتِ";
+        const textLove = isMale ? "تحب" : "تحبين";
+        const textClick = isMale ? "دوس" : "دوسي";
+
+        // 2. تحديث النصوص داخل الثيم بالبيانات والديناميكية المزدوجة
+        document.getElementById('dyn-are-you').innerText = textAreYou;
         document.getElementById('dyn-recipient1').innerText = recipient;
+        
         document.getElementById('dyn-q1').setAttribute('data-text', `هلو ${recipient}`);
-        document.getElementById('dyn-q4').setAttribute('data-text', `تحبين ${sender} لو لا 🫣`);
-        document.getElementById('dyn-q5').setAttribute('data-text', `شنو مدرييي!!! تحبين ${sender} لو لا 🤨`);
-        document.getElementById('dyn-q6').setAttribute('data-text', `اذا تحبين ${sender} دوسي على القلب 🫣`);
+        document.getElementById('dyn-q4').setAttribute('data-text', `${textLove} ${sender} لو لا 🫣`);
+        document.getElementById('dyn-q5').setAttribute('data-text', `شنو مدرييي!!! ${textLove} ${sender} لو لا 🤨`);
+        document.getElementById('dyn-q6').setAttribute('data-text', `اذا ${textLove} ${sender} ${textClick} على القلب 🫣`);
+        
         document.getElementById('dyn-message').setAttribute('data-text', message);
 
         // 3. نظام الصوت الهجين (Hybrid Audio System)
@@ -168,14 +202,12 @@
 
         if (hasAudio) {
             if (isMp3File) {
-                // إنشاء مشغل الـ MP3 المحلّي/المرفوع
                 localAudio = document.createElement('audio');
                 localAudio.src = rawAudioUrl;
                 localAudio.preload = 'auto';
                 document.body.appendChild(localAudio);
                 isAudioLoaded = true;
             } else {
-                // تهيئة مشغل يوتيوب المخفي
                 function getYoutubeId(url) {
                     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
                     const match = url.match(regExp);
@@ -205,7 +237,6 @@
                 }
             }
         } else {
-            // إخفاء كرت الموسيقى إذا لم يوجد رابط
             document.getElementById('card8').innerHTML = '<button class="btn-restart" onclick="restartApp()" style="margin-top:50vh;">العودة للبداية 🤍</button>';
         }
 
@@ -328,7 +359,6 @@
             nextCard(0);
         }
 
-        // --- باقي دوال الأنيميشن والفيونكات ---
         function createFallingBow() {
             const bowSymbols = ['🎀', '🎀']; 
             const colors = ['#ff7898', '#ffeef2'];
@@ -361,7 +391,6 @@
             }
         });
 
-        // 📝 دالة كتابة متطورة تفهم الأسطر الطويلة <br>
         function typeWriter(element, text, index, callback) {
             if (index < text.length) {
                 if (text.charAt(index) === '<') {

@@ -59,7 +59,6 @@ export default function POS() {
       const { data: th } = await supabase.from('themes').select('*').eq('status', 'active');
       if (th && th.length > 0) {
         setThemes(th);
-        setFormData(p => ({ ...p, theme_id: th[0].id }));
       }
 
       setLoading(false);
@@ -68,9 +67,25 @@ export default function POS() {
     init();
   }, [slug, navigate]);
 
+  // 🎯 تصفية الثيمات ديناميكياً بناءً على الجنس المختار
+  const filteredThemes = themes.filter(t => 
+    !t.gender || t.gender === 'all' || t.gender === formData.recipient_gender
+  );
+
+  // ⚡ إعادة تعيين الثيم المختار تلقائياً عند تغيير الجنس لمنع الأخطاء
+  useEffect(() => {
+    if (filteredThemes.length > 0) {
+      const isValid = filteredThemes.some(t => t.id === formData.theme_id);
+      if (!isValid) {
+        setFormData(prev => ({ ...prev, theme_id: filteredThemes[0].id }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, theme_id: '' }));
+    }
+  }, [formData.recipient_gender, themes]);
+
   const currentPrice = DURATION_PRICES[formData.duration_type].price;
 
-  // 🛡️ دالة التحقق من الشروط الصارمة لرفع الصوت
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) {
@@ -78,17 +93,16 @@ export default function POS() {
       return;
     }
     
-    // 1. فحص الصيغة (MP3 حصراً)
     if (file.type !== "audio/mpeg" && !file.name.toLowerCase().endsWith('.mp3')) {
       alert("❌ نعتذر، النظام يقبل ملفات بصيغة (MP3) فقط!");
-      e.target.value = ''; // تصفير الاختيار
+      e.target.value = ''; 
       return;
     }
 
-    // 2. فحص الحجم (الحد الأقصى 400KB)
-    const MAX_SIZE = 400 * 1024; // 400 كيلوبايت
+    // 🚀 تم رفع الحد الأقصى إلى 3 ميغابايت (3 * 1024 * 1024)
+    const MAX_SIZE = 3 * 1024 * 1024; 
     if (file.size > MAX_SIZE) {
-      alert("❌ حجم الملف كبير جداً! الحد الأقصى المسموح به هو 400 كيلوبايت لضمان سرعة إرسال الهدية.");
+      alert("❌ حجم الملف كبير جداً! الحد الأقصى المسموح به هو 3 ميغابايت لضمان سرعة إرسال الهدية.");
       e.target.value = '';
       return;
     }
@@ -140,7 +154,7 @@ export default function POS() {
       sender_name: formData.sender_name.trim(), recipient_name: formData.recipient_name.trim(), recipient_gender: formData.recipient_gender,
       song_url: finalSongUrl, song_start_seconds: Number(formData.song_start_seconds) || 0,
       message: formData.message.trim(), duration_type: formData.duration_type,
-      price: currentPrice, price_at_sale: currentPrice, pos_share_percentage: 0, // صفرنا النسبة
+      price: currentPrice, price_at_sale: currentPrice, pos_share_percentage: 0,
       status: 'active', is_cleared: false, expires_at: expiresAt.toISOString(), short_id: shortId
     }]).select('short_id').single();
 
@@ -148,11 +162,16 @@ export default function POS() {
       alert(`حدث خطأ أثناء التوليد: ${error.message}`);
       setIsGenerating(false);
     } else if (data) {
+      const themeSlug = selTheme?.slug || 'gift';
+      const fullUrl = `${window.location.origin}/${themeSlug}/${data.short_id}`;
+
       await supabase.from('system_logs').insert([{
-        admin_name: adminName, pos_name: posName, action_type: 'توليد رابط',
-        details: `توليد ثيم (${selTheme?.name}) للزبون ${formData.sender_name} | السعر: ${currentPrice} د.ع`
+        admin_name: adminName, 
+        pos_name: posName, 
+        action_type: 'توليد رابط',
+        details: `توليد ثيم (${selTheme?.name}) للزبون (${formData.sender_name}) | السعر: ${currentPrice} د.ع | معرف الرابط: ${data.short_id} | الرابط المباشر: ${fullUrl}`
       }]);
-      setGeneratedLink(`${window.location.origin}/${selTheme?.slug || 'gift'}/${data.short_id}`);
+      setGeneratedLink(fullUrl);
       setShowModal(true);
       setIsGenerating(false);
       setAudioFile(null); 
@@ -185,13 +204,25 @@ export default function POS() {
       </div>
 
       <form onSubmit={handleSubmit} style={formStyle}>
+        
+        {/* الصف الأول: معلومات الحساب والمدد */}
         <div style={row}>
           <div style={group}>
-            <label style={label}>نوع الثيم</label>
-            <select name="theme_id" value={formData.theme_id} onChange={e => setFormData({...formData, theme_id: e.target.value})} style={input}>
-              {themes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            <label style={label}>جنس المستلم 👤</label>
+            <select value={formData.recipient_gender} onChange={e => setFormData({...formData, recipient_gender: e.target.value})} style={input}>
+              <option value="female">أنثى 🩷</option>
+              <option value="male">ذكر 🩵</option>
             </select>
           </div>
+          
+          <div style={group}>
+            <label style={label}>نوع الثيم المتاح (مفلتر تلقائياً)</label>
+            <select name="theme_id" value={formData.theme_id} onChange={e => setFormData({...formData, theme_id: e.target.value})} style={input}>
+              {filteredThemes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              {filteredThemes.length === 0 && <option value="">لا توجد ثيمات متاحة لهذا الجنس</option>}
+            </select>
+          </div>
+
           <div style={group}>
             <label style={label}>المدة والسعر</label>
             <select name="duration_type" value={formData.duration_type} onChange={e => setFormData({...formData, duration_type: e.target.value as DurationType})} style={input}>
@@ -202,45 +233,39 @@ export default function POS() {
           </div>
         </div>
 
+        {/* الصف الثاني: الأسماء */}
         <div style={row}>
-           <input type="text" placeholder="اسم المُهدي" required onChange={e => setFormData({...formData, sender_name: e.target.value})} style={input} />
-           <input type="text" placeholder="اسم المستلم" required onChange={e => setFormData({...formData, recipient_name: e.target.value})} style={input} />
+          <div style={group}>
+            <label style={label}>اسم المُهدي</label>
+            <input type="text" placeholder="مثال: علي"  required onChange={e => setFormData({...formData, sender_name: e.target.value})} style={input} />
+          </div>
+          <div style={group}>
+            <label style={label}>اسم المستلم</label>
+            <input type="text" placeholder="مثال: نور" required onChange={e => setFormData({...formData, recipient_name: e.target.value})} style={input} />
+          </div>
         </div>
 
-        <textarea placeholder="رسالة المفاجأة..." required onChange={e => setFormData({...formData, message: e.target.value})} style={{...input, height: '100px', resize: 'none'}} />
+        <div style={group}>
+          <label style={label}>رسالة المفاجأة...</label>
+          <textarea placeholder="اكتب هنا الرسالة التي ستظهر للزبون..." required onChange={e => setFormData({...formData, message: e.target.value})} style={{...input, height: '100px', resize: 'none'}} />
+        </div>
 
-        {/* 🎵 قسم الأغنية بالشكل الاحترافي الجديد */}
+        {/* 🎵 قسم الصوت */}
         <div style={{ background: '#fafafa', padding: '18px', borderRadius: '12px', border: '1px solid #ebebeb' }}>
           <label style={{ ...label, display: 'block', marginBottom: '12px', color: '#111', fontSize: '14px' }}>🎵 صوت المفاجأة (اختياري)</label>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-             
-             {/* زر الرفع الفخم المخفي تحته الـ Input */}
              <div className="upload-btn-wrapper">
                <div className="upload-btn-styled" style={audioFile ? { background: '#e6f9f0', borderColor: '#00cc66', color: '#00aa55' } : {}}>
                  <span style={{ fontSize: '24px' }}>{audioFile ? '✅' : '📤'}</span>
-                 <span>{audioFile ? `تم تجهيز ملف: ${audioFile.name}` : 'اضغط هنا لرفع ملف بصيغة MP3 (أقل من 400KB)'}</span>
+<span>{audioFile ? `تم تجهيز ملف: ${audioFile.name}` : 'اضغط هنا لرفع ملف بصيغة MP3 (أقل من 3MB)'}</span>
                </div>
-               <input 
-                 type="file" 
-                 accept=".mp3, audio/mpeg"
-                 disabled={!!formData.song_url}
-                 onChange={handleFileChange}
-               />
+               <input type="file" accept=".mp3, audio/mpeg" disabled={!!formData.song_url} onChange={handleFileChange} />
              </div>
              
              <div style={{ textAlign: 'center', color: '#888', fontSize: '12px', fontWeight: 'bold' }}>أو</div>
 
-             {/* حقل اليوتيوب */}
-             <input 
-               type="text" 
-               placeholder="استخدام رابط يوتيوب بدلاً من الملف" 
-               disabled={!!audioFile}
-               value={formData.song_url}
-               onChange={e => setFormData({...formData, song_url: e.target.value})} 
-               style={{...input, background: audioFile ? '#f0f0f0' : '#fff'}} 
-             />
-             
+             <input type="text" placeholder="استخدام رابط يوتيوب بدلاً من الملف" disabled={!!audioFile} value={formData.song_url} onChange={e => setFormData({...formData, song_url: e.target.value})} style={{...input, background: audioFile ? '#f0f0f0' : '#fff'}} />
              <input type="number" placeholder="ثانية بدء الأغنية (مثال: 40)" onChange={e => setFormData({...formData, song_start_seconds: Number(e.target.value)})} style={{...input, maxWidth: '200px', alignSelf: 'flex-end'}} />
           </div>
         </div>
@@ -271,7 +296,7 @@ export default function POS() {
   );
 }
 
-// الستايلات
+// الستايلات الثابتة
 const splashContainer: React.CSSProperties = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#fff' };
 const posPage: React.CSSProperties = { background: '#ffffff', minHeight: '100vh', padding: '20px', direction: 'rtl', fontFamily: 'sans-serif' };
 const topHeader: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '800px', margin: '0 auto 30px', flexWrap: 'wrap', gap: '15px' };
@@ -280,7 +305,7 @@ const badge: React.CSSProperties = { background: '#ffffff', color: '#ff69b4', bo
 const badgeAdmin: React.CSSProperties = { background: '#ff69b4', color: '#ffffff', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px' };
 const formStyle: React.CSSProperties = { background: '#ffffff', padding: '30px', borderRadius: '16px', border: '1px solid #ffe6f0', maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 8px 25px rgba(255, 105, 180, 0.08)' };
 const input: React.CSSProperties = { padding: '14px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', outline: 'none', width: '100%', boxSizing: 'border-box' };
-const row: React.CSSProperties = { display: 'flex', gap: '15px', flexWrap: 'wrap' };
+const row: React.CSSProperties = { display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'flex-end' };
 const group: React.CSSProperties = { flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '8px' };
 const label: React.CSSProperties = { fontSize: '13px', color: '#666', fontWeight: 'bold' };
 const submitBtn: React.CSSProperties = { background: '#ff69b4', color: '#fff', padding: '16px', borderRadius: '12px', fontSize: '18px', fontWeight: 'bold', border: 'none', cursor: 'pointer', marginTop: '10px' };
