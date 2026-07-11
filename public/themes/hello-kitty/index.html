@@ -147,21 +147,86 @@
         </div>
 
     </div>
+<!-- زر التنشيق / المودال (موجود أسفل اليسار) -->
+<button onclick="document.getElementById('info-modal-overlay').style.display='flex'" style="position: fixed; bottom: 25px; left: 25px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.4); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); color: #fff; font-size: 24px; font-weight: 500; display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 99999; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);">
+    ℹ️
+</button>
 
-    <!-- 🛑 النافذة المنبثقة لإخلاء المسؤولية -->
-    <div id="info-modal-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 100000; display: none; justify-content: center; align-items: center; direction: rtl; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px;">
-        <div style="background: #fff; width: 100%; max-width: 350px; border-radius: 20px; padding: 35px 20px 20px; text-align: center; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-            <button onclick="document.getElementById('info-modal-overlay').style.display='none'" style="position: absolute; top: 15px; right: 15px; background: #ffe1e8; border: none; width: 32px; height: 32px; border-radius: 50%; color: #d81b60; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.3s;">✕</button>
-            <div style="font-size: 45px; margin-bottom: 10px;">🎁</div>
-            <h3 style="color: #d81b60; font-size: 18px; margin-bottom: 15px; line-height: 1.5; font-weight: 900;">انشئ هديتك الان واختار الثيم الي يناسبك!</h3>
-            <a href="https://www.instagram.com/link.love1?igsh=dDRjd2d3MTN1dm92" target="_blank" style="display: inline-block; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: #fff; text-decoration: none; padding: 12px 25px; border-radius: 30px; font-weight: bold; font-size: 15px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(220, 39, 67, 0.4);">عبر حسابنا على الانستغرام</a>
-            <hr style="border: 0; border-top: 1px dashed #ccc; margin-bottom: 12px;">
-            <p style="color: #888; font-size: 11px; line-height: 1.6; font-weight: bold; text-align: justify;">* نحن غير مسؤولون عن الاستخدامات الخاطئة لمواقعنا وثيماتنا من قبل أي شخص.</p>
+<!-- خلفية المودال الشفافة -->
+<div id="info-modal-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 100000; display: none; justify-content: center; align-items: center; direction: rtl; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 20px; box-sizing: border-box;">
+    
+    <!-- صندوق المحتوى -->
+    <div style="background: #ffffff; width: 100%; max-width: 400px; border-radius: 24px; padding: 40px 24px 24px; text-align: center; position: relative; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); animation: modalFadeIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); box-sizing: border-box;">
+        
+        <!-- زر الإغلاق -->
+        <button onclick="document.getElementById('info-modal-overlay').style.display='none'" style="position: absolute; top: 20px; right: 20px; background: #f1f5f9; border: none; width: 36px; height: 36px; border-radius: 50%; color: #64748b; font-weight: bold; cursor: pointer; font-size: 14px; display: flex; justify-content: center; align-items: center; transition: all 0.2s ease;">✕</button>
+        
+        <!-- الأيقونة العلوية -->
+        <div style="font-size: 50px; margin-bottom: 16px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">🎁</div>
+        
+        <!-- العنوان الرئيسي -->
+        <h3 style="color: #0f172a; font-size: 20px; margin-top: 0; margin-bottom: 20px; line-height: 1.4; font-weight: 800; letter-spacing: -0.5px;">أنشئ هديتك الآن واختار الثيم اللي يناسبك!</h3>
+        
+        <!-- زر الانستغرام -->
+        <a href="https://www.instagram.com/link.love1?igsh=dDRjd2d3MTN1dm92" target="_blank" style="display: block; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 50px; font-weight: 700; font-size: 15px; margin-bottom: 28px; box-shadow: 0 4px 14px rgba(220, 39, 67, 0.4); transition: transform 0.2s ease, box-shadow 0.2s ease;">
+            عبر حسابنا على الانستغرام
+        </a>
+        
+        <!-- فاصل أنيق -->
+        <div style="height: 1px; background: #e2e8f0; margin-bottom: 20px;"></div>
+        
+        <!-- الشروط والتعليمات -->
+        <div style="text-align: right; display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; gap: 8px; align-items: flex-start;">
+                <span style="color: #dc2743; font-size: 12px; margin-top: 2px;">•</span>
+                <p style="color: #475569; font-size: 12.5px; line-height: 1.6; margin: 0; font-weight: 500;">نحن غير مسؤولين عن الاستخدامات الخاطئة لمواقعنا وثيماتنا من قبل أي شخص.</p>
+            </div>
+            
+            <div style="display: flex; gap: 8px; align-items: flex-start;">
+                <span style="color: #dc2743; font-size: 12px; margin-top: 2px;">•</span>
+                <p style="color: #475569; font-size: 12.5px; line-height: 1.6; margin: 0; font-weight: 500;">كل ثيماتنا ومواقعنا هي ملك لنا ومن تصميمنا الخاص.</p>
+            </div>
+            
+            <div style="display: flex; gap: 8px; align-items: flex-start;">
+                <span style="color: #dc2743; font-size: 12px; margin-top: 2px;">•</span>
+                <p style="color: #475569; font-size: 12.5px; line-height: 1.6; margin: 0; font-weight: 500;">لا يتم بيع أو تداول مواقعنا في مكان آخر إلا إذا كان الحساب تابعاً لنا، ويتم نشر الحسابات الرسمية في مواقعنا فقط.</p>
+            </div>
+            
+            <div style="display: flex; gap: 8px; align-items: flex-start;">
+                <span style="color: #dc2743; font-size: 12px; margin-top: 2px;">•</span>
+                <p style="color: #475569; font-size: 12.5px; line-height: 1.6; margin: 0; font-weight: 500;">إذا كان هنالك أي حسابات تنشر فيديوهاتنا أو تتداول مواقعنا، قوموا بإبلاغنا عبر حساباتنا الرسمية. إذا كان البلاغ صحيحاً سنقدم مكافأة للمبلّغ.</p>
+            </div>
         </div>
-    </div>
+        
+        <!-- التوقيع العلوى السفلي -->
+        <p style="color: #94a3b8; font-size: 12px; font-weight: 600; margin-top: 24px; margin-bottom: 0;">شاكرين تعاونكم — إدارة LinkLove</p>
 
-    <!-- 🛑 الزر العائم لفتح النافذة -->
-    <button onclick="document.getElementById('info-modal-overlay').style.display='flex'" style="position: fixed; bottom: 25px; left: 25px; width: 45px; height: 45px; border-radius: 50%; background: rgba(255, 255, 255, 0.4); border: 2px solid rgba(255, 255, 255, 0.8); backdrop-filter: blur(8px); color: #d81b60; font-size: 22px; font-weight: bold; display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 99999; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">!</button>
+    </div>
+</div>
+
+<!-- تأثير الحركة عند فتح النافذة -->
+<style>
+    @keyframes modalFadeIn {
+        from {
+            opacity: 0;
+            transform: scale(0.9) translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+    
+    /* تأثيرات التمرير بالفأرة (Hover) */
+    #info-modal-overlay button:hover {
+        background: #e2e8f0 !important;
+        color: #0f172a !important;
+    }
+    #info-modal-overlay a:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(220, 39, 67, 0.5) !important;
+    }
+</style>
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
