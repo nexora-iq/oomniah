@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>مفاجأة خاصة ✨</title>
     <style>
         :root { --bg-color: #3d2a30; --pink-main: #ff7898; --pink-glow: rgba(255, 120, 152, 0.6); --text-white: #ffffff; }
@@ -51,6 +51,14 @@
         .btn-restart { background: var(--pink-main); color: white; border: none; padding: 14px 50px; border-radius: 25px; font-weight: bold; font-size: 1.1rem; box-shadow: 0 5px 15px rgba(0,0,0,0.3); cursor: pointer; margin-top: 35px; transition: transform 0.2s; }
         .btn-restart:active { transform: scale(0.95); }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.9) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        
+        #info-modal-overlay button:hover { background: #e2e8f0 !important; color: #0f172a !important; }
+        #info-modal-overlay a:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(220, 39, 67, 0.5) !important; }
     </style>
 </head>
 <body>
@@ -140,31 +148,22 @@
 
     </div>
 
-   
-    @keyframes modalFadeIn {
-        from {
-            opacity: 0;
-            transform: scale(0.9) translateY(10px);
-        }
-        to {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-        }
-    }
-    
-    /* تأثيرات التمرير بالفأرة (Hover) */
-    #info-modal-overlay button:hover {
-        background: #e2e8f0 !important;
-        color: #0f172a !important;
-    }
-    #info-modal-overlay a:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(220, 39, 67, 0.5) !important;
-    }
-</style>
+    <!-- 🛑 النافذة المنبثقة لإخلاء المسؤولية -->
+    <div id="info-modal-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 100000; display: none; justify-content: center; align-items: center; direction: rtl; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px;">
+        <div style="background: #fff; width: 100%; max-width: 350px; border-radius: 20px; padding: 35px 20px 20px; text-align: center; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <button onclick="document.getElementById('info-modal-overlay').style.display='none'" style="position: absolute; top: 15px; right: 15px; background: #ffe1e8; border: none; width: 32px; height: 32px; border-radius: 50%; color: #d81b60; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.3s;">✕</button>
+            <div style="font-size: 45px; margin-bottom: 10px;">🎁</div>
+            <h3 style="color: #d81b60; font-size: 18px; margin-bottom: 15px; line-height: 1.5; font-weight: 900;">انشئ هديتك الان واختار الثيم الي يناسبك!</h3>
+            <a href="https://www.instagram.com/link.love1?igsh=dDRjd2d3MTN1dm92" target="_blank" style="display: inline-block; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: #fff; text-decoration: none; padding: 12px 25px; border-radius: 30px; font-weight: bold; font-size: 15px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(220, 39, 67, 0.4);">عبر حسابنا على الانستغرام</a>
+            <hr style="border: 0; border-top: 1px dashed #ccc; margin-bottom: 12px;">
+            <p style="color: #888; font-size: 11px; line-height: 1.6; font-weight: bold; text-align: justify;">* نحن غير مسؤولون عن الاستخدامات الخاطئة لمواقعنا وثيماتنا من قبل أي شخص.</p>
+        </div>
+    </div>
+
+    <!-- 🛑 الزر العائم لفتح النافذة -->
+    <button onclick="document.getElementById('info-modal-overlay').style.display='flex'" style="position: fixed; bottom: 25px; left: 25px; width: 45px; height: 45px; border-radius: 50%; background: rgba(255, 255, 255, 0.4); border: 2px solid rgba(255, 255, 255, 0.8); backdrop-filter: blur(8px); color: #d81b60; font-size: 22px; font-weight: bold; display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 99999; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">!</button>
 
     <script>
-        // 1. استخراج البيانات من نظام React عن طريق الرابط
         const urlParams = new URLSearchParams(window.location.search);
         const sender = urlParams.get('sender') || 'شخص مجهول';
         const recipient = urlParams.get('recipient') || 'صديقي';
@@ -172,16 +171,13 @@
         const rawAudioUrl = urlParams.get('yt') || '';
         const startTime = parseInt(urlParams.get('start')) || 0;
         
-        // 🎯 جلب الجنس (الافتراضي female لتجنب الأخطاء)
         const gender = urlParams.get('gender') || 'female';
 
-        // 🎯 المنطق الذكي لتحديد الضمائر بناءً على الجنس
         const isMale = (gender === 'male');
         const textAreYou = isMale ? "انتَ" : "انتِ";
         const textLove = isMale ? "تحب" : "تحبين";
         const textClick = isMale ? "دوس" : "دوسي";
 
-        // 2. تحديث النصوص داخل الثيم بالبيانات والديناميكية المزدوجة
         document.getElementById('dyn-are-you').innerText = textAreYou;
         document.getElementById('dyn-recipient1').innerText = recipient;
         
@@ -192,7 +188,6 @@
         
         document.getElementById('dyn-message').setAttribute('data-text', message);
 
-        // 3. نظام الصوت الهجين (Hybrid Audio System)
         const hasAudio = rawAudioUrl.trim().length > 0;
         const isMp3File = rawAudioUrl.toLowerCase().includes('.mp3') || rawAudioUrl.includes('supabase.co/storage');
 
