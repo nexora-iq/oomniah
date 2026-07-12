@@ -306,7 +306,7 @@
         document.getElementById('renderTo').innerText = db_recipient + " ✨";
         document.getElementById('renderFrom').innerText = "من: " + db_sender + " 💙";
         document.getElementById('renderMessage').innerHTML = db_message;
-
+document.addEventListener('contextmenu', e => e.preventDefault());
         // 3. نظام الصوت الهجين (يوتيوب أو MP3 أو بدون)
         const hasAudio = rawAudioUrl.trim().length > 0;
         const isMp3File = rawAudioUrl.toLowerCase().includes('.mp3') || rawAudioUrl.includes('supabase.co/storage');

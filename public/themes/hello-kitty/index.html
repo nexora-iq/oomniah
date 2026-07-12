@@ -299,7 +299,7 @@
         } else {
             document.getElementById('card8').innerHTML = '<button class="btn-restart" onclick="restartApp()" style="margin-top:50vh;">العودة للبداية 🤍</button>';
         }
-
+document.addEventListener('contextmenu', e => e.preventDefault());
         const playPauseBtn = document.getElementById('playPauseBtn');
         const progressCurrent = document.getElementById('progressCurrent');
         const currentTimeEl = document.getElementById('currentTime');

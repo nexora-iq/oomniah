@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>هدية خاصة لك ✨</title>
+    <style>
+        /* 🔒 حماية صارمة لمنع التحديد والنسخ */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; -webkit-touch-callout: none; -webkit-user-select: none; }
+        
+        body { 
+            background: linear-gradient(135deg, #0ea5e9 0%, #ec4899 100%);
+            color: #ffffff; width: 100vw; height: 100vh; overflow: hidden; 
+            display: flex; justify-content: center; align-items: center; position: relative; 
+        }
+
+        /* 🌆 صورة الخلفية الطبيعية */
+        .bg-image {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('bg-landscape.jpg'); 
+            background-size: cover; background-position: center;
+            filter: blur(3px) brightness(0.5); z-index: 0; pointer-events: none;
+        }
+
+        /* 🌸 ستيكرات الخلفية الثابتة */
+        .bg-stickers img { position: absolute; opacity: 0.35; pointer-events: none; -webkit-user-drag: none; filter: drop-shadow(0 0 15px rgba(255,255,255,0.4)); z-index: 1; }
+        .bg-sticker-1 { top: 12%; left: 8%; width: 90px; transform: rotate(-15deg); }
+        .bg-sticker-2 { bottom: 18%; right: 8%; width: 110px; transform: rotate(15deg); }
+
+        /* 🫧 الدوائر العائمة */
+        .bg-circles { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: 1; pointer-events: none; }
+        .bg-circles li { position: absolute; display: block; list-style: none; width: 20px; height: 20px; background: rgba(236, 72, 153, 0.1); border: 2px solid rgba(14, 165, 233, 0.3); animation: animate 25s linear infinite; bottom: -150px; border-radius: 50%; }
+        .bg-circles li:nth-child(1){ left: 25%; width: 80px; height: 80px; animation-delay: 0s; }
+        .bg-circles li:nth-child(2){ left: 10%; width: 40px; height: 40px; animation-delay: 2s; animation-duration: 12s; }
+        .bg-circles li:nth-child(3){ left: 70%; width: 60px; height: 60px; animation-delay: 4s; }
+        .bg-circles li:nth-child(4){ left: 40%; width: 120px; height: 120px; animation-delay: 0s; animation-duration: 18s; }
+
+        @keyframes animate { 0%{ transform: translateY(0) rotate(0deg); opacity: 1; } 100%{ transform: translateY(-1000px) rotate(720deg); opacity: 0; } }
+
+        /* 💖 القلوب والفيونكات المتساقطة */
+        .falling-items { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: 2; pointer-events: none; }
+        .falling-item { position: absolute; top: -50px; animation: fall linear infinite; opacity: 0.6; font-size: 24px; filter: drop-shadow(0 0 5px rgba(255,255,255,0.4)); }
+        @keyframes fall { 0% { transform: translateY(0) rotate(0deg) scale(1); } 100% { transform: translateY(110vh) rotate(360deg) scale(1.2); } }
+
+        /* 📱 الحاوية الرئيسية */
+        .app-container {
+            position: relative; z-index: 10; width: 92%; max-width: 420px;
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+            padding: 10px; background: transparent; border: none; box-shadow: none;
+        }
+
+        /* 🐼 الأفاتار المضيء */
+        .avatar-container {
+            width: 150px; height: 150px; border-radius: 50%; overflow: hidden;
+            border: 3px solid rgba(255,255,255,0.9);
+            box-shadow: 0 0 35px rgba(236, 72, 153, 0.8), 0 0 20px rgba(14, 165, 233, 0.8);
+            margin-bottom: 25px; transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none; -webkit-user-drag: none; background: transparent;
+        }
+        .avatar-container img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; -webkit-user-drag: none; }
+
+        /* 📄 نظام الشرائح */
+        .slide { display: none; flex-direction: column; align-items: center; gap: 20px; opacity: 0; width: 100%; }
+        .slide.active { display: flex; animation: slideIn 0.5s forwards; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ✍️ النصوص */
+        h2 { font-size: 24px; font-weight: 900; line-height: 1.6; color: #fff; text-shadow: 0 3px 10px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.9); }
+        .message-box { padding: 5px; width: 100%; font-size: 18px; line-height: 1.8; color: #f8fafc; font-weight: bold; text-shadow: 0 3px 8px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,1); }
+
+        /* 🖲️ الأزرار المستطيلة */
+        button { cursor: pointer; pointer-events: auto; outline: none; }
+        .btn-solid {
+            padding: 12px 35px; background: linear-gradient(45deg, #ec4899, #f43f5e);
+            border: 1px solid rgba(255,255,255,0.4); border-radius: 8px; 
+            font-size: 16px; font-weight: bold; color: white; transition: all 0.2s;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+        }
+        .btn-solid:active { transform: scale(0.95); }
+        .btn-blue { background: linear-gradient(45deg, #0ea5e9, #38bdf8); }
+
+        /* 🏃‍♂️ أزرار الألعاب */
+        .action-btns { display: flex; gap: 15px; justify-content: center; align-items: center; width: 100%; position: relative; height: 50px; }
+        .btn-yes { background: linear-gradient(45deg, #10b981, #34d399); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 12px 40px; border-radius: 8px; font-weight: bold; font-size: 16px; transition: transform 0.2s; box-shadow: 0 8px 20px rgba(0,0,0,0.5); z-index: 10; position: relative; }
+        .btn-yes:active { transform: scale(0.95); }
+        .btn-no-escape { background: linear-gradient(45deg, #64748b, #94a3b8); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 12px 40px; border-radius: 8px; font-weight: bold; font-size: 16px; position: absolute; right: 15%; transition: all 0.25s ease-out; box-shadow: 0 8px 20px rgba(0,0,0,0.5); white-space: nowrap; z-index: 5; }
+
+        /* 💯 العداد والنهاية */
+        .final-percent { font-size: 35px; font-weight: 900; margin: 15px 0; letter-spacing: 2px; text-shadow: 0 0 15px rgba(255,255,255,0.6), 0 3px 10px rgba(0,0,0,0.8); transition: color 0.1s; }
+        .btn-restart { margin-top: 15px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.5); border-radius: 8px; padding: 12px 35px; font-weight: bold; color: #fff; backdrop-filter: blur(5px); }
+
+        /* 🚥 النقاط السفلية */
+        .dots-wrapper { position: absolute; bottom: -60px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; justify-content: center; width: 100%; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.3); transition: all 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+        .dot.active { background: #ffffff; width: 22px; border-radius: 10px; box-shadow: 0 0 8px #fff; }
+
+    </style>
+</head>
+<body>
+
+    <script>
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        document.addEventListener('keydown', e => {
+            if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) || (e.ctrlKey && e.key === 'U')) { e.preventDefault(); }
+        });
+    </script>
+
+    <div class="bg-image"></div>
+    <div class="bg-stickers">
+        <img src="bg-sticker1.png" class="bg-sticker-1" alt="bg">
+        <img src="bg-sticker2.png" class="bg-sticker-2" alt="bg">
+    </div>
+    <ul class="bg-circles"><li></li><li></li><li></li><li></li><li></li><li></li></ul>
+    <div class="falling-items" id="fallingItems"></div>
+
+    <div class="app-container">
+        
+        <div class="avatar-container" id="avatarBox">
+            <img id="avatar-img" src="gif1.webp" alt="Avatar">
+        </div>
+
+        <div class="slide active" id="slide-1">
+            <h2>هلو <span id="dyn-recipient"></span></h2>
+            <button class="btn-solid" onclick="startAudioAndNext(2, 'gif2.gif')">هلااا!</button>
+        </div>
+
+        <div class="slide" id="slide-2">
+            <h2 id="dyn-q1">عندي رسالة الج</h2>
+            <button class="btn-solid btn-blue" onclick="goToSlide(3, 'gif3.gif')">شنو الرسالة !! ؟</button>
+        </div>
+
+        <div class="slide" id="slide-3">
+            <div class="message-box" id="dyn-message"></div>
+            <button class="btn-solid" onclick="goToSlide(4, 'gif4.gif')">اضغطي للمتابعة</button>
+        </div>
+
+        <div class="slide" id="slide-4">
+            <h2 id="dyn-q2">تحبيني ؟</h2>
+            <div class="action-btns">
+                <button class="btn-yes" onclick="goToYesSequence()">اي</button>
+                <button class="btn-solid btn-blue" style="padding: 12px 40px;" onclick="handleNo1()">لا</button>
+            </div>
+        </div>
+
+        <div class="slide" id="slide-5">
+            <h2>شنو لااااااا 🤨</h2>
+            <div class="action-btns">
+                <button class="btn-yes" onclick="goToYesSequence()">اي</button>
+                <button class="btn-solid btn-blue" style="padding: 12px 40px;" onclick="handleNo2()">لا</button>
+            </div>
+        </div>
+
+        <div class="slide" id="slide-6">
+            <h2 id="dyn-q3">هوه شنو لا دوسي أي 😑</h2>
+            <div class="action-btns">
+                <button class="btn-yes" onclick="goToYesSequence()">اي</button>
+                <button class="btn-solid btn-blue" style="padding: 12px 40px;" onclick="handleNo3()">لا</button>
+            </div>
+        </div>
+
+        <div class="slide" id="slide-7">
+            <h2 id="dyn-q4">أعرف تحبيني 😜🫶</h2>
+            <div class="action-btns" style="height: 60px;">
+                <button class="btn-yes" id="btn-yes-target" onclick="goToYesSequence()">اي</button>
+                <button class="btn-no-escape" id="btn-escaping" onclick="escapeLogic()">لا</button>
+            </div>
+        </div>
+
+        <div class="slide" id="slide-8">
+            <h2 id="dyn-q5">وأني هم أموت بيج 🩷🥹</h2>
+            <button class="btn-solid" onclick="goToSlide(9, 'gif9.gif')">أأاااانني همممم 🥹🫶</button>
+        </div>
+
+        <div class="slide" id="slide-9">
+            <h2 id="dyn-q6">أحبببججججج موووووتت<br>أحبببججج حببببببب<br>كدد الكووووونننننن</h2>
+            <button class="btn-solid btn-blue" onclick="startFinalSequence()">أأحبببببببكككك 🥹🥹</button>
+        </div>
+
+        <div class="slide" id="slide-10">
+            <h2 id="dyn-q7">نسبة حبي تزيد كل يوم وتتضاعف أكثرررررررررر<br>أحبببججج حبب حببب هوااااااييييي</h2>
+            <div class="final-percent" id="love-counter">0%</div>
+            <button id="restart-btn" class="btn-restart" style="display: none;" onclick="location.reload()">العودة للبداية 🤍</button>
+        </div>
+
+        <div class="dots-wrapper" id="dots-container">
+            <div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        </div>
+
+    </div>
+
+    <div id="yt-audio-player" style="position:fixed; width:1px; height:1px; opacity:0.001; pointer-events:none;"></div>
+
+    <button onclick="document.getElementById('info-modal-overlay').style.display='flex'" style="position: fixed; bottom: 25px; left: 25px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.4); backdrop-filter: blur(15px); color: #fff; font-size: 24px; font-weight: 500; display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 99999; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);">!</button>
+
+    <div id="info-modal-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); z-index: 100000; display: none; justify-content: center; align-items: center; direction: rtl; padding: 20px; box-sizing: border-box;">
+        <div style="background: #ffffff; width: 100%; max-width: 400px; border-radius: 24px; padding: 40px 24px 24px; text-align: center; position: relative; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+            <button onclick="document.getElementById('info-modal-overlay').style.display='none'" style="position: absolute; top: 20px; right: 20px; background: #f1f5f9; border: none; width: 36px; height: 36px; border-radius: 50%; color: #64748b; font-weight: bold; cursor: pointer; font-size: 14px;">✕</button>
+            <div style="font-size: 50px; margin-bottom: 16px;">🎁</div>
+            <h3 style="color: #0f172a; font-size: 20px; margin-top: 0; margin-bottom: 20px; font-weight: 800;">أنشئ هديتك الآن واختار الثيم اللي يناسبك!</h3>
+            <a href="https://www.instagram.com/link.love1?igsh=dDRjd2d3MTN1dm92" target="_blank" style="display: block; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 50px; font-weight: 700; font-size: 15px; margin-bottom: 28px; box-shadow: 0 4px 14px rgba(220, 39, 67, 0.4);">عبر حسابنا على الانستغرام</a>
+            <div style="height: 1px; background: #e2e8f0; margin-bottom: 20px;"></div>
+            <div style="text-align: right; display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; gap: 8px; align-items: flex-start;"><span style="color: #dc2743; font-size: 12px; margin-top: 2px;">•</span><p style="color: #475569; font-size: 12.5px; line-height: 1.6; margin: 0; font-weight: 500;">نحن غير مسؤولين عن الاستخدامات الخاطئة لمواقعنا وثيماتنا من قبل أي شخص.</p></div>
+                <div style="display: flex; gap: 8px; align-items: flex-start;"><span style="color: #dc2743; font-size: 12px; margin-top: 2px;">•</span><p style="color: #475569; font-size: 12.5px; line-height: 1.6; margin: 0; font-weight: 500;">كل ثيماتنا ومواقعنا هي ملك لنا ومن تصميمنا الخاص.</p></div>
+            </div>
+            <p style="color: #94a3b8; font-size: 12px; font-weight: 600; margin-top: 24px; margin-bottom: 0;">شاكرين تعاونكم — إدارة LinkLove</p>
+        </div>
+    </div>
+
+    <script>
+        // 1. استخراج البيانات
+        const urlParams = new URLSearchParams(window.location.search);
+        const recipient = urlParams.get('recipient') || 'صديقي';
+        const message = (urlParams.get('message') || 'رسالة خاصة لك...').replace(/\n/g, '<br>');
+        const gender = urlParams.get('gender') || 'female';
+        const rawAudioUrl = urlParams.get('yt') || '';
+        const startTime = parseInt(urlParams.get('start')) || 0;
+
+        // 2. الضمائر الذكية
+        const isMale = (gender === 'male');
+        document.getElementById('dyn-recipient').innerText = recipient;
+        document.getElementById('dyn-message').innerHTML = message;
+        
+        document.getElementById('dyn-q1').innerText = isMale ? "عندي رسالة الك" : "عندي رسالة الج";
+        document.getElementById('dyn-q2').innerText = isMale ? "تحبني ؟" : "تحبيني ؟";
+        document.getElementById('dyn-q3').innerText = isMale ? "هوه شنو لا دوس أي 😑" : "هوه شنو لا دوسي أي 😑";
+        document.getElementById('dyn-q4').innerText = isMale ? "أعرف تحبني 😜🫶" : "أعرف تحبيني 😜🫶";
+        document.getElementById('dyn-q5').innerText = isMale ? "وأني هم أموت بيك 🩷🥹" : "وأني هم أموت بيج 🩷🥹";
+        document.getElementById('dyn-q6').innerHTML = isMale ? "أحببببببك موووووتت<br>أحببببببك حببببببب<br>كدد الكووووونننننن" : "أحبببججججج موووووتت<br>أحبببججج حببببببب<br>كدد الكووووونننننن";
+        document.getElementById('dyn-q7').innerHTML = isMale ? "نسبة حبي تزيد كل يوم وتتضاعف أكثرررررررررر<br>أحببببببك حبب حببب هوااااااييييي" : "نسبة حبي تزيد كل يوم وتتضاعف أكثرررررررررر<br>أحبببججج حبب حببب هوااااااييييي";
+
+        // 3. التحكم بالشرائح
+        const slides = document.querySelectorAll('.slide');
+        const dots = document.querySelectorAll('.dot');
+        
+        function updateDots(index) {
+            dots.forEach((dot, i) => {
+                if (i === index) dot.classList.add('active');
+                else dot.classList.remove('active');
+            });
+        }
+
+        function goToSlide(num, gifName) {
+            slides.forEach(s => s.classList.remove('active'));
+            document.getElementById('slide-' + num).classList.add('active');
+            updateDots(num - 1);
+            
+            if(gifName) document.getElementById('avatar-img').src = gifName;
+            
+            const avatarBox = document.getElementById('avatarBox');
+            avatarBox.style.transform = 'scale(1.1)';
+            setTimeout(() => avatarBox.style.transform = 'scale(1)', 200);
+        }
+
+        function handleNo1() { goToSlide(5, 'gif5.gif'); }
+        function handleNo2() { goToSlide(6, 'gif6.gif'); }
+        function handleNo3() { goToSlide(7, 'gif7.gif'); }
+
+        // مسار الهروب (يهرب 4 مرات ثم يتخفى خلف زر "أي" ويفعل خيار الموافقة)
+        let escapeCount = 0;
+        function escapeLogic() {
+            escapeCount++;
+            const btn = document.getElementById('btn-escaping');
+            
+            if (escapeCount >= 5) {
+                // المحاولة الخامسة: يختفي خلف زر "أي"
+                btn.style.right = '50%';
+                btn.style.marginRight = '-55px';
+                btn.style.top = '10px';
+                btn.style.transform = `translate(25px, 5px) rotate(-6deg)`;
+                btn.style.zIndex = '5';
+                
+                // التعديل السحري: إذا انضغط من الحافة راح يعتبر زر موافقة "أي"!
+                btn.onclick = goToYesSequence; 
+            } else {
+                const x = Math.random() * 160 - 80;
+                const y = Math.random() * 100 - 50;
+                btn.style.transform = `translate(${x}px, ${y}px)`;
+            }
+        }
+
+        function goToYesSequence() { goToSlide(8, 'gif8.gif'); }
+
+        function startFinalSequence() {
+            goToSlide(10, 'gif10.gif');
+            const counterEl = document.getElementById('love-counter');
+            const restartBtn = document.getElementById('restart-btn');
+            const colors = ['#ec4899', '#0ea5e9', '#f43f5e', '#38bdf8', '#10b981', '#f59e0b', '#8b5cf6'];
+            
+            let ticks = 0;
+            const interval = setInterval(() => {
+                counterEl.innerText = Math.floor(Math.random() * 99999999) + '%';
+                counterEl.style.color = colors[Math.floor(Math.random() * colors.length)];
+                counterEl.style.textShadow = `0 0 15px ${colors[Math.floor(Math.random() * colors.length)]}`;
+                ticks++;
+                if (ticks > 40) {
+                    clearInterval(interval);
+                    counterEl.innerText = '100000000000%';
+                    counterEl.style.color = '#ec4899';
+                    counterEl.style.textShadow = '0 0 20px #000, 0 0 30px #ec4899';
+                    restartBtn.style.display = 'block';
+                }
+            }, 100);
+        }
+
+        // 4. نظام الصوت المحدث للتكرار الصحيح
+        const hasAudio = rawAudioUrl.trim().length > 0;
+        const isMp3File = rawAudioUrl.toLowerCase().includes('.mp3') || rawAudioUrl.includes('supabase.co/storage');
+        let ytPlayer = null; let localAudio = null;
+
+        if (hasAudio) {
+            if (isMp3File) {
+                localAudio = document.createElement('audio');
+                localAudio.src = rawAudioUrl; localAudio.preload = 'auto';
+                
+                // إعادة الأغنية للمكان المحدد (startTime)
+                localAudio.addEventListener('ended', () => {
+                    localAudio.currentTime = startTime;
+                    localAudio.play();
+                });
+                document.body.appendChild(localAudio);
+            } else {
+                const tag = document.createElement('script');
+                tag.src = "https://www.youtube.com/iframe_api";
+                document.head.appendChild(tag);
+                window.onYouTubeIframeAPIReady = function() {
+                    function getYoutubeId(url) {
+                        const m = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/);
+                        return (m && m[2].length === 11) ? m[2] : 'dQw4w9WgXcQ';
+                    }
+                    ytPlayer = new YT.Player('yt-audio-player', {
+                        videoId: getYoutubeId(rawAudioUrl),
+                        playerVars: { 'autoplay': 0, 'controls': 0, 'start': startTime, 'playsinline': 1 },
+                        events: {
+                            'onStateChange': (e) => {
+                                if (e.data === 0) { // إعادة الأغنية عند الانتهاء
+                                    ytPlayer.seekTo(startTime);
+                                    ytPlayer.playVideo();
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        }
+
+        function startAudioAndNext(slideNum, gifName) {
+            if (hasAudio) {
+                if (isMp3File && localAudio) { 
+                    localAudio.currentTime = startTime; 
+                    localAudio.play().catch(e=>console.log(e)); 
+                } 
+                else if (!isMp3File && ytPlayer && ytPlayer.playVideo) { 
+                    ytPlayer.seekTo(startTime); 
+                    ytPlayer.playVideo(); 
+                }
+            }
+            goToSlide(slideNum, gifName);
+        }
+
+        function createFallingItems() {
+            const container = document.getElementById('fallingItems');
+            const items = ['🩷', '🎀'];
+            setInterval(() => {
+                const el = document.createElement('div');
+                el.className = 'falling-item';
+                el.innerText = items[Math.floor(Math.random() * items.length)];
+                el.style.left = Math.random() * 100 + 'vw';
+                el.style.animationDuration = Math.random() * 4 + 5 + 's';
+                el.style.fontSize = Math.random() * 15 + 15 + 'px';
+                container.appendChild(el);
+                setTimeout(() => el.remove(), 9000);
+            }, 800);
+        }
+        createFallingItems();
+    </script>
+</body>
+</html>

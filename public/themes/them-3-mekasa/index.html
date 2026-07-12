@@ -224,7 +224,7 @@
         const tickerContainer = document.getElementById('ticker-container');
 
         let userInteracted = false;
-
+document.addEventListener('contextmenu', e => e.preventDefault());
         // 3. نظام الصوت
         const hasExternalAudio = rawAudioUrl.trim().length > 0;
         const isMp3File = rawAudioUrl.toLowerCase().includes('.mp3') || rawAudioUrl.includes('supabase.co/storage');

@@ -3,12 +3,15 @@ import { supabase } from '../../supabase';
 
 export default function LinksMaster() {
   const [links, setLinks] = useState<any[]>([]);
+  
+  // حالة لحفظ نوع التمديد لكل رابط (الافتراضي يومي)
+  const [extensions, setExtensions] = useState<Record<string, string>>({});
 
   const fetchLinks = async () => {
-    // 🛠️ جلب البيانات مع short_id و expires_at
+    // 🛠️ جلب البيانات مع الـ slug حتى نبني الرابط الكامل
     const { data, error } = await supabase.from('gift_links').select(`
       id, short_id, price, price_at_sale, status, created_at, expires_at,
-      themes ( name ),
+      themes ( name, slug ),
       profiles:created_by ( fullname ),
       points_of_sale ( name )
     `).order('created_at', { ascending: false });
@@ -22,21 +25,46 @@ export default function LinksMaster() {
 
   useEffect(() => { fetchLinks(); }, []);
 
+  // دالة الإيقاف والتفعيل العادية
   const toggleStatus = async (id: string, current: string) => {
     const newStatus = current === 'active' ? 'inactive' : 'active';
     await supabase.from('gift_links').update({ status: newStatus }).eq('id', id);
     fetchLinks();
   };
 
+  // ♻️ دالة تمديد الوقت للروابط المنتهية
+  const extendLink = async (id: string) => {
+    const durationType = extensions[id] || 'daily';
+    const newExpiry = new Date(); // يبدأ التمديد من اللحظة الحالية
+    
+    if (durationType === 'daily') newExpiry.setDate(newExpiry.getDate() + 1);
+    else if (durationType === 'weekly') newExpiry.setDate(newExpiry.getDate() + 7);
+    else if (durationType === 'monthly') newExpiry.setDate(newExpiry.getDate() + 30);
+
+    // تحديث قاعدة البيانات بالوقت الجديد وتغيير الحالة إلى فعال
+    const { error } = await supabase.from('gift_links').update({ 
+      expires_at: newExpiry.toISOString(), 
+      status: 'active' 
+    }).eq('id', id);
+
+    if (error) {
+      alert("حدث خطأ أثناء التمديد!");
+    } else {
+      alert("تم تمديد وقت الرابط وتفعيله بنجاح ✅");
+      fetchLinks(); // تحديث الجدول
+    }
+  };
+
   const exportToExcel = () => {
-    const headers = ["المعرف القصير", "الثيم", "السعر", "الفرع", "الموظف", "تاريخ الانشاء", "تاريخ الانتهاء", "الحالة الفعلية"];
+    const headers = ["الرابط الكامل", "الثيم", "السعر", "الفرع", "الموظف", "تاريخ الانشاء", "تاريخ الانتهاء", "الحالة الفعلية"];
     const rows = links.map(l => {
       const actualPrice = Number(l.price_at_sale || l.price || 0);
       const isExpired = new Date(l.expires_at) < new Date();
       const finalStatus = l.status === 'inactive' ? 'معطل يدوياً' : (isExpired ? 'منتهي الصلاحية' : 'فعال');
+      const fullUrl = `${window.location.origin}/${l.themes?.slug || 'gift'}/${l.short_id || l.id.split('-')[0]}`;
 
       return [
-        l.short_id || l.id.split('-')[0], 
+        fullUrl, 
         l.themes?.name || '-', 
         actualPrice, 
         l.points_of_sale?.name || '-', 
@@ -71,49 +99,77 @@ export default function LinksMaster() {
         <table style={table}>
           <thead style={thRow}>
             <tr>
-              <th style={th}>معرف الرابط</th>
+              <th style={th}>الرابط الكامل</th>
               <th style={th}>الثيم والسعر</th>
               <th style={th}>الفرع والموظف</th>
               <th style={th}>تاريخ الانتهاء</th>
               <th style={th}>الحالة الفعلية</th>
-              <th className="no-print" style={th}>إجراء طوارئ</th>
+              <th className="no-print" style={th}>إجراء طوارئ / تمديد</th>
             </tr>
           </thead>
           <tbody>
             {links.map(link => {
               const actualPrice = Number(link.price_at_sale || link.price || 0);
-              // فحص الصلاحية الفعلي للرابط
               const isExpired = new Date(link.expires_at) < new Date();
               const displayStatus = link.status === 'inactive' ? 'معطل' : (isExpired ? 'منتهي' : 'فعال');
+              
+              // بناء الرابط الكامل
+              const fullUrl = `${window.location.origin}/${link.themes?.slug || 'gift'}/${link.short_id || link.id.split('-')[0]}`;
 
               return (
                 <tr key={link.id} style={tdRow}>
-                  {/* عرض الـ short_id اللي يشوفه الموظف */}
-                  <td style={{ ...td, fontFamily: 'monospace', color: '#007bff', fontWeight: 'bold' }}>
-                    {link.short_id || link.id.split('-')[0]}
+                  {/* عرض الرابط الكامل */}
+                  <td style={{ ...td, direction: 'ltr', textAlign: 'left', maxWidth: '200px', wordBreak: 'break-all' }}>
+                    <a href={fullUrl} target="_blank" rel="noreferrer" style={linkStyle}>
+                      {fullUrl}
+                    </a>
                   </td>
+                  
                   <td style={td}>
                     <strong>{link.themes?.name}</strong><br/>
                     <span style={{ color: '#00cc66', fontWeight: 'bold' }}>{actualPrice.toLocaleString()} د.ع</span>
                   </td>
+                  
                   <td style={td}>
                     <span style={{ color: '#111', fontWeight: 'bold' }}>{link.points_of_sale?.name}</span><br/>
                     <span style={{ fontSize: '11px', color: '#555' }}>👤 {link.profiles?.fullname || 'غير معروف'}</span>
                   </td>
-                  <td style={td} dir="ltr">
-                    <span style={{ color: isExpired ? '#ff4d4d' : '#555', fontWeight: isExpired ? 'bold' : 'normal' }}>
+                  
+                  <td dir="ltr" style={{ ...td, textAlign: 'right' }}>
+                    <span style={{ color: isExpired ? '#ff9800' : '#555', fontWeight: isExpired ? 'bold' : 'normal' }}>
                       {new Date(link.expires_at).toLocaleString('en-IQ')}
                     </span>
                   </td>
+                  
                   <td style={td}>
                     <span style={displayStatus === 'فعال' ? badgeActive : (displayStatus === 'منتهي' ? badgeExpired : badgeInactive)}>
-                      {displayStatus === 'فعال' ? '🟢 شغال' : (displayStatus === 'منتهي' ? '⏳ انتهى وقته' : '🔴 معطل يدوياً')}
+                      {displayStatus === 'فعال' ? '🟢 شغال' : (displayStatus === 'منتهي' ? '🟠 انتهى وقته' : '🔴 معطل يدوياً')}
                     </span>
                   </td>
+                  
                   <td className="no-print" style={td}>
-                    <button onClick={() => toggleStatus(link.id, link.status)} style={link.status === 'active' ? btnDisable : btnEnable}>
-                      {link.status === 'active' ? 'إيقاف إجباري ❌' : 'إعادة تفعيل ✅'}
-                    </button>
+                    {/* إذا الرابط منتهي، نعرض خيارات التمديد */}
+                    {displayStatus === 'منتهي' ? (
+                      <div style={extendBox}>
+                        <select 
+                          value={extensions[link.id] || 'daily'} 
+                          onChange={(e) => setExtensions({...extensions, [link.id]: e.target.value})}
+                          style={selectStyle}
+                        >
+                          <option value="daily">يومي</option>
+                          <option value="weekly">أسبوعي</option>
+                          <option value="monthly">شهري</option>
+                        </select>
+                        <button onClick={() => extendLink(link.id)} style={btnExtend}>
+                          تمديد وتفعيل ♻️
+                        </button>
+                      </div>
+                    ) : (
+                      // إذا الرابط ما منتهي، نعرض زر التعطيل/التفعيل الطبيعي
+                      <button onClick={() => toggleStatus(link.id, link.status)} style={link.status === 'active' ? btnDisable : btnEnable}>
+                        {link.status === 'active' ? 'إيقاف إجباري ❌' : 'إعادة تفعيل ✅'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               );
@@ -127,21 +183,32 @@ export default function LinksMaster() {
 }
 
 // الستايلات
-const container: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '15px' };
+const container: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '15px', direction: 'rtl' };
 const headerSection: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '15px 20px', borderRadius: '10px', border: '1px solid #eee' };
 const title: React.CSSProperties = { margin: '0 0 4px 0', fontSize: '18px', fontWeight: 'bold' };
 const desc: React.CSSProperties = { margin: 0, fontSize: '12px', color: '#666' };
 const printBtn: React.CSSProperties = { background: '#fff', border: '1px solid #ddd', padding: '8px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' };
 const excelBtn: React.CSSProperties = { background: '#00cc66', border: 'none', color: '#fff', padding: '8px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' };
-const tableContainer: React.CSSProperties = { background: '#fff', borderRadius: '10px', border: '1px solid #eee', overflow: 'hidden' };
+const tableContainer: React.CSSProperties = { background: '#fff', borderRadius: '10px', border: '1px solid #eee', overflowX: 'auto' };
 const table: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', textAlign: 'right' };
 const thRow: React.CSSProperties = { background: '#f8f9fa', borderBottom: '1px solid #eee' };
-const th: React.CSSProperties = { padding: '12px 15px', fontSize: '12px', color: '#444' };
+const th: React.CSSProperties = { padding: '12px 15px', fontSize: '13px', color: '#444' };
 const tdRow: React.CSSProperties = { borderBottom: '1px solid #eee' };
-const td: React.CSSProperties = { padding: '12px 15px', fontSize: '12px' };
-const badgeActive: React.CSSProperties = { color: '#00cc66', fontWeight: 'bold', background: '#e6f9f0', padding: '4px 8px', borderRadius: '6px' };
-const badgeInactive: React.CSSProperties = { color: '#ff4d4d', fontWeight: 'bold', background: '#fff0f0', padding: '4px 8px', borderRadius: '6px' };
-const badgeExpired: React.CSSProperties = { color: '#f09433', fontWeight: 'bold', background: '#fff5eb', padding: '4px 8px', borderRadius: '6px' };
-const btnDisable: React.CSSProperties = { background: '#fff0f0', border: '1px solid #ffcccc', color: '#ff4d4d', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' };
-const btnEnable: React.CSSProperties = { background: '#e6f9f0', border: '1px solid #00cc66', color: '#00cc66', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' };
-const emptyText: React.CSSProperties = { padding: '20px', textAlign: 'center', color: '#999', fontSize: '12px' };
+const td: React.CSSProperties = { padding: '12px 15px', fontSize: '13px', verticalAlign: 'middle' };
+
+// ألوان الحالات (أخضر للفعال، برتقالي للمنتهي، أحمر للمعطل)
+const badgeActive: React.CSSProperties = { color: '#00cc66', fontWeight: 'bold', background: '#e6f9f0', padding: '5px 10px', borderRadius: '6px' };
+const badgeInactive: React.CSSProperties = { color: '#dc2626', fontWeight: 'bold', background: '#fef2f2', padding: '5px 10px', borderRadius: '6px' };
+const badgeExpired: React.CSSProperties = { color: '#ea580c', fontWeight: 'bold', background: '#fff7ed', padding: '5px 10px', borderRadius: '6px' };
+
+// أزرار التحكم الأساسية
+const btnDisable: React.CSSProperties = { background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' };
+const btnEnable: React.CSSProperties = { background: '#e6f9f0', border: '1px solid #00cc66', color: '#00cc66', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' };
+
+// أدوات التمديد
+const extendBox: React.CSSProperties = { display: 'flex', gap: '5px', alignItems: 'center' };
+const selectStyle: React.CSSProperties = { padding: '5px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '12px', outline: 'none' };
+const btnExtend: React.CSSProperties = { background: '#fff7ed', border: '1px solid #fdba74', color: '#ea580c', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' };
+
+const linkStyle: React.CSSProperties = { color: '#2563eb', textDecoration: 'none', fontSize: '12px', fontWeight: 'bold' };
+const emptyText: React.CSSProperties = { padding: '20px', textAlign: 'center', color: '#999', fontSize: '13px' };
