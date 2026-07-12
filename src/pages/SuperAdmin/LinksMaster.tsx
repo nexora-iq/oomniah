@@ -32,25 +32,53 @@ export default function LinksMaster() {
     fetchLinks();
   };
 
-  // ♻️ دالة تمديد الوقت للروابط المنتهية
-  const extendLink = async (id: string) => {
+  // ♻️ دالة تمديد الوقت للروابط المنتهية (مع تحديث المالية)
+  const extendLink = async (id: string, shortId: string, currentPrice: number, posName: string) => {
     const durationType = extensions[id] || 'daily';
-    const newExpiry = new Date(); // يبدأ التمديد من اللحظة الحالية
+    const newExpiry = new Date();
     
-    if (durationType === 'daily') newExpiry.setDate(newExpiry.getDate() + 1);
-    else if (durationType === 'weekly') newExpiry.setDate(newExpiry.getDate() + 7);
-    else if (durationType === 'monthly') newExpiry.setDate(newExpiry.getDate() + 30);
+    let addedPrice = 0;
+    let durationLabel = '';
 
-    // تحديث قاعدة البيانات بالوقت الجديد وتغيير الحالة إلى فعال
+    // 1. تحديد السعر والمدة بناءً على اختيار التمديد
+    if (durationType === 'daily') {
+      newExpiry.setDate(newExpiry.getDate() + 1);
+      addedPrice = 5000;
+      durationLabel = 'يومي';
+    } else if (durationType === 'weekly') {
+      newExpiry.setDate(newExpiry.getDate() + 7);
+      addedPrice = 10000;
+      durationLabel = 'أسبوعي';
+    } else if (durationType === 'monthly') {
+      newExpiry.setDate(newExpiry.getDate() + 30);
+      addedPrice = 15000;
+      durationLabel = 'شهري';
+    }
+
+    const newTotal = currentPrice + addedPrice;
+
+    // 2. تحديث قاعدة البيانات (الوقت + السعر الجديد + إرجاعه للمالية)
     const { error } = await supabase.from('gift_links').update({ 
       expires_at: newExpiry.toISOString(), 
-      status: 'active' 
+      status: 'active',
+      price_at_sale: newTotal, // 💰 تحديث السعر الكلي
+      is_cleared: false // 🔴 إرجاعه كحساب غير مصفر حتى يطالب به الموظف بالمالية
     }).eq('id', id);
 
     if (error) {
-      alert("حدث خطأ أثناء التمديد!");
+      alert("❌ حدث خطأ أثناء التمديد!");
     } else {
-      alert("تم تمديد وقت الرابط وتفعيله بنجاح ✅");
+      // 3. توثيق العملية في سجلات النظام لتظهر في الإحصائيات
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      await supabase.from('system_logs').insert([{
+        admin_name: 'الإدارة العليا', // يمكن جلب اسم الإدمن من البروفايل إذا مسيفه بالـ state
+        pos_name: posName || 'غير معروف',
+        action_type: 'تمديد رابط',
+        details: `تم تمديد الرابط (${shortId}) لمدة (${durationLabel}) | المبلغ المضاف: ${addedPrice} د.ع | السعر الكلي أصبح: ${newTotal} د.ع`
+      }]);
+
+      alert(`✅ تم تمديد الرابط بنجاح وإضافة ${addedPrice.toLocaleString()} د.ع للمالية!`);
       fetchLinks(); // تحديث الجدول
     }
   };
@@ -160,9 +188,12 @@ export default function LinksMaster() {
                           <option value="weekly">أسبوعي</option>
                           <option value="monthly">شهري</option>
                         </select>
-                        <button onClick={() => extendLink(link.id)} style={btnExtend}>
-                          تمديد وتفعيل ♻️
-                        </button>
+                       <button 
+  onClick={() => extendLink(link.id, link.short_id || link.id.split('-')[0], actualPrice, link.points_of_sale?.name)} 
+  style={btnExtend}
+>
+  تمديد وتفعيل ♻️
+</button>
                       </div>
                     ) : (
                       // إذا الرابط ما منتهي، نعرض زر التعطيل/التفعيل الطبيعي
