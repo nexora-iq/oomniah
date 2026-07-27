@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+    <meta property="og:title" content="لديك مفاجأة خاصة 🎁" />
+    <meta property="og:description" content="اضغط لفتح هديتك والمفاجأة التي تنتظرك ✨" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://your-domain.com/themes/them-1-hello-kitty/music-art.jpeg" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>مفاجأة خاصة ✨</title>
@@ -39,11 +43,15 @@
         .player-header { color: var(--text-white); font-size: 1.3rem; font-weight: bold; margin-bottom: 25px; display: flex; align-items: center; gap: 8px; }
         .player-art { width: 200px; height: 200px; border-radius: 28px; overflow: hidden; margin-bottom: 30px; border: none; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
         .player-art img { width: 100%; height: 100%; object-fit: cover; }
-        .progress-container { width: 95%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 25px; }
-        .progress-bar { width: 100%; height: 5px; background: rgba(255,255,255,0.15); border-radius: 10px; position: relative; cursor: pointer; }
-        .progress-current { width: 0%; height: 100%; background: var(--pink-main); border-radius: 10px; box-shadow: 0 0 10px var(--pink-main); transition: width 0.1s linear; }
-        .time-info { display: flex; justify-content: space-between; color: rgba(255,255,255,0.5); font-size: 0.85rem; }
-        .controls { display: flex; align-items: center; justify-content: center; gap: 25px; width: 100%; }
+        
+        .progress-container { width: 95%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 25px; direction: ltr; }
+        .progress-bar { width: 100%; height: 8px; background: rgba(255,255,255,0.2); border-radius: 10px; position: relative; cursor: pointer; touch-action: none; }
+        .progress-current { width: 0%; height: 100%; background: var(--pink-main); border-radius: 10px; box-shadow: 0 0 10px var(--pink-main); position: relative; pointer-events: none; }
+        .progress-knob { position: absolute; right: -7px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; background: #fff; border-radius: 50%; box-shadow: 0 0 8px rgba(0,0,0,0.4); opacity: 0; transition: opacity 0.2s, transform 0.1s; pointer-events: auto; }
+        .progress-bar:hover .progress-knob, .progress-bar:active .progress-knob, .progress-knob.dragging { opacity: 1; transform: translateY(-50%) scale(1.2); }
+        .time-info { display: flex; justify-content: space-between; color: rgba(255,255,255,0.6); font-size: 0.85rem; font-weight: bold; }
+        
+        .controls { display: flex; align-items: center; justify-content: center; gap: 25px; width: 100%; direction: ltr; }
         .control-btn { background: none; border: none; color: rgba(255, 255, 255, 0.8); font-size: 1.6rem; cursor: pointer; transition: color 0.2s; }
         .control-btn:active { color: var(--pink-main); }
         .play-pause { width: 65px; height: 65px; background: var(--pink-main); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.4rem; box-shadow: 0 6px 20px rgba(255, 120, 152, 0.4); cursor: pointer; transition: transform 0.1s; }
@@ -62,6 +70,8 @@
     </style>
 </head>
 <body>
+
+    <div id="youtube-container" style="display: none;"></div>
 
     <div class="deep-background">
         <img src="bg-image1.png" class="bg-img img-top-left" alt="">
@@ -97,25 +107,25 @@
 
         <div class="card" id="card3">
             <div class="image-box"><img src="kit3.png" alt="Hello Kitty Shy"></div>
-            <div class="question-bar" data-text="هاك هاي ورد 🌷 قبل السؤال"></div>
+            <div class="question-bar" data-text="هاي ورد 🌷 قبل السؤال"></div>
             <button class="btn-reply" onclick="nextCard(4)">كيوتتتتت</button>
         </div>
 
         <div class="card" id="card4">
             <div class="image-box"><img src="kit4.jpeg" alt="Hello Kitty Cute"></div>
-            <div class="question-bar" id="dyn-q4" data-text="تحبين ... لو لا 🫣"></div>
+            <div class="question-bar" id="dyn-q4" data-text="..."></div>
             <button class="btn-reply" onclick="nextCard(5)">مدري</button>
         </div>
 
         <div class="card" id="card5">
             <div class="image-box"><img src="kit5.jpeg" alt="Hello Kitty Angry/Sad"></div>
-            <div class="question-bar" id="dyn-q5" data-text="شنو مدرييي!!! تحبين ... لو لا 🤨"></div>
+            <div class="question-bar" id="dyn-q5" data-text="..."></div>
             <button class="btn-reply" onclick="nextCard(6)">اممممم?</button>
         </div>
 
         <div class="card" id="card6">
             <div class="image-box"><img src="kit6.jpeg" alt="Hello Kitty Love"></div>
-            <div class="question-bar" id="dyn-q6" data-text="اذا تحبين ... دوسي على القلب 🫣"></div>
+            <div class="question-bar" id="dyn-q6" data-text="..."></div>
             <div id="heartTrigger" onclick="nextCard(7)">🩷</div>
         </div>
 
@@ -125,12 +135,16 @@
         </div>
 
         <div class="card" id="card8" id="musicCard">
-            <div class="player-card">
+            <div class="player-card" style="padding-top: 50px;">
                 <div class="player-header">🎵 أغنيتنا المفضلة</div>
-                <div class="player-art"><img src="music-art.jpeg" alt="Music"></div>
+                <div class="player-art" style="margin-top: 20px;"><img src="music-art.jpeg" alt="Music"></div>
                 
                 <div class="progress-container" id="progressContainer">
-                    <div class="progress-bar"><div class="progress-current" id="progressCurrent"></div></div>
+                    <div class="progress-bar" id="progressBar">
+                        <div class="progress-current" id="progressCurrent">
+                            <div class="progress-knob" id="progressKnob"></div> 
+                        </div>
+                    </div>
                     <div class="time-info">
                         <span id="currentTime">0:00</span>
                         <span id="durationTime">0:00</span>
@@ -138,107 +152,106 @@
                 </div>
 
                 <div class="controls">
-                    <button class="control-btn">⏮</button>
+                    <button class="control-btn" onclick="seekAudio(-10)">⏮</button>
                     <div class="play-pause" id="playPauseBtn">⏸</div>
-                    <button class="control-btn">⏭</button>
+                    <button class="control-btn" onclick="seekAudio(10)">⏭</button>
                 </div>
             </div>
-            <button class="btn-restart" onclick="restartApp()">العودة للبداية 🤍</button>
+            <button class="btn-restart" onclick="location.reload()">العودة للبداية 🤍</button>
         </div>
 
     </div>
-<!-- زر التنشيق / المودال (موجود أسفل اليسار) -->
-<button onclick="document.getElementById('info-modal-overlay').style.display='flex'" style="position: fixed; bottom: 25px; left: 25px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.4); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); color: #fff; font-size: 24px; font-weight: 500; display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 99999; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);">
-    !
+
+<!-- زر فتح الشروط (علامة تعجب أو درع) -->
+<button onclick="document.getElementById('info-modal-overlay').style.display='flex'" style="position: fixed; bottom: 25px; left: 25px; width: 50px; height: 50px; border-radius: 50%; background: rgba(220, 38, 38, 0.15); border: 1px solid rgba(220, 38, 38, 0.3); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: #dc2626; font-size: 22px; display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 99999; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); transition: all 0.3s ease;">
+    📜
 </button>
 
-<!-- خلفية المودال الشفافة -->
-<div id="info-modal-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 100000; display: none; justify-content: center; align-items: center; direction: rtl; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 20px; box-sizing: border-box;">
+<!-- نافذة الشروط وإخلاء المسؤولية -->
+<div id="info-modal-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 100000; display: none; justify-content: center; align-items: center; direction: rtl; font-family: 'Tajawal', 'Segoe UI', sans-serif; padding: 20px; box-sizing: border-box; opacity: 1; transition: opacity 0.3s ease;">
     
-    <!-- صندوق المحتوى -->
-    <div style="background: #ffffff; width: 100%; max-width: 400px; border-radius: 24px; padding: 40px 24px 24px; text-align: center; position: relative; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); animation: modalFadeIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); box-sizing: border-box;">
+    <div style="background: #ffffff; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; border-radius: 24px; padding: 35px 25px; text-align: center; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); box-sizing: border-box;">
         
         <!-- زر الإغلاق -->
-        <button onclick="document.getElementById('info-modal-overlay').style.display='none'" style="position: absolute; top: 20px; right: 20px; background: #f1f5f9; border: none; width: 36px; height: 36px; border-radius: 50%; color: #64748b; font-weight: bold; cursor: pointer; font-size: 14px; display: flex; justify-content: center; align-items: center; transition: all 0.2s ease;">✕</button>
+        <button onclick="document.getElementById('info-modal-overlay').style.display='none'" style="position: absolute; top: 20px; right: 20px; background: #f1f5f9; border: 1px solid #e2e8f0; width: 36px; height: 36px; border-radius: 50%; color: #64748b; font-weight: bold; cursor: pointer; font-size: 16px; display: flex; justify-content: center; align-items: center; transition: all 0.2s ease;">✕</button>
         
-        <!-- الأيقونة العلوية -->
-        <div style="font-size: 50px; margin-bottom: 16px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">🎁</div>
+        <!-- الأيقونة والعنوان -->
+        <div style="font-size: 45px; margin-bottom: 10px; filter: drop-shadow(0 4px 6px rgba(220,38,38,0.2));">🛡️</div>
+        <h3 style="color: #1e293b; font-size: 22px; margin-top: 0; margin-bottom: 5px; font-weight: 900;">إخلاء مسؤولية وشروط الاستخدام</h3>
+        <p style="color: #64748b; font-size: 14px; margin-bottom: 25px; font-weight: 600;">يرجى قراءة الشروط التالية بعناية</p>
         
-        <!-- العنوان الرئيسي -->
-        <h3 style="color: #0f172a; font-size: 20px; margin-top: 0; margin-bottom: 20px; line-height: 1.4; font-weight: 800; letter-spacing: -0.5px;">أنشئ هديتك الآن واختار الثيم اللي يناسبك!</h3>
-        
-        <!-- زر الانستغرام -->
-        <a href="https://www.instagram.com/link.love1?igsh=dDRjd2d3MTN1dm92" target="_blank" style="display: block; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 50px; font-weight: 700; font-size: 15px; margin-bottom: 28px; box-shadow: 0 4px 14px rgba(220, 39, 67, 0.4); transition: transform 0.2s ease, box-shadow 0.2s ease;">
-            عبر حسابنا على الانستغرام
-        </a>
-        
-        <!-- فاصل أنيق -->
-        <div style="height: 1px; background: #e2e8f0; margin-bottom: 20px;"></div>
-        
-        <!-- الشروط والتعليمات -->
-        <div style="text-align: right; display: flex; flex-direction: column; gap: 12px;">
-            <div style="display: flex; gap: 8px; align-items: flex-start;">
-                <span style="color: #dc2743; font-size: 12px; margin-top: 2px;">•</span>
-                <p style="color: #475569; font-size: 12.5px; line-height: 1.6; margin: 0; font-weight: 500;">نحن غير مسؤولين عن الاستخدامات الخاطئة لمواقعنا وثيماتنا من قبل أي شخص.</p>
+        <!-- قائمة الشروط -->
+        <div style="text-align: right; display: flex; flex-direction: column; gap: 15px; background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 25px;">
+            
+            <div style="display: flex; gap: 10px; align-items: flex-start;">
+                <span style="color: #dc2626; font-size: 16px; margin-top: 2px;">⚠️</span>
+                <p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">
+                    تخلي منصة "أمنية" مسؤوليتها الكاملة عن أي استخدام سيء، غير أخلاقي، أو غير قانوني لمواقعنا وثيماتنا من قبل أي شخص.
+                </p>
             </div>
             
-            <div style="display: flex; gap: 8px; align-items: flex-start;">
-                <span style="color: #dc2743; font-size: 12px; margin-top: 2px;">•</span>
-                <p style="color: #475569; font-size: 12.5px; line-height: 1.6; margin: 0; font-weight: 500;">كل ثيماتنا ومواقعنا هي ملك لنا ومن تصميمنا الخاص.</p>
+            <div style="display: flex; gap: 10px; align-items: flex-start;">
+                <span style="color: #dc2626; font-size: 16px; margin-top: 2px;">©️</span>
+                <p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">
+                    جميع الثيمات والتصاميم والمواقع هي ملكية فكرية حصرية لمنصة "أمنية"، ومسجلة بحقوق طبع ونشر.
+                </p>
             </div>
             
-            <div style="display: flex; gap: 8px; align-items: flex-start;">
-                <span style="color: #dc2743; font-size: 12px; margin-top: 2px;">•</span>
-                <p style="color: #475569; font-size: 12.5px; line-height: 1.6; margin: 0; font-weight: 500;">لا يتم بيع أو تداول مواقعنا في مكان آخر إلا إذا كان الحساب تابعاً لنا، ويتم نشر الحسابات الرسمية في مواقعنا فقط.</p>
+            <div style="display: flex; gap: 10px; align-items: flex-start;">
+                <span style="color: #dc2626; font-size: 16px; margin-top: 2px;">🚫</span>
+                <p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">
+                    لا يتم بيع أو تداول خدماتنا في أي مكان آخر إلا عبر حساباتنا الرسمية ووكلائنا المعتمدين المنشورة أسماؤهم في موقعنا فقط.
+                </p>
             </div>
             
-            <div style="display: flex; gap: 8px; align-items: flex-start;">
-                <span style="color: #dc2743; font-size: 12px; margin-top: 2px;">•</span>
-                <p style="color: #475569; font-size: 12.5px; line-height: 1.6; margin: 0; font-weight: 500;">إذا كان هنالك أي حسابات تنشر فيديوهاتنا أو تتداول مواقعنا، قوموا بإبلاغنا عبر حساباتنا الرسمية. إذا كان البلاغ صحيحاً سنقدم مكافأة للمبلّغ.</p>
+            <div style="display: flex; gap: 10px; align-items: flex-start;">
+                <span style="color: #dc2626; font-size: 16px; margin-top: 2px;">💰</span>
+                <p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">
+                    إذا رصدتم أي جهة أو حساب يسرق تصاميمنا أو ينتحل صفتنا، يرجى إبلاغنا فوراً عبر حساباتنا الرسمية. <span style="color: #16a34a;">(توجد مكافأة مالية للإبلاغ الصحيح).</span>
+                </p>
             </div>
-        </div>
-        
-        <!-- التوقيع العلوى السفلي -->
-        <p style="color: #94a3b8; font-size: 12px; font-weight: 600; margin-top: 24px; margin-bottom: 0;">شاكرين تعاونكم — إدارة LinkLove</p>
 
+        </div>
+
+        <!-- أزرار التواصل -->
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <a href="https://www.instagram.com/oomnia.1/" target="_blank" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: #ffffff; text-decoration: none; padding: 14px; border-radius: 12px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 15px rgba(220, 39, 67, 0.3); transition: all 0.2s ease;">
+                تواصل معنا عبر الانستغرام 📸
+            </a>
+            
+            <a href="https://oomniah.netlify.app" target="_blank" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: #1e293b; color: #ffffff; text-decoration: none; padding: 14px; border-radius: 12px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 15px rgba(30, 41, 59, 0.3); transition: all 0.2s ease;">
+                زيارة الموقع الرسمي للمنصة 🌐
+            </a>
+        </div>
+
+        <p style="color: #94a3b8; font-size: 12px; font-weight: bold; margin-top: 20px; margin-bottom: 0;">
+            شاكرين تعاونكم — إدارة أمنية (Oomniah)
+        </p>
+        
     </div>
 </div>
 
-<!-- تأثير الحركة عند فتح النافذة -->
-<style>
-    @keyframes modalFadeIn {
-        from {
-            opacity: 0;
-            transform: scale(0.9) translateY(10px);
-        }
-        to {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-        }
-    }
-    
-    /* تأثيرات التمرير بالفأرة (Hover) */
-    #info-modal-overlay button:hover {
-        background: #e2e8f0 !important;
-        color: #0f172a !important;
-    }
-    #info-modal-overlay a:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(220, 39, 67, 0.5) !important;
-    }
-</style>
-
     <script>
         const urlParams = new URLSearchParams(window.location.search);
-        const sender = urlParams.get('sender') || 'شخص مجهول';
-        const recipient = urlParams.get('recipient') || 'صديقي';
-        const message = (urlParams.get('message') || 'رسالة خاصة لك...').replace(/\n/g, '<br>');
-        const rawAudioUrl = urlParams.get('yt') || '';
-        const startTime = parseInt(urlParams.get('start')) || 0;
         
+        const sender = urlParams.get('sender') || '[أسم المرسل]';
+        const recipient = urlParams.get('recipient') || '[أسم المستلم]';
+        const message = (urlParams.get('message') || 'رسالتك التي ترسلها الى المتجر عند شراء الرابط').replace(/\n/g, '<br>');
         const gender = urlParams.get('gender') || 'female';
+        
+        const rawAudioUrl = urlParams.get('yt_clean') || urlParams.get('yt') || '';
+        
+        let startTime = parseInt(urlParams.get('start'));
+        if (isNaN(startTime) || startTime === 0) {
+            const startMatch = rawAudioUrl.match(/[?&]start=(\d+)/);
+            if (startMatch) {
+                startTime = parseInt(startMatch[1]);
+            } else {
+                startTime = 0;
+            }
+        }
 
-        const isMale = (gender === 'male');
+        const isMale = (gender === 'male' || gender === 'ذكر');
         const textAreYou = isMale ? "انتَ" : "انتِ";
         const textLove = isMale ? "تحب" : "تحبين";
         const textClick = isMale ? "دوس" : "دوسي";
@@ -246,12 +259,13 @@
         document.getElementById('dyn-are-you').innerText = textAreYou;
         document.getElementById('dyn-recipient1').innerText = recipient;
         
-        document.getElementById('dyn-q1').setAttribute('data-text', `هلو ${recipient}`);
-        document.getElementById('dyn-q4').setAttribute('data-text', `${textLove} ${sender} لو لا 🫣`);
-        document.getElementById('dyn-q5').setAttribute('data-text', `شنو مدرييي!!! ${textLove} ${sender} لو لا 🤨`);
+        document.getElementById('dyn-q1').setAttribute('data-text', `هلو ${recipient} ✨`);
+        document.getElementById('dyn-q4').setAttribute('data-text', `${recipient} ${textLove} ${sender} ؟ 🫣`);
+        document.getElementById('dyn-q5').setAttribute('data-text', `شنو مدرييي!!! اكيد ${textLove} ${sender} 🤨`);
         document.getElementById('dyn-q6').setAttribute('data-text', `اذا ${textLove} ${sender} ${textClick} على القلب 🫣`);
-        
         document.getElementById('dyn-message').setAttribute('data-text', message);
+
+        document.addEventListener('contextmenu', e => e.preventDefault());
 
         const hasAudio = rawAudioUrl.trim().length > 0;
         const isMp3File = rawAudioUrl.toLowerCase().includes('.mp3') || rawAudioUrl.includes('supabase.co/storage');
@@ -259,13 +273,27 @@
         let ytPlayer = null;
         let localAudio = null;
         let isAudioLoaded = false;
+        let progressInterval;
+        let isDragging = false;
+        let appStarted = false; // ⬇️ متغير جديد يراقب اذا المستخدم داس البداية لو لا
+
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const progressCurrent = document.getElementById('progressCurrent');
+        const progressBar = document.getElementById('progressBar');
+        const currentTimeEl = document.getElementById('currentTime');
+        const durationTimeEl = document.getElementById('durationTime');
+        const progressKnob = document.getElementById('progressKnob');
 
         if (hasAudio) {
             if (isMp3File) {
-                localAudio = document.createElement('audio');
-                localAudio.src = rawAudioUrl;
+                localAudio = new Audio(rawAudioUrl);
                 localAudio.preload = 'auto';
-                document.body.appendChild(localAudio);
+                
+                // ⬇️ حل مشكلة الإعادة للملفات الصوتية العادية ⬇️
+                localAudio.addEventListener('ended', () => {
+                    localAudio.currentTime = startTime;
+                    localAudio.play();
+                });
                 isAudioLoaded = true;
             } else {
                 function getYoutubeId(url) {
@@ -288,38 +316,50 @@
                         videoId: getYoutubeId(rawAudioUrl),
                         playerVars: { 'autoplay': 0, 'controls': 0, 'start': startTime, 'playsinline': 1 },
                         events: {
-                            'onReady': () => { isAudioLoaded = true; },
+                            'onReady': (e) => { 
+                                isAudioLoaded = true; 
+                                // ⬇️ حل مشكلة النقر السريع: اذا كان الزبون دايس مسبقاً، شغله هسه ⬇️
+                                if (appStarted) {
+                                    e.target.playVideo();
+                                    setTimeout(() => { e.target.seekTo(startTime, true); }, 200);
+                                    if(playPauseBtn) playPauseBtn.innerText = '⏸';
+                                    startProgressTracker();
+                                }
+                            },
                             'onStateChange': (e) => { 
-                                if(e.data === 0) { ytPlayer.seekTo(startTime); ytPlayer.playVideo(); } 
+                                if(e.data === YT.PlayerState.PLAYING) {
+                                    playPauseBtn.innerText = '⏸';
+                                } else if (e.data === YT.PlayerState.ENDED) {
+                                    // ⬇️ حل مشكلة الإعادة والتصفير لليوتيوب ⬇️
+                                    ytPlayer.seekTo(startTime, true);
+                                    ytPlayer.playVideo();
+                                } else {
+                                    playPauseBtn.innerText = '▶';
+                                }
                             }
                         }
                     });
                 }
             }
-        } else {
-            document.getElementById('card8').innerHTML = '<button class="btn-restart" onclick="restartApp()" style="margin-top:50vh;">العودة للبداية 🤍</button>';
         }
-document.addEventListener('contextmenu', e => e.preventDefault());
-        const playPauseBtn = document.getElementById('playPauseBtn');
-        const progressCurrent = document.getElementById('progressCurrent');
-        const currentTimeEl = document.getElementById('currentTime');
-        const durationTimeEl = document.getElementById('durationTime');
-        const progressContainer = document.getElementById('progressContainer');
-        let progressInterval;
 
         function startAppWithMusic() {
+            appStarted = true; // تسجيل دخول المستخدم
             if (hasAudio) {
                 if (isMp3File && localAudio) {
                     localAudio.currentTime = startTime;
                     localAudio.play().catch(e=>console.log(e));
-                    if(playPauseBtn) playPauseBtn.innerText = '⏸';
+                    playPauseBtn.innerText = '⏸';
                     startProgressTracker();
-                } else if (!isMp3File && ytPlayer) {
-                    ytPlayer.seekTo(startTime);
-                    ytPlayer.playVideo();
-                    if(playPauseBtn) playPauseBtn.innerText = '⏸';
+                } else if (!isMp3File && ytPlayer && typeof ytPlayer.playVideo === 'function') {
+                    try {
+                        ytPlayer.playVideo();
+                        setTimeout(() => { ytPlayer.seekTo(startTime, true); }, 200);
+                    } catch(e) {}
+                    playPauseBtn.innerText = '⏸';
                     startProgressTracker();
                 }
+                // اذا مشغل اليوتيوب بعده ما محمل، راح يتكفل بيها حدث onReady فوگ
             }
             nextCard(1);
         }
@@ -338,85 +378,123 @@ document.addEventListener('contextmenu', e => e.preventDefault());
 
         if(playPauseBtn) playPauseBtn.addEventListener('click', toggleAudio);
 
+        function seekAudio(seconds) {
+            if (!hasAudio) return;
+            if (isMp3File && localAudio) {
+                localAudio.currentTime += seconds;
+            } else if (!isMp3File && ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+                const currentTime = ytPlayer.getCurrentTime();
+                ytPlayer.seekTo(currentTime + seconds, true);
+            }
+        }
+
         function startProgressTracker() {
             clearInterval(progressInterval);
             progressInterval = setInterval(() => {
+                if (isDragging) return; 
+
                 let currentTime = 0;
                 let actualDuration = 0;
-                let isPlaying = false;
 
-                if (isMp3File && localAudio && !localAudio.paused) {
+                if (isMp3File && localAudio) {
                     currentTime = localAudio.currentTime;
                     actualDuration = localAudio.duration || 200;
-                    isPlaying = true;
-                } else if (!isMp3File && ytPlayer && ytPlayer.getPlayerState && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
-                    currentTime = ytPlayer.getCurrentTime();
+                } else if (!isMp3File && ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+                    // ⬇️ التعديل هنا: العداد يستمر بالقراءة حتى لو الفيديو مؤقت أو ديبدأ من جديد ⬇️
+                    currentTime = ytPlayer.getCurrentTime() || 0;
                     actualDuration = ytPlayer.getDuration() || 200;
-                    isPlaying = true;
+                } else {
+                    return;
                 }
 
-                if (isPlaying) {
-                    if (currentTime >= actualDuration - 0.5) {
-                        if (isMp3File) { localAudio.currentTime = startTime; localAudio.play(); }
-                        else { ytPlayer.seekTo(startTime); ytPlayer.playVideo(); }
-                    }
+                const totalDuration = actualDuration - startTime;
+                const currentProgress = currentTime - startTime;
+                
+                // منع النسبة من النزول تحت الصفر اذا رجع لبداية الاغنية
+                const progressPercent = Math.max(0, Math.min(100, (currentProgress / totalDuration) * 100));
+                
+                if(progressCurrent) progressCurrent.style.width = `${progressPercent}%`;
 
-                    const totalDuration = actualDuration - startTime;
-                    const currentProgress = currentTime - startTime;
-                    const progressPercent = Math.max(0, Math.min(100, (currentProgress / totalDuration) * 100));
-                    
-                    if(progressCurrent) progressCurrent.style.width = `${progressPercent}%`;
+                let displayTime = Math.max(0, currentTime - startTime);
+                let currentMins = Math.floor(displayTime / 60);
+                let currentSecs = Math.floor(displayTime % 60);
+                if (currentSecs < 10) currentSecs = '0' + currentSecs;
+                if(currentTimeEl) currentTimeEl.innerText = `${currentMins}:${currentSecs}`;
 
-                    let displayTime = Math.max(0, currentTime - startTime);
-                    let currentMins = Math.floor(displayTime / 60);
-                    let currentSecs = Math.floor(displayTime % 60);
-                    if (currentSecs < 10) currentSecs = '0' + currentSecs;
-                    if(currentTimeEl) currentTimeEl.innerText = `${currentMins}:${currentSecs}`;
-
-                    let durationMins = Math.floor(totalDuration / 60);
-                    let durationSecs = Math.floor(totalDuration % 60);
-                    if (durationSecs < 10) durationSecs = '0' + durationSecs;
-                    if(durationTimeEl) durationTimeEl.innerText = `${durationMins}:${durationSecs}`;
-                }
+                let durationMins = Math.floor(totalDuration / 60);
+                let durationSecs = Math.floor(totalDuration % 60);
+                if (durationSecs < 10) durationSecs = '0' + durationSecs;
+                if(durationTimeEl) durationTimeEl.innerText = `${durationMins}:${durationSecs}`;
+                
             }, 500);
         }
 
-        if(progressContainer) {
-            progressContainer.addEventListener('click', (e) => {
-                if (!hasAudio) return;
-                const width = progressContainer.clientWidth;
-                const clickX = e.offsetX;
-                
-                let actualDuration = 200;
-                if (isMp3File && localAudio) actualDuration = localAudio.duration || 200;
-                else if (!isMp3File && ytPlayer) actualDuration = ytPlayer.getDuration() || 200;
-
-                const totalDuration = actualDuration - startTime;
-                const newTime = startTime + ((clickX / width) * totalDuration);
-
-                if (isMp3File && localAudio) {
-                    localAudio.currentTime = newTime;
-                    localAudio.play();
-                } else if (!isMp3File && ytPlayer) {
-                    ytPlayer.seekTo(newTime);
-                    ytPlayer.playVideo();
-                }
-                playPauseBtn.innerText = '⏸';
-            });
+        function updateProgressFromEvent(e) {
+            const rect = progressBar.getBoundingClientRect();
+            let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            let x = clientX - rect.left;
+            let width = rect.width;
+            let percent = Math.max(0, Math.min(100, (x / width) * 100));
+            progressCurrent.style.width = percent + '%';
+            return percent;
         }
 
-        function restartApp() {
-            if (hasAudio) {
-                if (isMp3File && localAudio) {
-                    localAudio.currentTime = startTime;
-                    localAudio.play();
-                } else if (!isMp3File && ytPlayer) {
-                    ytPlayer.seekTo(startTime);
-                    ytPlayer.playVideo();
-                }
-                if(playPauseBtn) playPauseBtn.innerText = '⏸';
+        function seekToPercent(percent) {
+            if (!hasAudio) return;
+            let actualDuration = 200;
+            if (isMp3File && localAudio) actualDuration = localAudio.duration || 200;
+            else if (!isMp3File && ytPlayer && typeof ytPlayer.getDuration === 'function') actualDuration = ytPlayer.getDuration() || 200;
+
+            const totalDuration = actualDuration - startTime;
+            const newTime = startTime + ((percent / 100) * totalDuration);
+
+            if (isMp3File && localAudio) {
+                localAudio.currentTime = newTime;
+                if(localAudio.paused) localAudio.play();
+            } else if (!isMp3File && ytPlayer && typeof ytPlayer.seekTo === 'function') {
+                ytPlayer.seekTo(newTime, true);
+                ytPlayer.playVideo();
             }
-            nextCard(0);
+            playPauseBtn.innerText = '⏸';
+        }
+
+        if(progressBar) {
+            progressBar.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                progressKnob.classList.add('dragging');
+                updateProgressFromEvent(e);
+            });
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) updateProgressFromEvent(e);
+            });
+            document.addEventListener('mouseup', (e) => {
+                if (isDragging) {
+                    let percent = updateProgressFromEvent(e);
+                    seekToPercent(percent);
+                    isDragging = false;
+                    progressKnob.classList.remove('dragging');
+                }
+            });
+
+            progressBar.addEventListener('touchstart', (e) => {
+                isDragging = true;
+                progressKnob.classList.add('dragging');
+                updateProgressFromEvent(e);
+            }, {passive: true});
+            document.addEventListener('touchmove', (e) => {
+                if (isDragging) updateProgressFromEvent(e);
+            }, {passive: true});
+            document.addEventListener('touchend', (e) => {
+                if (isDragging) {
+                    const rect = progressBar.getBoundingClientRect();
+                    let clientX = e.changedTouches[0].clientX;
+                    let x = clientX - rect.left;
+                    let percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
+                    seekToPercent(percent);
+                    isDragging = false;
+                    progressKnob.classList.remove('dragging');
+                }
+            });
         }
 
         function createFallingBow() {
@@ -436,7 +514,7 @@ document.addEventListener('contextmenu', e => e.preventDefault());
         setInterval(createFallingBow, 1600);
 
         document.addEventListener('click', function(e) {
-            if(e.target.classList.contains('start-circle') || e.target.classList.contains('btn-restart')) return;
+            if(e.target.closest('.controls') || e.target.closest('.progress-container') || e.target.classList.contains('start-circle') || e.target.classList.contains('btn-restart')) return;
             for (let i = 0; i < 4; i++) {
                 const heart = document.createElement('div');
                 heart.className = 'click-heart';

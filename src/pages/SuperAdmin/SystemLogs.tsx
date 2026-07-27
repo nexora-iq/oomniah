@@ -1,246 +1,193 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
+import { 
+  FaShieldAlt, FaSearch, FaSyncAlt, FaSignInAlt, 
+  FaSignOutAlt, FaTrashAlt, FaEdit, FaPlusCircle, 
+  FaClipboardList, FaUserTie, FaBuilding, FaSpinner, 
+  FaExclamationCircle 
+} from 'react-icons/fa'; // 🌟 استدعاء الأيقونات
 
 export default function SystemLogs() {
-  const [logs, setLogs] = useState<any[]>([]);
-  const [filteredLogs, setFilteredLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // حالات الفلاتر المتقدمة والبحث
-  const [searchQuery, setSearchTerm] = useState('');
-  const [actionFilter, setActionFilter] = useState('all');
-  const [adminFilter, setAdminFilter] = useState('all');
-  const [posFilter, setPosFilter] = useState('all');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-
-  // قوائم فريدة للفلترة الديناميكية
-  const [actionTypes, setActionTypes] = useState<string[]>([]);
-  const [adminNames, setAdminNames] = useState<string[]>([]);
-  const [posNames, setPosNames] = useState<string[]>([]);
-
-  const fetchLogs = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('system_logs')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error("Error fetching system logs:", error);
-      setLoading(false);
-      return;
-    }
-
-    if (data) {
-      setLogs(data);
-      setFilteredLogs(data);
-
-      // استخراج القوائم الفريدة للفلاتر تلقائياً من البيانات
-      const actions = Array.from(new Set(data.map(l => l.action_type).filter(Boolean))) as string[];
-      const admins = Array.from(new Set(data.map(l => l.admin_name).filter(Boolean))) as string[];
-      const positions = Array.from(new Set(data.map(l => l.pos_name).filter(Boolean))) as string[];
-      
-      setActionTypes(actions);
-      setAdminNames(admins);
-      setPosNames(positions);
-    }
-    setLoading(false);
-  };
+  const [logs, setLogs] = useState<any[]>([]);
+  
+  // حالات الفلترة والبحث
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('all');
 
   useEffect(() => {
     fetchLogs();
   }, []);
 
-  // تفعيل الفلترة والبحث اللحظي عند تغيير أي فلتر
-  useEffect(() => {
-    let result = [...logs];
+  const fetchLogs = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('system_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(500);
 
-    // 1. الفلترة حسب البحث النصي العام (يبحث في التفاصيل أو الأسماء)
-    if (searchQuery.trim() !== '') {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(log => 
-        (log.details && log.details.toLowerCase().includes(q)) ||
-        (log.admin_name && log.admin_name.toLowerCase().includes(q)) ||
-        (log.pos_name && log.pos_name.toLowerCase().includes(q))
-      );
+      if (error) throw error;
+      if (data) setLogs(data);
+    } catch (error) {
+      console.error('Error fetching logs:', error);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    // 2. الفلترة حسب نوع الحركة
-    if (actionFilter !== 'all') {
-      result = result.filter(log => log.action_type === actionFilter);
+  // 🛡️ فلترة آمنة وذكية
+  const filteredLogs = logs.filter(log => {
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch = 
+      ((log.admin_name || '').toLowerCase().includes(searchLower)) ||
+      ((log.details || '').toLowerCase().includes(searchLower)) ||
+      ((log.pos_name || '').toLowerCase().includes(searchLower));
+      
+    const matchesFilter = filterType === 'all' || (log.action_type || '').includes(filterType);
+    
+    return matchesSearch && matchesFilter;
+  });
+
+  // 🛡️ ألوان وأيقونات الحركات (تم استبدال الإيموجيز بأيقونات FontAwesome)
+  const getActionStyle = (type?: string | null) => {
+    if (!type) return { bg: '#f3f4f6', color: '#4b5563', icon: <FaClipboardList />, border: '#e2e8f0' };
+    
+    if (type.includes('دخول')) return { bg: '#dcfce7', color: '#16a34a', icon: <FaSignInAlt />, border: '#bbf7d0' };
+    if (type.includes('خروج')) return { bg: '#f1f5f9', color: '#64748b', icon: <FaSignOutAlt />, border: '#e2e8f0' };
+    if (type.includes('حذف') || type.includes('خطأ')) return { bg: '#fee2e2', color: '#dc2626', icon: <FaTrashAlt />, border: '#fecaca' };
+    if (type.includes('تعديل') || type.includes('تحديث') || type.includes('تصفية')) return { bg: '#fef3c7', color: '#d97706', icon: <FaEdit />, border: '#fde68a' };
+    if (type.includes('إنشاء') || type.includes('توليد') || type.includes('إضافة') || type.includes('مبيعات')) return { bg: '#dbeafe', color: '#2563eb', icon: <FaPlusCircle />, border: '#bfdbfe' };
+    
+    return { bg: '#f3f4f6', color: '#4b5563', icon: <FaClipboardList />, border: '#e2e8f0' };
+  };
+
+  const formatDateTime = (isoString?: string | null) => {
+    if (!isoString) return 'تاريخ غير متوفر';
+    try {
+      const date = new Date(isoString);
+      return new Intl.DateTimeFormat('ar-IQ', {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+      }).format(date);
+    } catch (e) {
+      return 'تاريخ غير صالح';
     }
-
-    // 3. الفلترة حسب اسم الموظف
-    if (adminFilter !== 'all') {
-      result = result.filter(log => log.admin_name === adminFilter);
-    }
-
-    // 4. الفلترة حسب اسم الفرع
-    if (posFilter !== 'all') {
-      result = result.filter(log => log.pos_name === posFilter);
-    }
-
-    // 5. الفلترة حسب النطاق الزمني الدقيق
-    if (startDate) {
-      const start = new Date(startDate);
-      result = result.filter(log => new Date(log.created_at) >= start);
-    }
-    if (endDate) {
-      const end = new Date(endDate);
-      // تمديد نهاية اليوم لتشمل الحركات المتأخرة فيه
-      end.setHours(23, 59, 59, 999);
-      result = result.filter(log => new Date(log.created_at) <= end);
-    }
-
-    setFilteredLogs(result);
-  }, [searchQuery, actionFilter, adminFilter, posFilter, startDate, endDate, logs]);
-
-  // دالة التصدير الشاملة إلى إكسل
-  const exportToExcel = () => {
-    const headers = ["الموظف", "الفرع", "نوع الحركة", "التفاصيل", "الوقت والتاريخ بالثواني"];
-    const rows = filteredLogs.map(log => [
-      log.admin_name || '-', log.pos_name || '-', log.action_type || '-', 
-      log.details || '-', new Date(log.created_at).toLocaleString('en-IQ', { hour12: true })
-    ]);
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
-    const link = document.createElement("a");
-    link.href = encodeURI(csvContent);
-    link.download = `سجل_حركات_النظام_${new Date().toLocaleDateString()}.csv`;
-    link.click();
   };
 
   return (
-    <div style={container}>
+    <div className="fade-in">
       <style>{`
-        @media print { .no-print { display: none !important; } }
-        .filter-input { padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; outline: none; background: #fff; min-width: 150px; flex: 1; }
-        .filter-input:focus { border-color: #ff69b4; }
-      `}</style>
-      
-      {/* الهيدر */}
-      <div style={headerSection} className="no-print">
-        <div>
-          <h3 style={title}>سجل حركات النظام الشامل 🔒</h3>
-          <p style={desc}>مراقبة صارمة لعمليات الدخول، الخروج، وتوليد الروابط بالثواني الحقيقية.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => window.print()} style={printBtn}>🖨️ طباعة السجل</button>
-          <button onClick={exportToExcel} style={excelBtn}>📊 تصدير الفلترة الحالية</button>
-        </div>
-      </div>
-
-      {/* لوحة الفلاتر المتقدمة والبحث */}
-      <div style={filterPanel} className="no-print">
-        <input 
-          type="text" 
-          placeholder="🔍 ابحث في تفاصيل الحركة..." 
-          value={searchQuery} 
-          onChange={e => setSearchTerm(e.target.value)} 
-          className="filter-input"
-          style={{ minWidth: '220px' }}
-        />
+        .fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        <select value={actionFilter} onChange={e => setActionFilter(e.target.value)} className="filter-input">
-          <option value="all">كل أنواع الحركات</option>
-          {actionTypes.map((act, i) => <option key={i} value={act}>{act}</option>)}
-        </select>
+        .search-wrapper { flex: 1; display: flex; align-items: center; gap: 10px; background: #fff; padding: 0 15px; border-radius: 12px; border: 1px solid #cbd5e1; transition: 0.3s; }
+        .search-wrapper:focus-within { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1); }
+        .search-input { flex: 1; padding: 14px 0; border: none; font-size: 15px; outline: none; background: transparent; }
+        
+        .filter-select { padding: 14px; border-radius: 12px; border: 1px solid #cbd5e1; outline: none; font-weight: bold; color: #475569; background: #fff; cursor: pointer; min-width: 180px; }
+        
+        .log-card { background: #fff; padding: 18px 20px; border-radius: 16px; border: 1px solid #e2e8f0; display: flex; align-items: flex-start; gap: 15px; margin-bottom: 12px; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .log-card:hover { border-color: #cbd5e1; box-shadow: 0 6px 15px rgba(0,0,0,0.05); transform: translateY(-2px); }
+        
+        .spin-icon { animation: spin 1s linear infinite; font-size: 24px; color: #dc2626; margin-bottom: 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        <select value={adminFilter} onChange={e => setAdminFilter(e.target.value)} className="filter-input">
-          <option value="all">كل الموظفين</option>
-          {adminNames.map((adm, i) => <option key={i} value={adm}>{adm}</option>)}
-        </select>
+        @media (max-width: 768px) {
+          .controls-container { flex-direction: column; }
+          .log-card { flex-direction: column; gap: 12px; }
+          .log-time { align-self: flex-start !important; }
+        }
+      `}</style>
 
-        <select value={posFilter} onChange={e => setPosFilter(e.target.value)} className="filter-input">
-          <option value="all">كل الفروع</option>
-          {posNames.map((pos, i) => <option key={i} value={pos}>{pos}</option>)}
-        </select>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-          <span style={{ fontSize: '12px', color: '#666' }}>من:</span>
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="filter-input" />
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-          <span style={{ fontSize: '12px', color: '#666' }}>إلى:</span>
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="filter-input" />
-        </div>
+      <div style={{ marginBottom: '25px' }}>
+        <h2 style={{ color: '#1e293b', margin: '0 0 5px 0', fontSize: '24px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <FaShieldAlt style={{ color: '#dc2626' }} /> سجل الرقابة الأمني
+        </h2>
+        <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>مراقبة حية لجميع تحركات الموظفين والعمليات داخل منصة أمنية بدقة عالية.</p>
       </div>
-      
-      {/* جدول البيانات المطور */}
-      <div style={tableContainer}>
-        {loading ? (
-           <div style={emptyText}>جاري جلب السجلات ومطابقة الثواني... ⏳</div>
-        ) : (
-          <table style={table}>
-            <thead style={thRow}>
-              <tr>
-                <th style={th}>الموظف / المسؤول</th>
-                <th style={th}>الفرع</th>
-                <th style={th}>نوع الحركة</th>
-                <th style={th}>تفاصيل العملية كاملة</th>
-                <th style={th}>الوقت والتاريخ الحقيقي (بالثواني)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredLogs.map(log => {
-                // تنسيق التوقيت العراقي الدقيق بالثواني
-                const exactTime = new Date(log.created_at).toLocaleString('en-IQ', {
-                  year: 'numeric', month: '2-digit', day: '2-digit',
-                  hour: '2-digit', minute: '2-digit', second: '2-digit',
-                  hour12: true
-                });
 
-                return (
-                  <tr key={log.id} style={tdRow}>
-                    <td style={td}><strong>{log.admin_name || 'غير معروف'}</strong></td>
-                    <td style={td}><span style={{ color: '#555', fontWeight: 'bold' }}>{log.pos_name || '-'}</span></td>
-                    <td style={td}>
-                      <span style={
-                        log.action_type === 'توليد رابط' ? badgeSale : 
-                        log.action_type === 'تسجيل دخول' ? badgeLogin : 
-                        log.action_type === 'تسجيل خروج' ? badgeLogout : badgeAction
-                      }>
-                        {log.action_type}
-                      </span>
-                    </td>
-                    <td style={{ ...td, color: '#333', maxWidth: '350px', whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5' }}>
-                      {log.details}
-                    </td>
-                    <td style={{ ...td, color: '#ff4d4d', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '13px' }} dir="ltr">
-                      {exactTime}
-                    </td>
-                  </tr>
-                );
-              })}
-              {filteredLogs.length === 0 && <tr><td colSpan={5} style={emptyText}>لا توجد حركات مطابقة للفلترة والبحث الحالي.</td></tr>}
-            </tbody>
-          </table>
-        )}
+      <div className="controls-container" style={{ display: 'flex', gap: '15px', marginBottom: '25px' }}>
+        <div className="search-wrapper">
+          <FaSearch style={{ color: '#94a3b8' }} />
+          <input 
+            type="text" 
+            placeholder="ابحث عن اسم الموظف، الفرع، أو تفاصيل الحركة..." 
+            value={searchTerm} 
+            onChange={(e) => setSearchTerm(e.target.value)} 
+            className="search-input"
+          />
+        </div>
+        <select 
+          value={filterType} 
+          onChange={(e) => setFilterType(e.target.value)} 
+          className="filter-select"
+        >
+          <option value="all">جميع الحركات</option>
+          <option value="دخول">تسجيل الدخول</option>
+          <option value="خروج">تسجيل الخروج</option>
+          <option value="توليد">توليد الروابط</option>
+          <option value="تصفية">تصفية مالية</option>
+          <option value="إضافة">إضافة بيانات</option>
+        </select>
+        <button 
+          onClick={fetchLogs} 
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#1e293b', border: 'none', padding: '0 25px', minHeight: '50px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', color: '#fff', transition: '0.2s' }}
+          title="تحديث السجل"
+        >
+          <FaSyncAlt /> تحديث
+        </button>
       </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8', fontWeight: 'bold', background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <FaSpinner className="spin-icon" />
+          جاري سحب السجلات الأمنية...
+        </div>
+      ) : filteredLogs.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px', background: '#fff', borderRadius: '16px', border: '1px dashed #cbd5e1', color: '#64748b', fontWeight: 'bold', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+          <FaExclamationCircle style={{ fontSize: '24px', color: '#cbd5e1' }} />
+          لا توجد حركات تطابق عملية البحث
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {filteredLogs.map((log) => {
+            const style = getActionStyle(log.action_type);
+            return (
+              <div key={log.id || Math.random()} className="log-card">
+                <div style={{ width: '50px', height: '50px', borderRadius: '12px', background: style.bg, border: `1px solid ${style.border}`, color: style.color, display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '20px', flexShrink: 0 }}>
+                  {style.icon}
+                </div>
+                
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0, fontSize: '17px', color: '#1e293b', fontWeight: '800' }}>
+                      <FaUserTie style={{ color: '#94a3b8', fontSize: '14px' }} /> 
+                      {log.admin_name && log.admin_name !== 'موظف' ? log.admin_name : 'مستخدم غير معروف'}
+                    </h3>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', background: '#f8fafc', padding: '4px 10px', borderRadius: '8px', color: '#475569', fontWeight: 'bold', border: '1px solid #e2e8f0' }}>
+                      <FaBuilding style={{ color: '#cbd5e1' }} /> {log.pos_name || 'النظام المركزي'}
+                    </span>
+                    <span style={{ fontSize: '12px', color: style.color, fontWeight: 'bold', background: style.bg, padding: '4px 10px', borderRadius: '8px' }}>
+                      {log.action_type || 'نشاط عام'}
+                    </span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '14.5px', color: '#475569', lineHeight: '1.6', fontWeight: '500' }}>
+                    {log.details || 'لا توجد تفاصيل إضافية'}
+                  </p>
+                </div>
+                
+                <div className="log-time" style={{ alignSelf: 'center', textAlign: 'left', minWidth: '130px' }}>
+                  <div style={{ fontSize: '12.5px', color: '#94a3b8', fontWeight: 'bold', direction: 'ltr', background: '#f8fafc', padding: '6px 12px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                    {formatDateTime(log.created_at)}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
-
-// الستايلات الفاخرة المحدثة للفلترة المتقدمة
-const container: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '15px', direction: 'rtl', fontFamily: 'sans-serif' };
-const headerSection: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '15px 20px', borderRadius: '10px', border: '1px solid #eee' };
-const title: React.CSSProperties = { margin: '0 0 4px 0', fontSize: '18px', fontWeight: 'bold' };
-const desc: React.CSSProperties = { margin: 0, fontSize: '12px', color: '#666' };
-
-const filterPanel: React.CSSProperties = { display: 'flex', gap: '10px', flexWrap: 'wrap', background: '#fff', padding: '15px', borderRadius: '10px', border: '1px solid #eee', alignItems: 'center' };
-
-const printBtn: React.CSSProperties = { background: '#fff', border: '1px solid #ddd', padding: '8px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' };
-const excelBtn: React.CSSProperties = { background: '#00cc66', border: 'none', color: '#fff', padding: '8px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' };
-const tableContainer: React.CSSProperties = { background: '#fff', borderRadius: '10px', border: '1px solid #eee', overflow: 'hidden' };
-const table: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', textAlign: 'right' };
-const thRow: React.CSSProperties = { background: '#f8f9fa', borderBottom: '1px solid #eee' };
-const th: React.CSSProperties = { padding: '12px 15px', fontSize: '12px', color: '#444', fontWeight: '900' };
-const tdRow: React.CSSProperties = { borderBottom: '1px solid #eee' };
-const td: React.CSSProperties = { padding: '12px 15px', fontSize: '12px', color: '#222' };
-const emptyText: React.CSSProperties = { padding: '30px', textAlign: 'center', color: '#999', fontSize: '13px', fontWeight: 'bold' };
-
-const badgeAction: React.CSSProperties = { background: '#f0f7ff', color: '#007bff', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', fontSize: '11px' };
-const badgeSale: React.CSSProperties = { background: '#e6f9f0', color: '#00cc66', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', fontSize: '11px' };
-const badgeLogin: React.CSSProperties = { background: '#edfdf6', color: '#00aa55', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', fontSize: '11px', border: '1px solid #00cc66' };
-const badgeLogout: React.CSSProperties = { background: '#fff0f0', color: '#ff4d4d', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', fontSize: '11px', border: '1px solid #ffcccc' };

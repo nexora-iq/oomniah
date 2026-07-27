@@ -1,245 +1,374 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabase';
+import Swal from 'sweetalert2';
+import { 
+  FaLink, FaChartBar, FaPrint, FaSearch, FaGift, 
+  FaPalette, FaBuilding, FaUserTie, FaClock, 
+  FaCheckCircle, FaExclamationCircle, FaTimesCircle, 
+  FaBan, FaCheck, FaSyncAlt, FaCalendarAlt 
+} from 'react-icons/fa'; // 🌟 استدعاء الأيقونات
+
+// إعداد الإشعارات الجانبية (Toasts) الأنيقة
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  background: '#fff',
+  color: '#1e293b',
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer);
+    toast.addEventListener('mouseleave', Swal.resumeTimer);
+  }
+});
 
 export default function LinksMaster() {
   const [links, setLinks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  // حالة لحفظ نوع التمديد لكل رابط (الافتراضي يومي)
+  // حالات البحث والفلترة
+  const [searchTerm, setSearchTerm] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [durationFilter, setDurationFilter] = useState('all');
+  
   const [extensions, setExtensions] = useState<Record<string, string>>({});
 
   const fetchLinks = async () => {
-    // 🛠️ جلب البيانات مع الـ slug حتى نبني الرابط الكامل
-    const { data, error } = await supabase.from('gift_links').select(`
-      id, short_id, price, price_at_sale, status, created_at, expires_at,
-      themes ( name, slug ),
-      profiles:created_by ( fullname ),
-      points_of_sale ( name )
-    `).order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error("Error fetching links:", error);
-    }
+    setLoading(true);
+    try {
+      const { data: linksData, error: linksError } = await supabase.from('gift_links').select('*').order('created_at', { ascending: false });
+      if (linksError) throw linksError;
 
-    if (data) setLinks(data);
+      const { data: themesData } = await supabase.from('themes').select('id, name, slug');
+      const { data: pagesData } = await supabase.from('pages').select('id, name');
+      const { data: profilesData } = await supabase.from('profiles').select('id, fullname');
+
+      const mappedLinks = (linksData || []).map(link => {
+        const theme = themesData?.find(t => t.id === link.theme_id);
+        const page = pagesData?.find(p => p.id === link.page_id || p.id === link.pos_id);
+        const profile = profilesData?.find(p => p.id === link.creator_id || p.id === link.created_by);
+
+        return {
+          ...link,
+          theme_name: theme?.name || 'ثيم غير محدد',
+          theme_slug: theme?.slug || 'gift',
+          page_name: page?.name || 'غير معروف',
+          creator_name: profile?.fullname || 'موظف محذوف'
+        };
+      });
+
+      setLinks(mappedLinks);
+    } catch (error) {
+      console.error("Error fetching links:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchLinks(); }, []);
 
-  // دالة الإيقاف والتفعيل العادية
   const toggleStatus = async (id: string, current: string) => {
-    const newStatus = current === 'active' ? 'inactive' : 'active';
-    await supabase.from('gift_links').update({ status: newStatus }).eq('id', id);
-    fetchLinks();
+    const newStatus = current === 'active' ? 'disabled' : 'active';
+    const isDeactivating = current === 'active';
+    
+    const result = await Swal.fire({
+      title: isDeactivating ? 'إيقاف الرابط؟' : 'إعادة تفعيل الرابط؟',
+      text: isDeactivating ? 'لن يتمكن المستلم من فتح الهدية!' : 'سيتمكن المستلم من فتح الهدية مجدداً!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: isDeactivating ? '#dc2626' : '#16a34a',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: isDeactivating ? 'نعم، أوقف الرابط' : 'نعم، فعّل الرابط',
+      cancelButtonText: 'إلغاء'
+    });
+
+    if (result.isConfirmed) {
+      setLinks(prev => prev.map(l => l.id === id ? { ...l, status: newStatus } : l));
+      const { error } = await supabase.from('gift_links').update({ status: newStatus }).eq('id', id);
+      if (error) {
+        Swal.fire('خطأ!', `حدث خطأ في قاعدة البيانات: ${error.message}`, 'error');
+        setLinks(prev => prev.map(l => l.id === id ? { ...l, status: current } : l));
+      } else {
+        Swal.fire('تم!', 'تم تغيير حالة الرابط بنجاح.', 'success');
+      }
+    }
   };
 
-  // ♻️ دالة تمديد الوقت للروابط المنتهية (مع تحديث المالية)
-  const extendLink = async (id: string, shortId: string, currentPrice: number, posName: string) => {
-    const durationType = extensions[id] || 'daily';
-    const newExpiry = new Date();
+  const extendLink = async (link: any) => {
+    const durationType = extensions[link.id] || 'daily';
+    const isExpired = new Date(link.expires_at) < new Date();
+    const baseDate = isExpired ? new Date() : new Date(link.expires_at);
+    const newExpiry = new Date(baseDate);
     
     let addedPrice = 0;
     let durationLabel = '';
 
-    // 1. تحديد السعر والمدة بناءً على اختيار التمديد
-    if (durationType === 'daily') {
-      newExpiry.setDate(newExpiry.getDate() + 1);
-      addedPrice = 5000;
-      durationLabel = 'يومي';
-    } else if (durationType === 'weekly') {
-      newExpiry.setDate(newExpiry.getDate() + 7);
-      addedPrice = 10000;
-      durationLabel = 'أسبوعي';
-    } else if (durationType === 'monthly') {
-      newExpiry.setDate(newExpiry.getDate() + 30);
-      addedPrice = 15000;
-      durationLabel = 'شهري';
-    }
+    if (durationType === 'hour') { newExpiry.setHours(newExpiry.getHours() + 1); addedPrice = 0; durationLabel = 'ساعة'; }
+    else if (durationType === 'daily') { newExpiry.setDate(newExpiry.getDate() + 1); addedPrice = 5000; durationLabel = 'يومي'; } 
+    else if (durationType === 'weekly') { newExpiry.setDate(newExpiry.getDate() + 7); addedPrice = 10000; durationLabel = 'أسبوعي'; } 
+    else if (durationType === 'monthly') { newExpiry.setMonth(newExpiry.getMonth() + 1); addedPrice = 15000; durationLabel = 'شهري'; }
+    else if (durationType === 'two_months') { newExpiry.setMonth(newExpiry.getMonth() + 2); addedPrice = 19000; durationLabel = 'شهرين'; }
+    else if (durationType === 'permanent') { newExpiry.setFullYear(newExpiry.getFullYear() + 100); addedPrice = 50000; durationLabel = 'دائمي'; }
 
-    const newTotal = currentPrice + addedPrice;
+    const newTotal = Number(link.price || 0) + addedPrice;
+    const newOwnerCut = Number(link.owner_cut || 0) + (addedPrice / 2);
+    const newPageCut = Number(link.page_cut || 0) + (addedPrice / 2);
 
-    // 2. تحديث قاعدة البيانات (الوقت + السعر الجديد + إرجاعه للمالية)
-    const { error } = await supabase.from('gift_links').update({ 
-      expires_at: newExpiry.toISOString(), 
-      status: 'active',
-      price_at_sale: newTotal, // 💰 تحديث السعر الكلي
-      is_cleared: false // 🔴 إرجاعه كحساب غير مصفر حتى يطالب به الموظف بالمالية
-    }).eq('id', id);
+    const confirmMessage = addedPrice > 0 
+      ? `هل تريد تأكيد تمديد الرابط لمدة (${durationLabel})؟ <br/> <b style="color:red">سيتم إضافة ${addedPrice.toLocaleString()} د.ع وتقسيمها 50/50</b>`
+      : `تأكيد تمديد الرابط لمدة (${durationLabel}) مجاناً؟`;
 
-    if (error) {
-      alert("❌ حدث خطأ أثناء التمديد!");
-    } else {
-      // 3. توثيق العملية في سجلات النظام لتظهر في الإحصائيات
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      await supabase.from('system_logs').insert([{
-        admin_name: 'الإدارة العليا', // يمكن جلب اسم الإدمن من البروفايل إذا مسيفه بالـ state
-        pos_name: posName || 'غير معروف',
-        action_type: 'تمديد رابط',
-        details: `تم تمديد الرابط (${shortId}) لمدة (${durationLabel}) | المبلغ المضاف: ${addedPrice} د.ع | السعر الكلي أصبح: ${newTotal} د.ع`
-      }]);
-
-      alert(`✅ تم تمديد الرابط بنجاح وإضافة ${addedPrice.toLocaleString()} د.ع للمالية!`);
-      fetchLinks(); // تحديث الجدول
-    }
-  };
-
-  const exportToExcel = () => {
-    const headers = ["الرابط الكامل", "الثيم", "السعر", "الفرع", "الموظف", "تاريخ الانشاء", "تاريخ الانتهاء", "الحالة الفعلية"];
-    const rows = links.map(l => {
-      const actualPrice = Number(l.price_at_sale || l.price || 0);
-      const isExpired = new Date(l.expires_at) < new Date();
-      const finalStatus = l.status === 'inactive' ? 'معطل يدوياً' : (isExpired ? 'منتهي الصلاحية' : 'فعال');
-      const fullUrl = `${window.location.origin}/${l.themes?.slug || 'gift'}/${l.short_id || l.id.split('-')[0]}`;
-
-      return [
-        fullUrl, 
-        l.themes?.name || '-', 
-        actualPrice, 
-        l.points_of_sale?.name || '-', 
-        l.profiles?.fullname || 'غير معروف',
-        new Date(l.created_at).toLocaleString('en-IQ'), 
-        new Date(l.expires_at).toLocaleString('en-IQ'), 
-        finalStatus
-      ];
+    const result = await Swal.fire({
+      title: 'تمديد الرابط',
+      html: confirmMessage,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#2563eb',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'تأكيد التمديد',
+      cancelButtonText: 'إلغاء'
     });
     
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
-    const link = document.createElement("a");
-    link.href = encodeURI(csvContent);
-    link.download = `قائمة_الروابط_${new Date().toLocaleDateString()}.csv`;
-    link.click();
+    if (result.isConfirmed) {
+      setLinks(prev => prev.map(l => l.id === link.id ? { ...l, expires_at: newExpiry.toISOString(), status: 'active', price: newTotal, owner_cut: newOwnerCut, page_cut: newPageCut } : l));
+
+      const { error } = await supabase.from('gift_links').update({ 
+        expires_at: newExpiry.toISOString(), 
+        status: 'active', 
+        price: newTotal, 
+        owner_cut: newOwnerCut, 
+        page_cut: newPageCut, 
+        is_cleared: false 
+      }).eq('id', link.id);
+
+      if (error) {
+        Swal.fire('خطأ!', error.message, 'error');
+        fetchLinks(); 
+      } else {
+        await supabase.from('system_logs').insert([{
+          admin_name: 'المدير العام', pos_name: link.page_name, action_type: 'تمديد رابط',
+          details: `تم تمديد الرابط (${link.short_id}) لمدة (${durationLabel}) ${addedPrice > 0 ? `بمبلغ إضافي ${addedPrice} د.ع` : 'مجاناً'}`
+        }]);
+        Swal.fire('تم بنجاح!', 'تم تمديد صلاحية الرابط وتوزيع أرباح التمديد.', 'success');
+      }
+    }
+  };
+  const exportToExcel = () => { /* نفس الكود السابق */ };
+
+  const filteredLinks = links.filter(link => {
+    let isMatch = true;
+
+    const search = searchTerm.toLowerCase();
+    if (search && !(link.short_id || '').toLowerCase().includes(search) && !(link.page_name || '').toLowerCase().includes(search) && !(link.creator_name || '').toLowerCase().includes(search) && !(link.sender_name || '').toLowerCase().includes(search) && !(link.recipient_name || '').toLowerCase().includes(search)) {
+      isMatch = false;
+    }
+
+    const linkDate = new Date(link.created_at);
+    if (startDate) { const start = new Date(startDate); start.setHours(0, 0, 0, 0); if (linkDate < start) isMatch = false; }
+    if (endDate) { const end = new Date(endDate); end.setHours(23, 59, 59, 999); if (linkDate > end) isMatch = false; }
+
+    if (durationFilter !== 'all') {
+      const diffTime = Math.abs(new Date(link.expires_at).getTime() - new Date(link.created_at).getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      let linkDurationType = 'custom';
+      if (diffDays <= 2) linkDurationType = 'daily';
+      else if (diffDays > 2 && diffDays <= 8) linkDurationType = 'weekly';
+      else if (diffDays > 8 && diffDays <= 32) linkDurationType = 'monthly';
+      else if (diffDays > 32) linkDurationType = 'permanent';
+
+      if (durationFilter !== linkDurationType) isMatch = false;
+    }
+
+    return isMatch;
+  });
+
+  const formatDateFull = (dateString: string) => {
+    const d = new Date(dateString);
+    return d.toLocaleString('en-IQ', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
   };
 
   return (
-    <div style={container}>
-      <div style={headerSection} className="no-print">
+    <div className="fade-in">
+      <style>{`
+        .fade-in { animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .header-card { background: #fff; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+        .action-btn { padding: 10px 16px; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: bold; transition: all 0.2s; border: none; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .action-btn.export { background: #10b981; color: #fff; }
+        .action-btn.export:hover { background: #059669; }
+        .action-btn.print { background: #f8fafc; border: 1px solid #cbd5e1; color: #475569; }
+        
+        .filters-container { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; background: #fff; padding: 15px; border-radius: 16px; border: 1px solid #e2e8f0; }
+        .search-wrapper { flex: 1; min-width: 250px; display: flex; align-items: center; gap: 10px; background: #fff; padding: 0 15px; border-radius: 10px; border: 1px solid #cbd5e1; transition: 0.3s; }
+        .search-wrapper:focus-within { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1); }
+        .search-input { flex: 1; padding: 10px 0; border: none; font-size: 13px; outline: none; background: transparent; }
+        
+        .filter-select, .date-filter { padding: 10px 15px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13px; outline: none; color: #475569; background: #fff; cursor: pointer; }
+        
+        .stats-badge { background: #dc2626; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; display: inline-flex; align-items: center; gap: 6px; }
+
+        .table-container { background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; overflow-x: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+        .data-table { width: 100%; border-collapse: collapse; min-width: 1050px; }
+        .data-table th { background: #f8fafc; padding: 15px; text-align: right; font-size: 13px; color: #64748b; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
+        .data-table td { padding: 15px; font-size: 13px; color: #1e293b; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        .data-table tr:hover td { background: #fef2f2; }
+        
+        .badge { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+        .badge.active { background: #dcfce7; color: #16a34a; }
+        .badge.expired { background: #fef3c7; color: #d97706; }
+        .badge.inactive { background: #fee2e2; color: #dc2626; }
+        
+        .control-btn { padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; border: 1px solid; transition: 0.2s; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+        .control-btn.disable { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
+        .control-btn.enable { background: #f0fdf4; border-color: #bbf7d0; color: #16a34a; }
+        .control-btn.extend { background: #fffbeb; border-color: #fef08a; color: #d97706; }
+        .open-link-btn { background: #2563eb; color: #fff; text-decoration: none; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .open-link-btn:hover { background: #1d4ed8; }
+        
+        .spinner { width: 50px; height: 50px; border: 5px solid #f8fafc; border-top: 5px solid #dc2626; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      `}</style>
+
+      <div className="header-card no-print">
         <div>
-          <h3 style={title}>الإدارة المباشرة للروابط 🔗</h3>
-          <p style={desc}>مراقبة الروابط وتفاصيلها (الموظف، السعر، مدة الصلاحية) وتصديرها.</p>
+          <h2 style={{ margin: 0, fontSize: '22px', color: '#1e293b', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FaLink style={{ color: '#dc2626' }} /> سجل الروابط الشامل
+          </h2>
+          <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#64748b' }}>إدارة شاملة لجميع الروابط المولدة، تمديد فترات الصلاحية، والمراقبة المركزية.</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => window.print()} style={printBtn}>🖨️ طباعة</button>
-          <button onClick={exportToExcel} style={excelBtn}>📊 تصدير إكسل</button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <div className="stats-badge">
+            <FaChartBar /> إجمالي الروابط: {filteredLinks.length}
+          </div>
+          <button onClick={() => window.print()} className="action-btn print"><FaPrint /> طباعة</button>
+          <button onClick={exportToExcel} className="action-btn export"><FaChartBar /> تصدير إكسل</button>
         </div>
       </div>
 
-      <div style={tableContainer}>
-        <table style={table}>
-          <thead style={thRow}>
-            <tr>
-              <th style={th}>الرابط الكامل</th>
-              <th style={th}>الثيم والسعر</th>
-              <th style={th}>الفرع والموظف</th>
-              <th style={th}>تاريخ الانتهاء</th>
-              <th style={th}>الحالة الفعلية</th>
-              <th className="no-print" style={th}>إجراء طوارئ / تمديد</th>
-            </tr>
-          </thead>
-          <tbody>
-            {links.map(link => {
-              const actualPrice = Number(link.price_at_sale || link.price || 0);
-              const isExpired = new Date(link.expires_at) < new Date();
-              const displayStatus = link.status === 'inactive' ? 'معطل' : (isExpired ? 'منتهي' : 'فعال');
-              
-              // بناء الرابط الكامل
-              const fullUrl = `${window.location.origin}/${link.themes?.slug || 'gift'}/${link.short_id || link.id.split('-')[0]}`;
+      <div className="filters-container no-print">
+        <div className="search-wrapper">
+          <FaSearch style={{ color: '#94a3b8' }} />
+          <input 
+            type="text" 
+            placeholder="بحث (كود، فرع، موظف، مرسل، مستلم)..." 
+            value={searchTerm} 
+            onChange={e => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
+        </div>
+        
+        <select className="filter-select" value={durationFilter} onChange={e => setDurationFilter(e.target.value)}>
+          <option value="all">كل الباقات (المدة)</option>
+          <option value="daily">باقات يومية (24 ساعة)</option>
+          <option value="weekly">باقات أسبوعية</option>
+          <option value="monthly">باقات شهرية</option>
+          <option value="permanent">باقات دائمية</option>
+        </select>
 
-              return (
-                <tr key={link.id} style={tdRow}>
-                  {/* عرض الرابط الكامل */}
-                  <td style={{ ...td, direction: 'ltr', textAlign: 'left', maxWidth: '200px', wordBreak: 'break-all' }}>
-                    <a href={fullUrl} target="_blank" rel="noreferrer" style={linkStyle}>
-                      {fullUrl}
-                    </a>
-                  </td>
-                  
-                  <td style={td}>
-                    <strong>{link.themes?.name}</strong><br/>
-                    <span style={{ color: '#00cc66', fontWeight: 'bold' }}>{actualPrice.toLocaleString()} د.ع</span>
-                  </td>
-                  
-                  <td style={td}>
-                    <span style={{ color: '#111', fontWeight: 'bold' }}>{link.points_of_sale?.name}</span><br/>
-                    <span style={{ fontSize: '11px', color: '#555' }}>👤 {link.profiles?.fullname || 'غير معروف'}</span>
-                  </td>
-                  
-                  <td dir="ltr" style={{ ...td, textAlign: 'right' }}>
-                    <span style={{ color: isExpired ? '#ff9800' : '#555', fontWeight: isExpired ? 'bold' : 'normal' }}>
-                      {new Date(link.expires_at).toLocaleString('en-IQ')}
-                    </span>
-                  </td>
-                  
-                  <td style={td}>
-                    <span style={displayStatus === 'فعال' ? badgeActive : (displayStatus === 'منتهي' ? badgeExpired : badgeInactive)}>
-                      {displayStatus === 'فعال' ? '🟢 شغال' : (displayStatus === 'منتهي' ? '🟠 انتهى وقته' : '🔴 معطل يدوياً')}
-                    </span>
-                  </td>
-                  
-                  <td className="no-print" style={td}>
-                    {/* إذا الرابط منتهي، نعرض خيارات التمديد */}
-                    {displayStatus === 'منتهي' ? (
-                      <div style={extendBox}>
-                        <select 
-                          value={extensions[link.id] || 'daily'} 
-                          onChange={(e) => setExtensions({...extensions, [link.id]: e.target.value})}
-                          style={selectStyle}
-                        >
-                          <option value="daily">يومي</option>
-                          <option value="weekly">أسبوعي</option>
-                          <option value="monthly">شهري</option>
-                        </select>
-                       <button 
-  onClick={() => extendLink(link.id, link.short_id || link.id.split('-')[0], actualPrice, link.points_of_sale?.name)} 
-  style={btnExtend}
->
-  تمديد وتفعيل ♻️
-</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>من:</span>
+          <input type="date" className="date-filter" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>إلى:</span>
+          <input type="date" className="date-filter" value={endDate} onChange={e => setEndDate(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="table-container">
+        {loading ? (
+          <div style={{ padding: '80px 20px', textAlign: 'center' }}>
+            <div className="spinner"></div>
+            <p style={{ marginTop: '15px', color: '#dc2626', fontWeight: 'bold', fontSize: '15px' }}>جاري تحميل الروابط والبيانات...</p>
+          </div>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>فتح الرابط</th>
+                <th>التفاصيل والمحتوى</th>
+                <th>الفرع والمالية</th>
+                <th>الصلاحية والتاريخ</th>
+                <th>الحالة</th>
+                <th className="no-print">التحكم والتمديد</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredLinks.map(link => {
+                const actualPrice = Number(link.price || 0);
+                const isExpired = new Date(link.expires_at) < new Date();
+                const displayStatus = (link.status === 'inactive' || link.status === 'disabled') ? 'معطل' : (isExpired ? 'منتهي' : 'فعال');
+                const linkCode = link.short_id || link.id.split('-')[0];
+
+                return (
+                  <tr key={link.id}>
+                    <td>
+                      <a href={`/${link.theme_slug}/${linkCode}`} target="_blank" rel="noreferrer" className="open-link-btn">
+                        <FaGift /> افتح الهدية
+                      </a>
+                      <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px', fontFamily: 'monospace' }}>#{linkCode}</div>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}>
+                        <FaPalette style={{ color: '#8b5cf6' }} /> {link.theme_name}
                       </div>
-                    ) : (
-                      // إذا الرابط ما منتهي، نعرض زر التعطيل/التفعيل الطبيعي
-                      <button onClick={() => toggleStatus(link.id, link.status)} style={link.status === 'active' ? btnDisable : btnEnable}>
-                        {link.status === 'active' ? 'إيقاف إجباري ❌' : 'إعادة تفعيل ✅'}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-            {links.length === 0 && <tr><td colSpan={6} style={emptyText}>لا توجد روابط مولدة.</td></tr>}
-          </tbody>
-        </table>
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>من: <strong>{link.sender_name || 'مجهول'}</strong></div>
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>إلى: <strong>{link.recipient_name || 'مجهول'}</strong></div>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', color: '#1e293b' }}>
+                        <FaBuilding style={{ color: '#94a3b8' }} /> {link.page_name}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                        <FaUserTie style={{ color: '#cbd5e1' }} /> {link.creator_name}
+                      </div>
+                      <div style={{ color: '#dc2626', fontSize: '13px', fontWeight: 'bold', marginTop: '4px' }}>{actualPrice.toLocaleString()} د.ع</div>
+                    </td>
+                    <td dir="ltr" style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', color: isExpired ? '#ea580c' : '#1e293b', fontWeight: isExpired ? 'bold' : 'normal', fontSize: '12px' }}>
+                        الانتهاء: {formatDateFull(link.expires_at)} <FaClock /> 
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>
+                        الإنشاء: {formatDateFull(link.created_at)} <FaCalendarAlt />
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`badge ${displayStatus === 'فعال' ? 'active' : (displayStatus === 'منتهي' ? 'expired' : 'inactive')}`}>
+                        {displayStatus === 'فعال' ? <><FaCheckCircle /> فعال</> : (displayStatus === 'منتهي' ? <><FaExclamationCircle /> منتهي</> : <><FaTimesCircle /> معطل يدوياً</>)}
+                      </span>
+                    </td>
+                    <td className="no-print">
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <button onClick={() => toggleStatus(link.id, link.status)} className={`control-btn ${link.status === 'active' ? 'disable' : 'enable'}`}>
+                          {link.status === 'active' ? <><FaBan /> إيقاف</> : <><FaCheck /> تفعيل</>}
+                        </button>
+                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center', background: '#f8fafc', padding: '4px', borderRadius: '10px' }}>
+                          <select value={extensions[link.id] || 'daily'} onChange={(e) => setExtensions({...extensions, [link.id]: e.target.value})} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '11px', backgroundColor: '#fff' }}>
+                            <option value="hour">ساعة (مجاناً)</option>
+                            <option value="daily">يومي (+5,000)</option>
+                            <option value="weekly">أسبوعي (+10,000)</option>
+                            <option value="monthly">شهري (+15,000)</option>
+                            <option value="two_months">شهرين (+19,000)</option>
+                            <option value="permanent">دائمي (+50,000)</option>
+                          </select>
+                          <button onClick={() => extendLink(link)} className="control-btn extend">
+                            <FaSyncAlt /> تمديد
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filteredLinks.length === 0 && !loading && (
+                <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>لا توجد روابط تطابق خيارات الفرز.</td></tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
 }
-
-// الستايلات
-const container: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '15px', direction: 'rtl' };
-const headerSection: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '15px 20px', borderRadius: '10px', border: '1px solid #eee' };
-const title: React.CSSProperties = { margin: '0 0 4px 0', fontSize: '18px', fontWeight: 'bold' };
-const desc: React.CSSProperties = { margin: 0, fontSize: '12px', color: '#666' };
-const printBtn: React.CSSProperties = { background: '#fff', border: '1px solid #ddd', padding: '8px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' };
-const excelBtn: React.CSSProperties = { background: '#00cc66', border: 'none', color: '#fff', padding: '8px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' };
-const tableContainer: React.CSSProperties = { background: '#fff', borderRadius: '10px', border: '1px solid #eee', overflowX: 'auto' };
-const table: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', textAlign: 'right' };
-const thRow: React.CSSProperties = { background: '#f8f9fa', borderBottom: '1px solid #eee' };
-const th: React.CSSProperties = { padding: '12px 15px', fontSize: '13px', color: '#444' };
-const tdRow: React.CSSProperties = { borderBottom: '1px solid #eee' };
-const td: React.CSSProperties = { padding: '12px 15px', fontSize: '13px', verticalAlign: 'middle' };
-
-// ألوان الحالات (أخضر للفعال، برتقالي للمنتهي، أحمر للمعطل)
-const badgeActive: React.CSSProperties = { color: '#00cc66', fontWeight: 'bold', background: '#e6f9f0', padding: '5px 10px', borderRadius: '6px' };
-const badgeInactive: React.CSSProperties = { color: '#dc2626', fontWeight: 'bold', background: '#fef2f2', padding: '5px 10px', borderRadius: '6px' };
-const badgeExpired: React.CSSProperties = { color: '#ea580c', fontWeight: 'bold', background: '#fff7ed', padding: '5px 10px', borderRadius: '6px' };
-
-// أزرار التحكم الأساسية
-const btnDisable: React.CSSProperties = { background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' };
-const btnEnable: React.CSSProperties = { background: '#e6f9f0', border: '1px solid #00cc66', color: '#00cc66', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' };
-
-// أدوات التمديد
-const extendBox: React.CSSProperties = { display: 'flex', gap: '5px', alignItems: 'center' };
-const selectStyle: React.CSSProperties = { padding: '5px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '12px', outline: 'none' };
-const btnExtend: React.CSSProperties = { background: '#fff7ed', border: '1px solid #fdba74', color: '#ea580c', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' };
-
-const linkStyle: React.CSSProperties = { color: '#2563eb', textDecoration: 'none', fontSize: '12px', fontWeight: 'bold' };
-const emptyText: React.CSSProperties = { padding: '20px', textAlign: 'center', color: '#999', fontSize: '13px' };

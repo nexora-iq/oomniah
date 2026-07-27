@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabase';
 import { useNavigate } from 'react-router-dom';
+import { Toast } from '../../toast'; // 🔔 استدعاء الإشعارات
+
+// 🖼️ استدعاء الشعار بالطريقة الصحيحة من مجلد assets
+import logoImg from '../../assets/oomniah-logo.png'; 
+
 // استيراد الأقسام الحقيقية
 import POSManagement from './POSManagement';
 import ThemesControl from './ThemesControl';
@@ -9,179 +14,263 @@ import SystemLogs from './SystemLogs';
 import LinksMaster from './LinksMaster';
 import FinancialWallet from './FinancialWallet';
 import LiveAnalytics from './LiveAnalytics';
-
+import SiteSettings from './SiteSettings';
 
 export default function SuperAdmin() {
   const [showWelcome, setShowWelcome] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // خليتها مفتوحة كبِداية
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
+  
   const [activeTab, setActiveTab] = useState('analytics');
+  // 🚀 السر هنا: نحفظ الأقسام اللي انفتحت حتى ما نعيد تحميلها (Caching)
+  const [mountedTabs, setMountedTabs] = useState<string[]>(['analytics']);
+  
   const navigate = useNavigate();
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowWelcome(false), 3000);
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) setIsSidebarOpen(true);
+      else setIsSidebarOpen(false);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    // ⏳ خلينا وقت الشاشة الملكية 4 ثواني حتى تكتمل حركتها
+    const timer = setTimeout(() => {
+      setShowWelcome(false);
+      Toast.fire({ icon: 'success', title: 'أهلاً بك في منصة أمنية 👑' });
+    }, 4000);
     return () => clearTimeout(timer);
   }, []);
 
   const handleLogout = async () => {
-    // توثيق تسجيل الخروج
     await supabase.from('system_logs').insert([{
-      admin_name: 'حسين ايهاب نعيم', // أو يمكنك جلب الاسم من الـ session
+      admin_name: 'حسين ايهاب نعيم',
       pos_name: 'لوحة التحكم الكبرى',
       action_type: 'تسجيل خروج',
       details: `قام السوبر أدمن بتسجيل الخروج من النظام`
     }]);
 
     await supabase.auth.signOut();
+    Toast.fire({ icon: 'success', title: 'في أمان الله يالمدير 👋' });
     navigate('/secure-portal-access');
   };
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'analytics': return <LiveAnalytics />;
-      case 'pos': return <POSManagement />;
-      case 'themes': return <ThemesControl />;
-      case 'admins': return <AdminsControl />;
-      case 'logs': return <SystemLogs />;
-      case 'links': return <LinksMaster />;
-      case 'financial': return <FinancialWallet />;
-      default: return <LiveAnalytics />;
+  const handleTabClick = (id: string) => {
+    setActiveTab(id);
+    if (!mountedTabs.includes(id)) {
+      setMountedTabs([...mountedTabs, id]);
     }
+    if (isMobile) setIsSidebarOpen(false);
   };
 
-  // 1. شاشة الترحيب الملكية الفخمة (تصميم جديد)
+  // 👑 شاشة الدخول الملكية (أحمر وأبيض فقط)
   if (showWelcome) {
     return (
-      <div style={welcomeContainer}>
+      <div className="royal-splash">
         <style>
           {`
-            @keyframes elegantFadeIn {
-              0% { opacity: 0; transform: translateY(15px); filter: blur(4px); }
-              100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+            .royal-splash {
+              position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+              background: #ffffff; display: flex; flex-direction: column;
+              justify-content: center; align-items: center; z-index: 99999;
+              overflow: hidden; direction: rtl; font-family: system-ui, sans-serif;
             }
-            @keyframes lineExpand {
+            
+            .splash-container {
+              display: flex; flex-direction: column; align-items: center;
+              animation: splashFadeOut 0.8s ease-in-out 3.2s forwards;
+            }
+
+            .royal-logo {
+              width: 130px; height: 130px; object-fit: contain;
+              opacity: 0; transform: scale(0.5);
+              animation: royalReveal 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+              filter: drop-shadow(0 15px 35px rgba(220, 38, 38, 0.5));
+              margin-bottom: 20px;
+            }
+
+            .royal-name {
+              color: #dc2626; font-size: 46px; font-weight: 900; margin: 0;
+              opacity: 0; transform: translateY(20px);
+              animation: fadeUpText 1s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards;
+              letter-spacing: -1.5px;
+            }
+
+            .royal-line {
+              width: 0; height: 4px; background: #dc2626; margin: 25px 0;
+              border-radius: 4px;
+              box-shadow: 0 0 20px rgba(220, 38, 38, 0.6);
+              animation: expandRoyalLine 1s cubic-bezier(0.8, 0, 0.2, 1) 1.2s forwards;
+            }
+
+            .royal-role {
+              color: #ef4444; font-size: 18px; font-weight: 900; letter-spacing: 5px;
+              opacity: 0; text-transform: uppercase;
+              animation: trackingInRoyal 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) 1.6s forwards;
+            }
+
+            @keyframes royalReveal {
+              0% { opacity: 0; transform: scale(0.8) translateY(30px); filter: blur(10px); }
+              100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+            }
+            @keyframes fadeUpText {
+              0% { opacity: 0; transform: translateY(20px); }
+              100% { opacity: 1; transform: translateY(0); }
+            }
+            @keyframes expandRoyalLine {
               0% { width: 0; opacity: 0; }
-              100% { width: 60px; opacity: 1; }
+              100% { width: 180px; opacity: 1; }
+            }
+            @keyframes trackingInRoyal {
+              0% { opacity: 0; letter-spacing: -2px; }
+              100% { opacity: 1; letter-spacing: 5px; }
+            }
+            @keyframes splashFadeOut {
+              0% { opacity: 1; transform: scale(1); filter: blur(0); }
+              100% { opacity: 0; transform: scale(1.1); filter: blur(15px); }
             }
           `}
         </style>
-        <div style={{ animation: 'elegantFadeIn 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards' }}>
-          <div style={crownIcon}>👑</div>
-          <h2 style={{ color: '#111', fontSize: '18px', fontWeight: '500', marginBottom: '8px', letterSpacing: '1px' }}>مرحباً بك في مركز القيادة</h2>
-          <div style={{ height: '2px', background: 'linear-gradient(90deg, transparent, #ff4d4d, transparent)', margin: '0 auto 15px', animation: 'lineExpand 1.5s ease forwards' }}></div>
-          <h1 style={{ color: '#ff4d4d', fontSize: '28px', margin: 0, fontWeight: '800', letterSpacing: '1px' }}>حسين ايهاب نعيم</h1>
+        
+        <div className="splash-container">
+          <img src={logoImg} alt="أمنية" className="royal-logo" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+          <h1 className="royal-name">حسين ايهاب نعيم</h1>
+          <div className="royal-line"></div>
+          <div className="royal-role">المؤسس والمدير التنفيذي</div>
         </div>
       </div>
     );
   }
 
-  // 2. لوحة القيادة الرئيسية (بترتيب جديد وأحجام مصغرة)
   return (
-    <div style={layout}>
-      
-      {/* القائمة الجانبية (تدفع المحتوى ولا تغطيه) */}
-      <div style={{ ...sidebar, width: isSidebarOpen ? '230px' : '0px' }}>
-        <div style={sidebarInner}>
-          <div style={sidebarHeader}>
-            <h3 style={{ margin: 0, fontSize: '16px', color: '#ff4d4d' }}>Link<span style={{ color: '#ff69b4' }}>Love</span></h3>
-          </div>
+    <div className="admin-layout">
+      <style>
+        {`
+          .admin-layout { display: flex; height: 100vh; background: #f8fafc; direction: rtl; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; }
           
-          <div style={menuContainer}>
-            <MenuItem id="analytics" icon="📊" text="الإحصائيات الفورية" active={activeTab} onClick={setActiveTab} />
-            <MenuItem id="pos" icon="🏪" text="إدارة الفروع" active={activeTab} onClick={setActiveTab} />
-            <MenuItem id="themes" icon="🎨" text="متجر الثيمات" active={activeTab} onClick={setActiveTab} />
-            <MenuItem id="admins" icon="👥" text="الرقابة والموظفين" active={activeTab} onClick={setActiveTab} />
-            <MenuItem id="logs" icon="🔒" text="سجل النظام" active={activeTab} onClick={setActiveTab} />
-            <MenuItem id="links" icon="🔗" text="مراقبة الروابط" active={activeTab} onClick={setActiveTab} />
-            <MenuItem id="financial" icon="💰" text="الدفتر المالي" active={activeTab} onClick={setActiveTab} />
-          </div>
+          .sidebar { 
+            background: #fff; 
+            border-left: 1px solid #e2e8f0; 
+            display: flex; 
+            flex-direction: column; 
+            transition: width 0.3s ease, transform 0.3s ease; 
+            z-index: 50; 
+            overflow: hidden; 
+            white-space: nowrap; 
+          }
+          
+          @media (min-width: 768px) {
+            .sidebar { width: 260px; transform: translateX(0); position: relative; }
+            .sidebar.closed { width: 0; border: none; padding: 0; }
+            .mobile-overlay { display: none; }
+          }
+          
+          @media (max-width: 767px) {
+            .sidebar { position: fixed; top: 0; right: 0; height: 100%; width: 260px; transform: translateX(100%); box-shadow: -5px 0 25px rgba(0,0,0,0.1); }
+            .sidebar.open { transform: translateX(0); }
+            .content-area { padding: 15px !important; }
+            .header-title { font-size: 13px !important; }
+            .user-info span { display: none; }
+            .user-info { padding: 5px !important; border: none !important; background: transparent !important; }
+          }
+          
+          .mobile-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(2px); z-index: 40; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
+          .mobile-overlay.active { opacity: 1; visibility: visible; }
+          
+          .menu-item { padding: 12px 18px; margin: 6px 15px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: all 0.2s ease; border-right: 4px solid transparent; font-weight: 600; color: #475569; }
+          .menu-item:hover { background: #f1f5f9; }
+          .menu-item.active { background: #fef2f2; color: #dc2626; border-right-color: #dc2626; }
+          .menu-icon { font-size: 18px; }
+          
+          .scrollable::-webkit-scrollbar { width: 6px; }
+          .scrollable::-webkit-scrollbar-track { background: transparent; }
+          .scrollable::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        `}
+      </style>
 
-          <button onClick={handleLogout} style={logoutBtn}>تسجيل الخروج</button>
+      {isMobile && (
+        <div className={`mobile-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
+      )}
+
+      <aside className={`sidebar ${isSidebarOpen ? (isMobile ? 'open' : '') : 'closed'}`}>
+        <div style={{ height: '70px', display: 'flex', alignItems: 'center', padding: '0 25px', borderBottom: '1px solid #e2e8f0', gap: '10px', minWidth: '260px' }}>
+          <img src={logoImg} alt="أمنية" style={{ width: '35px', height: '35px' }} onError={(e) => { e.currentTarget.style.display = 'none' }} />
+          <h2 style={{ margin: 0, fontSize: '22px', color: '#dc2626', fontWeight: '900', letterSpacing: '-0.5px' }}>أمنية</h2>
         </div>
-      </div>
+        
+        <div className="scrollable" style={{ flex: 1, overflowY: 'auto', padding: '15px 0', minWidth: '260px' }}>
+          <div className={`menu-item ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => handleTabClick('analytics')}>
+            <span className="menu-icon">📊</span><span>لوحة القيادة</span>
+          </div>
+          <div className={`menu-item ${activeTab === 'financial' ? 'active' : ''}`} onClick={() => handleTabClick('financial')}>
+            <span className="menu-icon">💰</span><span>الخزينة والمالية</span>
+          </div>
+          <div className={`menu-item ${activeTab === 'pos' ? 'active' : ''}`} onClick={() => handleTabClick('pos')}>
+            <span className="menu-icon">🏢</span><span>توسعة الفروع (SaaS)</span>
+          </div>
+          <div className={`menu-item ${activeTab === 'admins' ? 'active' : ''}`} onClick={() => handleTabClick('admins')}>
+            <span className="menu-icon">👥</span><span>إدارة فريق العمل</span>
+          </div>
+          <div className={`menu-item ${activeTab === 'links' ? 'active' : ''}`} onClick={() => handleTabClick('links')}>
+            <span className="menu-icon">🔗</span><span>سجل الروابط الشامل</span>
+          </div>
+          <div className={`menu-item ${activeTab === 'themes' ? 'active' : ''}`} onClick={() => handleTabClick('themes')}>
+            <span className="menu-icon">🎨</span><span>متجر الثيمات</span>
+          </div>
+          <div className={`menu-item ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => handleTabClick('logs')}>
+            <span className="menu-icon">🛡️</span><span>سجل الرقابة الأمني</span>
+          </div>
+          <div className={`menu-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => handleTabClick('settings')}>
+  <span className="menu-icon">⚙️</span><span>إعدادات الواجهة</span>
+</div>
+        </div>
 
-      {/* منطقة المحتوى الرئيسية */}
-      <main style={mainContent}>
-        {/* الشريط العلوي المصغر */}
-        <header style={topBar}>
+        <div style={{ minWidth: '260px' }}>
+          <button onClick={handleLogout} style={{ width: 'calc(100% - 40px)', margin: '20px', padding: '12px', background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', borderRadius: '12px', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold', transition: 'all 0.2s' }}>
+            تسجيل الخروج 🚪
+          </button>
+        </div>
+      </aside>
+
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+        
+        <header style={{ height: '70px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px', flexShrink: 0, zIndex: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} style={hamburgerBtn}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} style={{ background: '#f1f5f9', border: 'none', cursor: 'pointer', padding: '10px', display: 'flex', alignItems: 'center', borderRadius: '10px', color: '#334155' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
               </svg>
             </button>
-            <h2 style={{ margin: 0, color: '#333', fontSize: '14px', fontWeight: 'bold' }}>لوحة الإدارة الكبرى</h2>
+            <h2 className="header-title" style={{ margin: 0, color: '#1e293b', fontSize: '18px', fontWeight: '800' }}>لوحة الإدارة الكبرى</h2>
           </div>
           
-          {/* اسمك يظهر بالهيدر */}
-          <div style={userInfo}>
-            <span style={{ fontSize: '13px', color: '#666' }}>المدير العام:</span>
-            <span style={{ fontSize: '14px', color: '#ff4d4d', fontWeight: 'bold' }}>حسين ايهاب نعيم</span>
+          <div className="user-info" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#fef2f2', borderRadius: '30px', border: '1px solid #fecaca' }}>
+            <div style={{ width: '28px', height: '28px', background: '#dc2626', color: '#fff', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '14px', fontWeight: 'bold' }}>ح</div>
+            <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>المؤسس:</span>
+            <span style={{ fontSize: '13px', color: '#dc2626', fontWeight: '900' }}>حسين ايهاب نعيم</span>
           </div>
         </header>
         
-        {/* مساحة العمل */}
-        <div style={contentArea}>
-          {renderContent()}
+        {/* 🚀 السحر هنا: عرض جميع الأقسام وإخفاء غير النشط بدل إعادة التحميل */}
+        <div className="content-area scrollable" style={{ flex: 1, overflowY: 'auto', padding: '30px', position: 'relative' }}>
+          {mountedTabs.includes('analytics') && <div style={{ display: activeTab === 'analytics' ? 'block' : 'none', height: '100%' }}><LiveAnalytics /></div>}
+          {mountedTabs.includes('financial') && <div style={{ display: activeTab === 'financial' ? 'block' : 'none', height: '100%' }}><FinancialWallet /></div>}
+          {mountedTabs.includes('pos') && <div style={{ display: activeTab === 'pos' ? 'block' : 'none', height: '100%' }}><POSManagement /></div>}
+          {mountedTabs.includes('admins') && <div style={{ display: activeTab === 'admins' ? 'block' : 'none', height: '100%' }}><AdminsControl /></div>}
+          {mountedTabs.includes('links') && <div style={{ display: activeTab === 'links' ? 'block' : 'none', height: '100%' }}><LinksMaster /></div>}
+          {mountedTabs.includes('themes') && <div style={{ display: activeTab === 'themes' ? 'block' : 'none', height: '100%' }}><ThemesControl /></div>}
+         {mountedTabs.includes('settings') && <div style={{ display: activeTab === 'settings' ? 'block' : 'none', height: '100%' }}><SiteSettings /></div>}
+          {mountedTabs.includes('logs') && <div style={{ display: activeTab === 'logs' ? 'block' : 'none', height: '100%' }}><SystemLogs /></div>}
         </div>
+
       </main>
     </div>
   );
 }
-
-// مكون فرعي مصغر لأزرار القائمة الجانبية
-const MenuItem = ({ id, icon, text, active, onClick }: any) => {
-  const isActive = active === id;
-  return (
-    <div 
-      onClick={() => onClick(id)}
-      style={{
-        padding: '10px 15px',
-        margin: '4px 12px',
-        borderRadius: '8px',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        background: isActive ? '#fff5f7' : 'transparent',
-        color: isActive ? '#ff4d4d' : '#444',
-        fontWeight: isActive ? '600' : '500',
-        borderRight: isActive ? '3px solid #ff4d4d' : '3px solid transparent',
-        transition: 'all 0.15s ease'
-      }}
-    >
-      <span style={{ fontSize: '15px' }}>{icon}</span>
-      <span style={{ fontSize: '13px' }}>{text}</span>
-    </div>
-  );
-};
-
-// --- الستايلات (أحجام الداشبورد الاحترافي) ---
-
-// ستايل شاشة الترحيب (الفخمة)
-const welcomeContainer: React.CSSProperties = { height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#fff', direction: 'rtl', fontFamily: 'sans-serif', textAlign: 'center' };
-const crownIcon: React.CSSProperties = { fontSize: '45px', marginBottom: '15px', filter: 'drop-shadow(0 4px 6px rgba(255, 105, 180, 0.2))' };
-
-// ستايل اللوحة الأساسية (Flex Row حتى تدفع المحتوى)
-const layout: React.CSSProperties = { display: 'flex', height: '100vh', background: '#f8f9fa', direction: 'rtl', fontFamily: 'sans-serif', overflow: 'hidden' };
-
-// القائمة الجانبية (أصبحت Transition للـ Width)
-const sidebar: React.CSSProperties = { background: '#fff', borderLeft: '1px solid #ffeaee', transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)', overflow: 'hidden', whiteSpace: 'nowrap', zIndex: 10 };
-const sidebarInner: React.CSSProperties = { width: '230px', height: '100%', display: 'flex', flexDirection: 'column' };
-const sidebarHeader: React.CSSProperties = { height: '55px', display: 'flex', alignItems: 'center', padding: '0 20px', borderBottom: '1px solid #ffeaee' };
-const menuContainer: React.CSSProperties = { flex: 1, overflowY: 'auto', paddingTop: '10px' };
-const logoutBtn: React.CSSProperties = { margin: '15px', padding: '10px', background: '#fff', border: '1px solid #ffeaee', color: '#444', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold', transition: 'background 0.2s' };
-
-// منطقة المحتوى الرئيسية
-const mainContent: React.CSSProperties = { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }; // minWidth 0 لمنع الانهيار
-const topBar: React.CSSProperties = { height: '55px', background: '#fff', borderBottom: '1px solid #ffeaee', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px', flexShrink: 0 };
-const hamburgerBtn: React.CSSProperties = { background: 'none', border: 'none', cursor: 'pointer', padding: '5px', display: 'flex', alignItems: 'center', borderRadius: '6px' };
-const userInfo: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 12px', background: '#fff5f7', borderRadius: '20px', border: '1px solid #ffe1e8' };
-
-const contentArea: React.CSSProperties = { flex: 1, overflowY: 'auto', padding: '25px' };
-
-// ستايل الأقسام (أحجام مصغرة للمحتوى)
-const sectionStyle: React.CSSProperties = { background: '#fff', padding: '20px 25px', borderRadius: '12px', border: '1px solid #eee', boxShadow: '0 2px 10px rgba(0,0,0,0.01)' };
-const sectionTitle: React.CSSProperties = { color: '#111', fontSize: '16px', margin: '0 0 5px 0' };
-const sectionDesc: React.CSSProperties = { color: '#777', fontSize: '13px', margin: 0 };

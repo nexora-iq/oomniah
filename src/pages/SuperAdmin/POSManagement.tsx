@@ -1,266 +1,226 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabase';
+import Swal from 'sweetalert2';
+import { 
+  FaBuilding, FaPlus, FaStore, FaHandshake, 
+  FaUserTie, FaBan, FaCheckCircle 
+} from 'react-icons/fa'; // 🌟 استدعاء الأيقونات
 
-export default function POSManagement() {
-  const [posList, setPosList] = useState<any[]>([]);
+// إعداد الإشعارات الجانبية (Toasts) الأنيقة
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  background: '#fff',
+  color: '#1e293b',
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer);
+    toast.addEventListener('mouseleave', Swal.resumeTimer);
+  }
+});
+
+export default function BranchesManager() {
+  const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [initialLoad, setInitialLoad] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
 
-  // حالة الفورم (لإضافة أو تعديل)
-  const [editId, setEditId] = useState<string | null>(null);
+  // بيانات الإضافة
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
-  const [instaUrl, setInstaUrl] = useState('');
-  const [sharePercentage, setSharePercentage] = useState<number | ''>(''); // 💰 الحقل الجديد للنسبة
+  const [type, setType] = useState('owned');
+  const [ownerPercentage, setOwnerPercentage] = useState('100');
 
-  const fetchPOSData = async () => {
-    // 🛠️ جلب الفروع مع الروابط والموظفين
-    const { data: branches, error } = await supabase
-      .from('points_of_sale')
-      .select(`
-        *,
-        profiles:profiles!pos_id ( id, fullname, email ),
-        gift_links ( id, themes ( name ) )
-      `)
-      .order('created_at', { ascending: true }); // ترتيب من الأقدم للأحدث
+  const fetchBranchesAndEmployees = async () => {
+    setDataLoading(true);
+    try {
+      // 1. جلب الفروع
+      const { data: pagesData, error: pagesError } = await supabase.from('pages').select('*').order('created_at', { ascending: false });
+      if (pagesError) throw pagesError;
 
-    if (error) {
-      console.error("Error fetching POS data:", error);
-    }
+      // 2. جلب الموظفين
+      const { data: profilesData, error: profilesError } = await supabase.from('profiles')
+        .select('id, fullname, role, page_id, is_blocked')
+        .neq('role', 'super_admin');
+        
+      if (profilesError) throw profilesError;
 
-    if (branches) {
-      const enrichedBranches = branches.map(branch => {
-        const salesMap: Record<string, number> = {};
-        if (branch.gift_links) {
-          branch.gift_links.forEach((link: any) => {
-            const themeName = link.themes?.name || 'ثيم غير معروف';
-            salesMap[themeName] = (salesMap[themeName] || 0) + 1;
-          });
-        }
-        const themeSales = Object.keys(salesMap).map(key => ({ themeName: key, count: salesMap[key] }));
-        return { ...branch, themeSales };
+      // 3. دمج الموظفين بداخل الفروع بالاعتماد على page_id
+      const branchesWithEmployees = (pagesData || []).map(branch => {
+        const branchEmployees = (profilesData || []).filter(emp => emp.page_id === branch.id);
+        return {
+          ...branch,
+          employees: branchEmployees
+        };
       });
-      setPosList(enrichedBranches);
+
+      setBranches(branchesWithEmployees);
+    } catch (error: any) {
+      console.error("Error fetching data:", error);
+      Toast.fire({ icon: 'error', title: 'حدث خطأ أثناء جلب بيانات الفروع والموظفين.' });
+    } finally {
+      setDataLoading(false);
     }
-    setInitialLoad(false);
   };
 
-  useEffect(() => {
-    fetchPOSData();
-  }, []);
+  useEffect(() => { fetchBranchesAndEmployees(); }, []);
 
-  // دالة الحفظ (تشتغل إضافة أو تعديل حسب الحالة)
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    const cleanSlug = slug.trim().toLowerCase().replace(/\s+/g, '-');
     
-    const finalShare = Number(sharePercentage) || 0;
+    const { error } = await supabase.from('pages').insert([
+      { name, slug: cleanSlug, type, owner_percentage: Number(ownerPercentage), status: 'active' }
+    ]);
 
-    if (editId) {
-      // 🛠️ عملية التعديل
-      const { error } = await supabase.from('points_of_sale')
-        .update({ name, slug, instagram_url: instaUrl, share_percentage: finalShare })
-        .eq('id', editId);
-        
-      if (error) alert(`خطأ في التعديل: ${error.message}`);
-      else resetForm();
-    } else {
-      // ➕ عملية الإضافة
-      const { error } = await supabase.from('points_of_sale')
-        .insert([{ name, slug, instagram_url: instaUrl, share_percentage: finalShare }]);
-        
-      if (error) alert(`خطأ: ${error.message} (تأكد أن الرابط المختصر غير مكرر)`);
-      else resetForm();
-    }
-    
-    fetchPOSData();
     setLoading(false);
-  };
 
-  // تجهيز الفورم للتعديل
-  const handleEditClick = (pos: any) => {
-    setEditId(pos.id);
-    setName(pos.name);
-    setSlug(pos.slug);
-    setInstaUrl(pos.instagram_url || '');
-    setSharePercentage(pos.share_percentage || 0); // جلب النسبة القديمة
-    // التمرير لأعلى الصفحة حتى تشوف الفورم
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  // دالة الحذف
-  const handleDeleteClick = async (id: string, branchName: string) => {
-    const confirmDelete = window.confirm(`هل أنت متأكد أنك تريد حذف فرع "${branchName}"؟ \n\nملاحظة: لا يمكن حذف الفرع إذا كان يحتوي على موظفين أو روابط مباعة مرتبطة به.`);
-    if (confirmDelete) {
-      const { error } = await supabase.from('points_of_sale').delete().eq('id', id);
-      if (error) {
-        alert('لا يمكن حذف هذا الفرع لوجود موظفين أو بيانات مرتبطة به. يرجى حذف الموظفين والروابط أولاً.');
-      } else {
-        fetchPOSData();
-      }
+    if (error) {
+      Toast.fire({ icon: 'error', title: `فشل الإضافة: ${error.message}` });
+    } else {
+      Toast.fire({ icon: 'success', title: `تمت إضافة فرع "${name}" بنجاح!` });
+      setName(''); setSlug(''); setType('owned'); setOwnerPercentage('100');
+      fetchBranchesAndEmployees();
     }
   };
 
-  const resetForm = () => {
-    setEditId(null);
-    setName('');
-    setSlug('');
-    setInstaUrl('');
-    setSharePercentage('');
-  };
+  const toggleStatus = async (id: string, current: string, branchName: string) => {
+    const newStatus = current === 'active' ? 'inactive' : 'active';
 
-  if (initialLoad) return <div style={{ textAlign: 'center', padding: '50px', color: '#ff69b4', fontWeight: 'bold' }}>جاري تحميل إدارة الفروع... ⏳</div>;
+    setBranches(prev => prev.map(b => b.id === id ? { ...b, status: newStatus } : b));
+    
+    const { error } = await supabase.from('pages').update({ status: newStatus }).eq('id', id);
+    
+    if (error) {
+      Toast.fire({ icon: 'error', title: error.message });
+      fetchBranchesAndEmployees(); 
+    } else {
+      Toast.fire({ 
+        icon: 'success', 
+        title: newStatus === 'active' ? `تم تفعيل ${branchName}` : `تم إيقاف ${branchName}` 
+      });
+    }
+  };
 
   return (
-    <div style={container}>
-      <div style={headerSection}>
-        <h2 style={title}>إدارة نقاط البيع 🏪</h2>
-        <p style={desc}>التحكم الكامل ومراقبة الفروع، الموظفين، وضبط نسب أرباح الفروع لتوزيع الحسابات بدقة.</p>
+    <div className="fade-in">
+      <style>{`
+        .fade-in { animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .card { background: #fff; padding: 25px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+        .input-style { padding: 12px 15px; border-radius: 10px; border: 1px solid #cbd5e1; outline: none; width: 100%; box-sizing: border-box; background: #f8fafc; font-size: 14px; transition: 0.3s; }
+        .input-style:focus { border-color: #dc2626; background: #fff; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1); }
+        
+        .branch-card { background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+        .branch-card:hover { border-color: #fca5a5; transform: translateY(-3px); box-shadow: 0 8px 25px rgba(220, 38, 38, 0.08); }
+        
+        .emp-chip { background: #fef2f2; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: bold; color: #dc2626; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #fecaca; }
+        
+        .spinner { width: 40px; height: 40px; border: 4px solid #f8fafc; border-top: 4px solid #dc2626; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      `}</style>
+
+      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+        <div>
+          <h2 style={{ margin: '0 0 5px 0', color: '#1e293b', fontSize: '24px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <FaBuilding style={{ color: '#dc2626' }} /> إدارة الفروع (SaaS)
+          </h2>
+          <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>أضف فروعاً جديدة وتابع فريق العمل الخاص بكل فرع بمرونة تامة.</p>
+        </div>
+        <div style={{ background: '#fef2f2', color: '#dc2626', padding: '10px 20px', borderRadius: '12px', fontWeight: 'bold' }}>
+          إجمالي الفروع: {branches.length}
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} style={editId ? editFormStyle : addFormStyle}>
-        {editId && <div style={editBadge}>جاري تعديل بيانات الفرع...</div>}
-        
-        <div style={inputGroup}>
-          <label style={label}>اسم النقطة (الفرع)</label>
-          <input type="text" required value={name} onChange={e => setName(e.target.value)} style={input} placeholder="مثال: فرع المنصور" />
+      <form onSubmit={handleAdd} className="card" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', alignItems: 'end' }}>
+        <div>
+          <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#475569', display: 'block', marginBottom: '5px' }}>اسم الفرع</label>
+          <input type="text" required value={name} onChange={e => setName(e.target.value)} className="input-style" placeholder="مثال: فرع المنصور" />
         </div>
-        
-        <div style={inputGroup}>
-          <label style={label}>الرابط المختصر (Slug)</label>
-          <input type="text" required value={slug} onChange={e => setSlug(e.target.value)} style={input} placeholder="مثال: mansour" />
+        <div>
+          <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#475569', display: 'block', marginBottom: '5px' }}>رابط الفرع (Slug)</label>
+          <input type="text" required value={slug} onChange={e => setSlug(e.target.value)} className="input-style" placeholder="mansour" dir="ltr" />
         </div>
-
-        {/* 💰 الحقل الجديد لإدارة الحسابات */}
-        <div style={inputGroup}>
-          <label style={label}>حصة الفرع من المبيعات (%)</label>
-          <input 
-            type="number" 
-            min="0" 
-            max="100" 
-            required 
-            value={sharePercentage} 
-            onChange={e => setSharePercentage(e.target.value ? Number(e.target.value) : '')} 
-            style={input} 
-            placeholder="مثال: 50" 
-          />
+        <div>
+          <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#475569', display: 'block', marginBottom: '5px' }}>نوع التعاقد</label>
+          <select value={type} onChange={e => { setType(e.target.value); setOwnerPercentage(e.target.value === 'owned' ? '100' : '50'); }} className="input-style">
+            <option value="owned">فرع مملوك لأمنية (100%)</option>
+            <option value="contract">فرع متعاقد (نسبة مئوية)</option>
+          </select>
         </div>
-
-        <div style={inputGroup}>
-          <label style={label}>رابط الانستغرام (اختياري)</label>
-          <input type="url" value={instaUrl} onChange={e => setInstaUrl(e.target.value)} style={input} placeholder="https://instagram.com/..." />
+        <div>
+          <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#475569', display: 'block', marginBottom: '5px' }}>حصة المنصة (%)</label>
+          <input type="number" required value={ownerPercentage} onChange={e => setOwnerPercentage(e.target.value)} className="input-style" disabled={type === 'owned'} />
         </div>
-        
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flex: '1 1 200px' }}>
-          <button type="submit" disabled={loading} style={editId ? updateBtn : addBtn}>
-            {loading ? 'جاري المعالجة...' : (editId ? 'حفظ التعديلات ✔️' : '+ إضافة فرع')}
-          </button>
-          {editId && (
-            <button type="button" onClick={resetForm} style={cancelBtn}>إلغاء</button>
-          )}
-        </div>
+        <button type="submit" disabled={loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#dc2626', color: '#fff', padding: '12px', borderRadius: '10px', border: 'none', fontWeight: 'bold', cursor: 'pointer', height: '43px', transition: '0.3s' }}>
+          {loading ? 'جاري الإضافة...' : <><FaPlus /> تسجيل الفرع</>}
+        </button>
       </form>
 
-      <div style={cardsContainer}>
-        {posList.map((pos) => (
-          <div key={pos.id} style={posCard}>
-            
-            <div style={cardHeader}>
-              <div>
-                <h3 style={{ margin: '0 0 5px 0', color: '#111', fontSize: '18px', fontWeight: '900' }}>{pos.name}</h3>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <span style={badgeSlug}>/{pos.slug}</span>
-                  <span style={badgeShare}>حصة: {pos.share_percentage || 0}%</span>
-                </div>
-              </div>
+      {dataLoading ? (
+        <div style={{ padding: '60px', textAlign: 'center' }}>
+          <div className="spinner"></div>
+          <p style={{ marginTop: '15px', color: '#dc2626', fontWeight: 'bold' }}>جاري تحميل بيانات الفروع والموظفين...</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+          {branches.map(b => (
+            <div key={b.id} className="branch-card" style={{ opacity: b.status === 'active' ? 1 : 0.7, filter: b.status === 'active' ? 'none' : 'grayscale(0.5)' }}>
               
-              <div style={actionButtons}>
-                <button onClick={() => handleEditClick(pos)} style={actionBtnEdit}>✏️ تعديل</button>
-                <button onClick={() => handleDeleteClick(pos.id, pos.name)} style={actionBtnDelete}>🗑️ حذف</button>
-              </div>
-            </div>
-
-            {pos.instagram_url && (
-              <a href={pos.instagram_url} target="_blank" rel="noreferrer" style={instaBtn}>📸 زيارة الانستغرام</a>
-            )}
-
-            <div style={sectionBox}>
-              <h4 style={subTitle}>👥 الموظفين المربوطين:</h4>
-              {pos.profiles && pos.profiles.length > 0 ? (
-                <div style={staffList}>
-                  {pos.profiles.map((staff: any) => (
-                    <span key={staff.id} style={staffTag}>
-                      <span style={activeDot}></span> {staff.fullname || staff.email}
-                    </span>
-                  ))}
+              <div style={{ padding: '20px', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 5px 0', color: '#1e293b', fontSize: '18px' }}>{b.name}</h3>
+                    <div style={{ fontSize: '13px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {b.type === 'owned' ? <><FaStore style={{ color: '#0ea5e9' }} /> مملوك بالكامل لأمنية</> : <><FaHandshake style={{ color: '#f59e0b' }} /> متعاقد (حصة أمنية {b.owner_percentage}%)</>}
+                    </div>
+                  </div>
+                  <span style={{ background: '#f8fafc', padding: '4px 8px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', border: '1px solid #e2e8f0', direction: 'ltr' }}>
+                    /{b.slug}
+                  </span>
                 </div>
-              ) : (
-                <p style={emptyText}>لا يوجد موظفين مربوطين حالياً.</p>
-              )}
-            </div>
+              </div>
 
-            <div style={sectionBox}>
-              <h4 style={subTitle}>📊 مبيعات الثيمات:</h4>
-              {pos.themeSales && pos.themeSales.length > 0 ? (
-                <table style={miniTable}>
-                  <tbody>
-                    {pos.themeSales.map((sale: any, index: number) => (
-                      <tr key={index} style={{ borderBottom: '1px solid #e8e8e8' }}>
-                        <td style={{ padding: '8px 0', fontSize: '13px', color: '#333', fontWeight: 'bold' }}>{sale.themeName}</td>
-                        <td style={{ padding: '8px 0', fontSize: '13px', fontWeight: 'bold', color: '#00cc66', textAlign: 'left' }}>
-                          {sale.count} رابط
-                        </td>
-                      </tr>
+              <div style={{ padding: '20px', background: '#fcfcfc', flexGrow: 1 }}>
+                <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#475569', marginBottom: '10px' }}>
+                  فريق العمل ({b.employees?.length || 0}):
+                </div>
+                
+                {b.employees && b.employees.length > 0 ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {b.employees.map((emp: any) => (
+                      <span key={emp.id} className="emp-chip" style={{ opacity: emp.is_blocked ? 0.5 : 1 }}>
+                        <FaUserTie style={{ color: '#dc2626' }} /> {emp.fullname || 'بدون اسم'} {emp.is_blocked && ' (محظور)'}
+                      </span>
                     ))}
-                  </tbody>
-                </table>
-              ) : (
-                <p style={emptyText}>لا توجد مبيعات مسجلة لهذا الفرع حتى الآن.</p>
-              )}
-            </div>
+                  </div>
+                ) : (
+                  <div style={{ color: '#94a3b8', fontSize: '13px', fontStyle: 'italic' }}>لا يوجد موظفين مرتبطين بهذا الفرع.</div>
+                )}
+              </div>
 
-          </div>
-        ))}
-        {posList.length === 0 && <p style={{ textAlign: 'center', width: '100%', color: '#999', marginTop: '20px' }}>لا توجد نقاط بيع مضافة حالياً.</p>}
-      </div>
+              <div style={{ padding: '15px 20px', background: '#fff', borderTop: '1px solid #f1f5f9' }}>
+                <button 
+                  onClick={() => toggleStatus(b.id, b.status, b.name)} 
+                  style={{ 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                    width: '100%', padding: '10px', borderRadius: '10px', border: 'none', 
+                    background: b.status === 'active' ? '#fef2f2' : '#f0fdf4', 
+                    color: b.status === 'active' ? '#dc2626' : '#16a34a', 
+                    fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' 
+                  }}
+                >
+                  {b.status === 'active' ? <><FaBan /> إيقاف عمل الفرع</> : <><FaCheckCircle /> إعادة تفعيل الفرع</>}
+                </button>
+              </div>
+
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
-
-// الستايلات المعدلة لتكون متجاوبة (Responsive) وتستوعب الحقول الإضافية
-const container: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '20px', direction: 'rtl', fontFamily: 'sans-serif' };
-const headerSection: React.CSSProperties = { background: '#fff', padding: '20px 25px', borderRadius: '12px', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' };
-const title: React.CSSProperties = { margin: '0 0 5px 0', fontSize: '20px', color: '#111', fontWeight: '900' };
-const desc: React.CSSProperties = { margin: 0, fontSize: '13px', color: '#666' };
-
-const addFormStyle: React.CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'flex-end', background: '#fff', padding: '20px 25px', borderRadius: '12px', border: '1px solid #e0e0e0', transition: '0.3s' };
-const editFormStyle: React.CSSProperties = { ...addFormStyle, border: '2px solid #00cc66', background: '#f2fdf7', position: 'relative' };
-const editBadge: React.CSSProperties = { position: 'absolute', top: '-12px', right: '20px', background: '#00cc66', color: '#fff', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' };
-
-const inputGroup: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '6px', flex: '1 1 200px' };
-const label: React.CSSProperties = { fontSize: '12px', fontWeight: 'bold', color: '#333' };
-const input: React.CSSProperties = { padding: '12px', borderRadius: '8px', border: '1px solid #ccc', fontSize: '13px', outline: 'none', background: '#fff', width: '100%', boxSizing: 'border-box' };
-
-const addBtn: React.CSSProperties = { background: '#ff4d4d', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', height: '42px', flex: 1 };
-const updateBtn: React.CSSProperties = { background: '#00cc66', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', height: '42px', flex: 1 };
-const cancelBtn: React.CSSProperties = { background: '#eee', color: '#555', border: 'none', padding: '12px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', height: '42px' };
-
-const cardsContainer: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '25px', paddingTop: '10px' };
-const posCard: React.CSSProperties = { background: '#ffffff', padding: '25px', borderRadius: '16px', border: '1px solid #dcdcdc', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.05)' };
-const cardHeader: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' };
-const badgeSlug: React.CSSProperties = { background: '#f0f0f0', color: '#555', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold' };
-const badgeShare: React.CSSProperties = { background: '#fff0f3', color: '#ff477e', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' };
-
-const actionButtons: React.CSSProperties = { display: 'flex', gap: '8px' };
-const actionBtnEdit: React.CSSProperties = { background: '#fff', border: '1px solid #ddd', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#555', fontWeight: 'bold' };
-const actionBtnDelete: React.CSSProperties = { background: '#fff', border: '1px solid #ffcccc', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#ff4d4d', fontWeight: 'bold' };
-
-const instaBtn: React.CSSProperties = { background: '#fff0f3', color: '#ff4d4d', textDecoration: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', border: '1px solid #ffd6e0', alignSelf: 'flex-start' };
-
-const sectionBox: React.CSSProperties = { background: '#f8f9fa', padding: '18px', borderRadius: '12px', border: '1px solid #ebebeb' };
-const subTitle: React.CSSProperties = { margin: '0 0 12px 0', fontSize: '14px', color: '#222', fontWeight: 'bold' };
-const staffList: React.CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: '8px' };
-const staffTag: React.CSSProperties = { background: '#fff', border: '1px solid #ddd', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', color: '#333', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' };
-const activeDot: React.CSSProperties = { width: '8px', height: '8px', background: '#00cc66', borderRadius: '50%' };
-const miniTable: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };
-const emptyText: React.CSSProperties = { margin: 0, fontSize: '13px', color: '#888', fontStyle: 'italic' };

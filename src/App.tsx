@@ -1,123 +1,148 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect, useState, type ReactNode } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, Link } from 'react-router-dom';
 import { supabase } from './supabase';
+import { FaHome, FaInstagram, FaTiktok, FaExclamationTriangle } from 'react-icons/fa'; // 🌟 استدعاء الأيقونات
 
-// استيراد الصفحات الأساسية
+// ==========================================
+// 1. استيراد صفحات النظام الأساسية
+// ==========================================
 import POS from './pages/POS';
 import Login from './pages/Login';
 import Viewer from './pages/Viewer';
 import SuperAdmin from './pages/SuperAdmin/SuperAdmin';
 
-// 🛡️ مكون حماية السوبر أدمن (للصلاحيات الكاملة)
+// استيراد مكونات الموقع الرسمي
+import Navbar from './pages/oomniah/Navbar'; 
+import Home from './pages/oomniah/Home';
+import Footer from './pages/oomniah/Footer'; // 👈 الفوتر المعزول الجديد
+import PrivacyPolicy from './pages/oomniah/PrivacyPolicy'; // 👈 صفحة الخصوصية
+import Terms from './pages/oomniah/Terms'; // 👈 صفحة الشروط
+
+// ==========================================
+// 2. مكونات الحماية (Guards) للنظام
+// ==========================================
 const RequireSuperAdmin = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setIsAuthenticated(false);
-        return;
-      }
-      
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single();
-        
+      if (!session) { setIsAuthenticated(false); return; }
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
       setIsAuthenticated(profile?.role === 'super_admin');
     };
     checkAuth();
   }, []);
 
-  if (isAuthenticated === null) return <div style={{ height: '100vh', background: '#000' }}></div>; 
+  if (isAuthenticated === null) return <div style={{ height: '100vh', background: '#ffffff' }}></div>; 
   if (isAuthenticated === false) return <Navigate to="/secure-portal-access" replace />; 
-  
   return <>{children}</>; 
 };
 
-// 🛡️ مكون حماية أدمن نقطة البيع
-const RequirePosAdmin = ({ children }: { children: ReactNode }) => {
+const RequirePageAdmin = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setIsAuthenticated(false);
-        return;
-      }
-      
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single();
-        
-      setIsAuthenticated(profile?.role === 'pos_admin' || profile?.role === 'super_admin');
+      if (!session) { setIsAuthenticated(false); return; }
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
+      setIsAuthenticated(profile?.role === 'page_admin' || profile?.role === 'super_admin');
     };
     checkAuth();
   }, []);
 
-  if (isAuthenticated === null) return <div style={{ height: '100vh', background: '#000' }}></div>; 
+  if (isAuthenticated === null) return <div style={{ height: '100vh', background: '#ffffff' }}></div>; 
   if (isAuthenticated === false) return <Navigate to="/secure-portal-access" replace />; 
-  
   return <>{children}</>; 
 };
 
+// ==========================================
+// 3. الغلاف العام للموقع الرسمي (يحتوي على الهيدر والفوتر)
+// ==========================================
+const PublicLayout = () => {
+  return (
+    <div style={{ background: '#ffffff', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <Navbar /> 
+      <main style={{ marginTop: '130px', flexGrow: 1 }}>
+        <Outlet /> 
+      </main>
+      <Footer /> {/* 👈 استدعاء الفوتر الجديد المليان روابط */}
+    </div>
+  );
+};
+
+// ==========================================
+// 4. تطبيق التوجيه (Router) الأساسي
+// ==========================================
 export default function App() {
   return (
     <Router>
       <Routes>
-        {/* 🔒 صفحة الدخول المخفية */}
+        
+        {/* 🌐 مسارات الموقع الرسمي (تحتوي على هيدر وفوتر) */}
+        <Route element={<PublicLayout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} /> {/* مسار الخصوصية */}
+          <Route path="/terms" element={<Terms />} /> {/* مسار الشروط */}
+        </Route>
+
+        {/* ⚙️ مسارات النظام والمنصة (لوحات التحكم والعرض) */}
         <Route path="/secure-portal-access" element={<Login />} />
-        
-        {/* 👑 لوحة التحكم الكبرى (السوبر أدمن) */}
-        <Route 
-          path="/master-dashboard" 
-          element={
-            <RequireSuperAdmin>
-              <SuperAdmin />
-            </RequireSuperAdmin>
-          } 
-        />
-
-        {/* 🏪 لوحة نقطة البيع للموظفين (تم حمايتها بـ /branch/ لمنع كشف صفحة الدخول) */}
-        <Route path="/branch/:slug" element={<POS />} /> 
-
-        {/* 🎁 عرض الهدية للزبون */}
-        <Route path="/:themeSlug/:shortId" element={<Viewer />} />
-        
-        {/* 🚫 مسار الأخطاء (أي رابط عشوائي أو خاطئ سيأتي إلى هنا مباشرة) */}
+        <Route path="/master-dashboard" element={<RequireSuperAdmin><SuperAdmin /></RequireSuperAdmin>} />
+        <Route path="/branch/:slug" element={<RequirePageAdmin><POS /></RequirePageAdmin>} /> 
+        <Route path="/:themeSlug/:shortId" element={<Viewer />} />        
         <Route path="*" element={<ErrorPage />} />
+        
       </Routes>
     </Router>
   );
 }
 
+// ==========================================
+// 5. صفحة الأخطاء 404 المحدثة
+// ==========================================
 function ErrorPage() {
-  const INSTAGRAM_URL = "https://www.instagram.com/link.love1?igsh=dDRjd2d3MTN1dm92";
-
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#ffeef2', fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif', padding: '20px', textAlign: 'center', direction: 'rtl' }}>
-      <div style={{ 
-        background: '#ffffff', padding: '40px 30px', borderRadius: '24px', 
-        boxShadow: '0 15px 35px rgba(255, 143, 163, 0.2)', maxWidth: '400px', width: '100%', border: '2px solid #ffccd5' 
-      }}>
-        <div style={{ fontSize: '60px', marginBottom: '15px' }}>💔</div>
-        <h2 style={{ color: '#ff477e', fontSize: '24px', marginBottom: '10px', fontWeight: '900' }}>الرابط غير صحيح</h2>
-        <p style={{ color: '#666', fontSize: '15px', lineHeight: '1.6', marginBottom: '25px' }}>
-          عذراً، لا يمكننا العثور على هذه الصفحة أو الهدية. تأكد من نسخ الرابط بشكل كامل.
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#f8fafc', fontFamily: 'Tajawal, system-ui, -apple-system, sans-serif', padding: '20px', textAlign: 'center', direction: 'rtl' }}>
+      
+      <style>{`
+        .social-btn { transition: all 0.3s ease; }
+        .social-btn:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .home-btn { transition: all 0.3s ease; }
+        .home-btn:hover { background: #b91c1c !important; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4) !important; }
+      `}</style>
+
+      <div style={{ background: '#ffffff', padding: '40px 30px', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.05)', maxWidth: '420px', width: '100%', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        
+        <img src="/oomniah-logo.png" alt="أمنية" style={{ width: '80px', height: '80px', marginBottom: '20px', objectFit: 'contain' }} onError={(e) => { e.currentTarget.style.display = 'none' }} />
+        
+        <h2 style={{ color: '#dc2626', fontSize: '24px', marginBottom: '10px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <FaExclamationTriangle /> عذراً، الصفحة غير موجودة
+        </h2>
+        
+        <p style={{ color: '#64748b', fontSize: '15px', lineHeight: '1.6', marginBottom: '30px' }}>
+          يبدو أن الرابط الذي تحاول الوصول إليه غير صحيح أو تم حذفه. تأكد من نسخ الرابط بشكل كامل.
         </p>
-        <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" style={{
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
-          color: '#ffffff', textDecoration: 'none', padding: '12px 25px', borderRadius: '50px',
-          fontWeight: 'bold', fontSize: '15px', boxShadow: '0 5px 15px rgba(220, 39, 67, 0.3)'
-        }}>
-          ابتكر هديتك الخاصة 🎁
-        </a>
+        
+        {/* زر العودة للموقع الرسمي */}
+        <Link to="/" className="home-btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#dc2626', color: '#ffffff', textDecoration: 'none', padding: '14px 28px', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px', boxShadow: '0 4px 15px rgba(220, 38, 38, 0.3)', width: '100%', boxSizing: 'border-box', marginBottom: '25px' }}>
+          <FaHome /> العودة للموقع الرسمي
+        </Link>
+
+        {/* روابط التواصل الاجتماعي */}
+        <div style={{ width: '100%', borderTop: '1px solid #f1f5f9', paddingTop: '20px' }}>
+          <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '15px', fontWeight: 'bold' }}>أو تواصل معنا عبر حساباتنا الرسمية:</p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '15px' }}>
+            <a href="https://www.instagram.com/oomnia.1/" target="_blank" rel="noreferrer" className="social-btn" style={{ background: '#fef2f2', color: '#dc2626', width: '50px', height: '50px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', textDecoration: 'none' }}>
+              <FaInstagram />
+            </a>
+            <a href="https://www.tiktok.com/@oomnia.1" target="_blank" rel="noreferrer" className="social-btn" style={{ background: '#f8fafc', color: '#0f172a', width: '50px', height: '50px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', textDecoration: 'none' }}>
+              <FaTiktok />
+            </a>
+          </div>
+        </div>
+
       </div>
     </div>
   );
