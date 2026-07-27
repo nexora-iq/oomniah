@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { Toast } from '../toast'; 
-import { FaEnvelope, FaLock, FaSignInAlt, FaSpinner } from 'react-icons/fa'; // 🌟 استدعاء الأيقونات
+import { FaEnvelope, FaLock, FaSignInAlt, FaSpinner } from 'react-icons/fa';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -14,7 +14,6 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
 
-    // 1. الدخول عبر سيرفرات Supabase
     const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
     
     if (authError || !data.user) {
@@ -23,7 +22,6 @@ export default function Login() {
       return;
     } 
     
-    // 2. فحص الصلاحية مع جلب كلا الحقلين للاسم
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role, full_name, fullname, page_id, pages(name, slug)')
@@ -31,18 +29,14 @@ export default function Login() {
       .single();
       
     if (profileError || !profile) {
-      console.log(profileError); 
       Toast.fire({ icon: 'warning', title: 'حسابك غير مكتمل الإعداد في النظام.' });
       setLoading(false);
       return;
     }
 
     const resProfile = profile as any;
-    
-    // ⬇️ سحب الاسم الحقيقي بذكاء
     const exactEmpName = resProfile.fullname || resProfile.full_name || 'موظف مجهول';
 
-    // 3. تحديد اسم الفرع الصحيح للسجل
     let exactPageName = 'الإدارة المركزية';
     if (resProfile.role !== 'super_admin' && resProfile.pages) {
       exactPageName = Array.isArray(resProfile.pages) 
@@ -50,7 +44,6 @@ export default function Login() {
                     : resProfile.pages?.name;
     }
 
-    // 4. توثيق تسجيل الدخول في السجل الأمني
     await supabase.from('system_logs').insert([{
       admin_name: exactEmpName,
       pos_name: exactPageName || 'فرع مجهول',
@@ -58,10 +51,8 @@ export default function Login() {
       details: `قام (${exactEmpName}) بتسجيل الدخول بنجاح إلى (${exactPageName || 'النظام'})`
     }]);
 
-    // عرض إشعار النجاح
     Toast.fire({ icon: 'success', title: `أهلاً بك، ${exactEmpName}` });
 
-    // 5. التوجيه الذكي
     setTimeout(() => {
       if (resProfile.role === 'super_admin') {
         navigate('/master-dashboard');
@@ -79,60 +70,181 @@ export default function Login() {
           Toast.fire({ icon: 'error', title: 'حسابك غير مربوط بأي فرع حالياً.' });
         }
       }
-    }, 1500);
+    }, 1200);
     
-    // إزالة اللودنك بعد التوجيه
-    setTimeout(() => setLoading(false), 1500);
+    setTimeout(() => setLoading(false), 1200);
   };
 
   return (
-    <div className="login-container fade-in">
+    <div className="login-wrapper">
       <style>{`
-        .fade-in { animation: fadeIn 0.5s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .login-container { 
-          height: 100vh; display: flex; justify-content: center; alignItems: center; 
-          background: #f8fafc; direction: rtl; fontFamily: Tajawal, system-ui, -apple-system, sans-serif; padding: 20px; 
+        .login-wrapper {
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: radial-gradient(circle at top right, #fef2f2 0%, #fff 50%, #f1f5f9 100%);
+          direction: rtl;
+          font-family: Tajawal, system-ui, -apple-system, sans-serif;
+          padding: 20px;
+          position: relative;
+          overflow: hidden;
         }
-        
-        .login-card { 
-          background: #fff; padding: 40px 30px; border-radius: 24px; border: 1px solid #e2e8f0; 
-          text-align: center; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05); 
+
+        .login-wrapper::before {
+          content: '';
+          position: absolute;
+          width: 300px;
+          height: 300px;
+          background: rgba(239, 68, 68, 0.08);
+          border-radius: 50%;
+          top: -50px;
+          right: -50px;
+          filter: blur(60px);
         }
-        
-        .input-group { position: relative; width: 100%; margin-bottom: 15px; }
-        .input-icon { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 16px; transition: 0.3s; }
-        
-        .input-style { 
-          width: 100%; padding: 16px 16px 16px 45px; border-radius: 12px; border: 1px solid #cbd5e1; 
-          font-size: 15px; outline: none; box-sizing: border-box; transition: all 0.3s; background: #f8fafc; color: #1e293b;
+
+        .login-card {
+          position: relative;
+          z-index: 10;
+          background: #ffffff;
+          padding: 45px 35px;
+          border-radius: 28px;
+          border: 1px solid #f1f5f9;
+          text-align: center;
+          width: 100%;
+          max-width: 420px;
+          box-shadow: 0 25px 50px -12px rgba(220, 38, 38, 0.08);
+          animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .input-style:focus { border-color: #dc2626; background: #fff; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1); }
-        .input-group:focus-within .input-icon { color: #dc2626; }
-        
-        .login-btn { 
-          display: flex; align-items: center; justify-content: center; gap: 10px;
-          background: #ef4444; color: #fff; padding: 16px; border-radius: 12px; font-size: 18px; 
-          font-weight: bold; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); 
+
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        .login-btn:hover:not(:disabled) { background: #dc2626; transform: translateY(-2px); }
-        .login-btn:disabled { background: #fca5a5; cursor: not-allowed; box-shadow: none; }
-        
-        .spin { animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .logo-container {
+          width: 90px;
+          height: 90px;
+          margin: 0 auto 15px auto;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #fff5f5;
+          border-radius: 22px;
+          padding: 12px;
+          border: 1px solid #fee2e2;
+          box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .logo-img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        }
+
+        .input-group {
+          position: relative;
+          width: 100%;
+          margin-bottom: 18px;
+        }
+
+        .input-icon {
+          position: absolute;
+          right: 16px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #94a3b8;
+          font-size: 16px;
+          transition: all 0.2s ease;
+        }
+
+        .input-style {
+          width: 100%;
+          padding: 16px 48px 16px 16px;
+          border-radius: 14px;
+          border: 1.5px solid #e2e8f0;
+          font-size: 15px;
+          outline: none;
+          box-sizing: border-box;
+          transition: all 0.25s ease;
+          background: #f8fafc;
+          color: #0f172a;
+          font-weight: 500;
+        }
+
+        .input-style:focus {
+          border-color: #ef4444;
+          background: #ffffff;
+          box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+        }
+
+        .input-group:focus-within .input-icon {
+          color: #ef4444;
+        }
+
+        .login-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          width: 100%;
+          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+          color: #ffffff;
+          padding: 16px;
+          border-radius: 14px;
+          font-size: 17px;
+          font-weight: 700;
+          border: none;
+          cursor: pointer;
+          transition: all 0.25s ease;
+          box-shadow: 0 10px 20px -5px rgba(220, 38, 38, 0.35);
+          margin-top: 10px;
+        }
+
+        .login-btn:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 14px 24px -5px rgba(220, 38, 38, 0.45);
+        }
+
+        .login-btn:active:not(:disabled) {
+          transform: translateY(0);
+        }
+
+        .login-btn:disabled {
+          opacity: 0.65;
+          cursor: not-allowed;
+          box-shadow: none;
+        }
+
+        .spin {
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
       `}</style>
 
       <div className="login-card">
-        {/* شعار أمنية */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
-          <img src="/oomniah-logo.png" alt="أمنية" style={{ width: '70px', height: '70px', objectFit: 'contain' }} onError={(e) => { e.currentTarget.style.display = 'none' }} />
+        {/* اللوغو */}
+        <div className="logo-container">
+          <img 
+            src="/logo-oomniah5.png" 
+            alt="شعار أمنية" 
+            className="logo-img"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
         </div>
-        <h2 style={{ color: '#dc2626', marginBottom: '5px', fontSize: '28px', fontWeight: '900', fontFamily: '"Aref Ruqaa", serif' }}>أُمنيــــة</h2>
-        <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '30px', fontWeight: 'bold' }}>بوابة إدارة المنصة</p>
 
-        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column' }}>
-          
+        <h2 style={{ color: '#0f172a', marginBottom: '4px', fontSize: '26px', fontWeight: '900' }}>
+          أُمنيــــة
+        </h2>
+        <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '28px', fontWeight: '600' }}>
+          بوابة إدارة المنصة
+        </p>
+
+        <form onSubmit={handleLogin}>
           <div className="input-group">
             <FaEnvelope className="input-icon" />
             <input 
@@ -143,7 +255,6 @@ export default function Login() {
               required 
               autoComplete="username"
               className="input-style" 
-              style={{ paddingRight: '45px', paddingLeft: '16px' }} // التأكيد على المسافة للأيقونة يميناً
             />
           </div>
 
@@ -157,15 +268,14 @@ export default function Login() {
               required 
               autoComplete="current-password"
               className="input-style" 
-              style={{ paddingRight: '45px', paddingLeft: '16px' }}
             />
           </div>
 
-          <button type="submit" disabled={loading} className="login-btn" style={{ marginTop: '5px' }}>
+          <button type="submit" disabled={loading} className="login-btn">
             {loading ? (
               <><FaSpinner className="spin" /> جاري التحقق...</>
             ) : (
-              <><FaSignInAlt /> دخول النظام</>
+              <><FaSignInAlt /> تسجيل الدخول</>
             )}
           </button>
         </form>

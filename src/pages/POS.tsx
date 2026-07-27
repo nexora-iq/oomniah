@@ -8,7 +8,7 @@ import {
   FaPalette, FaClock, FaUser, FaGift, FaPen, FaMusic, 
   FaUpload, FaYoutube, FaMoneyBillWave, FaLink, 
   FaCheckCircle, FaCopy, FaSpinner 
-} from 'react-icons/fa'; // 🌟 استدعاء الأيقونات
+} from 'react-icons/fa';
 
 const DURATION_PRICES = {
   daily: { label: 'يومي', price: 5000 },
@@ -74,7 +74,6 @@ export default function POS() {
       }
 
       setLoading(false);
-      // إعطاء وقت كافي للأنيميشن السينمائي (4 ثواني) إلا إذا ضغط المستخدم للتخطي
       setTimeout(() => setShowSplash(false), 4000); 
     };
     init();
@@ -246,7 +245,6 @@ export default function POS() {
     }
   };
 
-  // ✨ شاشة الدخول السينمائية الفخمة (Cinematic Splash Screen)
   if (showSplash || loading) return (
     <div className="splash-container" onClick={() => setShowSplash(false)}>
       <style>{`
@@ -257,9 +255,7 @@ export default function POS() {
           z-index: 9999; cursor: pointer; overflow: hidden;
           animation: splashOut 0.8s cubic-bezier(0.16, 1, 0.3, 1) 3.5s forwards;
         }
-        .splash-logo-wrapper {
-          position: relative; margin-bottom: 25px;
-        }
+        .splash-logo-wrapper { position: relative; margin-bottom: 20px; }
         .splash-glow {
           position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
           width: 150%; height: 150%; 
@@ -267,21 +263,21 @@ export default function POS() {
           z-index: -1; animation: pulseGlow 3s infinite alternate;
         }
         .splash-logo {
-          width: 110px; height: 110px; object-fit: contain;
+          width: 90px; height: 90px; object-fit: contain;
           animation: cinematicScale 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
           filter: drop-shadow(0 15px 30px rgba(220, 38, 38, 0.15));
         }
         .splash-brand {
-          color: #dc2626; font-size: 42px; font-weight: 900; font-family: "Aref Ruqaa", serif;
+          color: #dc2626; font-size: 32px; font-weight: 900; font-family: "Aref Ruqaa", serif;
           margin: 0 0 10px 0; opacity: 0; transform: translateY(20px); letter-spacing: 2px;
           animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards;
         }
         .splash-welcome {
-          color: #1e293b; font-size: 26px; font-weight: 800; opacity: 0; transform: translateY(20px);
+          color: #1e293b; font-size: 20px; font-weight: 800; opacity: 0; transform: translateY(20px);
           animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.8s forwards;
         }
         .splash-hint {
-          position: absolute; bottom: 40px; color: #94a3b8; font-size: 14px; font-weight: bold; letter-spacing: 1px;
+          position: absolute; bottom: 30px; color: #94a3b8; font-size: 13px; font-weight: bold; letter-spacing: 1px;
           opacity: 0; animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) 1.5s forwards, pulseHint 2s infinite 2.5s;
         }
         
@@ -305,68 +301,101 @@ export default function POS() {
   );
 
   return (
-    <div style={posPage}>
+    <div className="pos-page-wrapper">
       <style>{`
-        body { background-color: #f8fafc; }
-        .upload-btn-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
-        .upload-btn-styled { border: 2px dashed #cbd5e1; color: #64748b; background-color: #f8fafc; padding: 20px; border-radius: 12px; font-size: 14px; font-weight: bold; width: 100%; cursor: pointer; text-align: center; transition: all 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
-        .upload-btn-wrapper:hover .upload-btn-styled { background-color: #f1f5f9; border-color: #94a3b8; }
-        .upload-btn-wrapper input[type=file] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%; }
+        body { background-color: #f8fafc; margin: 0; padding: 0; }
+        .pos-page-wrapper { min-height: 100vh; padding: 12px; direction: rtl; font-family: 'Tajawal', system-ui, -apple-system, sans-serif; box-sizing: border-box; }
         
-        .custom-input { padding: 14px 16px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 14px; outline: none; width: 100%; transition: all 0.3s; background: #fff; box-sizing: border-box; }
+        /* Header responsive */
+        .top-header { display: flex; justify-content: space-between; align-items: center; max-width: 850px; margin: 0 auto 15px; flex-wrap: wrap; gap: 10px; background: #fff; padding: 12px 16px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); border: 1px solid #e2e8f0; }
+        
+        /* Form Box */
+        .form-container { background: #ffffff; padding: 16px; border-radius: 16px; max-width: 850px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); border: 1px solid #e2e8f0; }
+        
+        .section-box { border-bottom: 1px solid #f1f5f9; padding-bottom: 16px; }
+        
+        /* Inputs & Upload */
+        .custom-input { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13px; outline: none; width: 100%; transition: all 0.2s; background: #fff; box-sizing: border-box; }
         .custom-input:focus { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1); }
         
-        .interactive-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; margin-top: 10px; }
-        .interactive-card { border: 2px solid #e2e8f0; background: #fff; padding: 15px 10px; border-radius: 12px; text-align: center; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px; min-height: 80px; }
-        .interactive-card:hover { border-color: #fca5a5; background: #fef2f2; transform: translateY(-2px); }
-        .interactive-card.active { border-color: #dc2626; background: #dc2626; color: #fff; box-shadow: 0 4px 15px rgba(220, 38, 38, 0.25); transform: translateY(-2px); }
+        .upload-btn-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
+        .upload-btn-styled { border: 2px dashed #cbd5e1; color: #64748b; background-color: #f8fafc; padding: 12px; border-radius: 10px; font-size: 12px; font-weight: bold; width: 100%; cursor: pointer; text-align: center; transition: all 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; }
+        .upload-btn-wrapper input[type=file] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%; width: 100%; }
+
+        /* Grids optimization for Mobile */
+        .interactive-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 8px; margin-top: 8px; }
+        .interactive-card { border: 2px solid #e2e8f0; background: #fff; padding: 10px 6px; border-radius: 10px; text-align: center; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; min-height: 65px; }
+        .interactive-card:hover { border-color: #fca5a5; background: #fef2f2; }
+        .interactive-card.active { border-color: #dc2626; background: #dc2626; color: #fff; box-shadow: 0 3px 10px rgba(220, 38, 38, 0.2); }
         .interactive-card.active span, .interactive-card.active svg { color: #fff !important; }
         
-        .gender-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
+        .gender-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+        .row-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         
         .spinner { animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Tablet & Desktop Adjustments */
+        @media (min-width: 640px) {
+          .pos-page-wrapper { padding: 20px; }
+          .top-header { padding: 15px 25px; margin-bottom: 25px; }
+          .form-container { padding: 30px; gap: 24px; }
+          .section-box { padding-bottom: 20px; }
+          .interactive-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
+          .interactive-card { padding: 14px 10px; min-height: 75px; }
+          .custom-input { padding: 12px 14px; font-size: 14px; }
+          .upload-btn-styled { padding: 18px; font-size: 13px; }
+        }
+
+        /* Mobile specific adjustments */
+        @media (max-width: 480px) {
+          .row-inputs { grid-template-columns: 1fr; }
+          .top-header { flex-direction: column; align-items: stretch; text-align: center; }
+          .header-badges { justify-content: center; }
+        }
       `}</style>
       
-      <div style={topHeader}>
-        <div style={logoArea}>
-          <img src="/oomniah-logo.png" alt="أمنية" style={logoImage} onError={(e) => { e.currentTarget.style.display = 'none' }} />
-          <h1 style={logoText}>أمنية</h1>
+      {/* الهيدر العلوي */}
+      <div className="top-header">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+          <img src="/oomniah-logo.png" alt="أمنية" style={{ width: '32px', height: '32px', objectFit: 'contain' }} onError={(e) => { e.currentTarget.style.display = 'none' }} />
+          <h1 style={{ fontSize: '20px', fontWeight: '900', color: '#dc2626', margin: 0, fontFamily: '"Aref Ruqaa", serif' }}>أمنية</h1>
         </div>
 
-        <div style={badgeArea}>
-            <span style={badge}><FaStore /> {posName}</span>
-            <span style={badgeAdmin}><FaUserCircle /> {adminName}</span>
+        <div className="header-badges" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', padding: '5px 10px', borderRadius: '6px', fontWeight: 'bold', fontSize: '11px' }}><FaStore /> {posName}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#dc2626', color: '#ffffff', padding: '5px 10px', borderRadius: '6px', fontWeight: 'bold', fontSize: '11px' }}><FaUserCircle /> {adminName}</span>
             <button onClick={async () => {
                await supabase.from('system_logs').insert([{ admin_name: adminName, pos_name: posName, action_type: 'تسجيل خروج', details: `قام الموظف بتسجيل الخروج` }]);
                await supabase.auth.signOut();
                navigate('/secure-portal-access');
-            }} style={logoutStyle}><FaSignOutAlt /> تسجيل خروج</button>
+            }} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#fff', color: '#64748b', border: '1px solid #cbd5e1', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}><FaSignOutAlt /> خروج</button>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} style={formStyle}>
+      {/* نموذج الإدخال */}
+      <form onSubmit={handleSubmit} className="form-container">
         
         {/* تحديد الجنس */}
-        <div style={sectionBox}>
-          <label style={label}><FaUser /> لمن الهدية؟ (جنس المستلم)</label>
+        <div className="section-box">
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#1e293b', fontWeight: 'bold', marginBottom: '4px' }}><FaUser /> لمن الهدية؟</label>
           <div className="gender-grid">
             <div className={`interactive-card ${formData.recipient_gender === 'female' ? 'active' : ''}`} onClick={() => setFormData({...formData, recipient_gender: 'female'})}>
-               <FaVenus style={{ fontSize: '24px', color: '#db2777' }} />
-               <span style={{ fontWeight: 'bold' }}>أنثى</span>
+               <FaVenus style={{ fontSize: '18px', color: '#db2777' }} />
+               <span style={{ fontWeight: 'bold', fontSize: '12px' }}>أنثى</span>
             </div>
             <div className={`interactive-card ${formData.recipient_gender === 'male' ? 'active' : ''}`} onClick={() => setFormData({...formData, recipient_gender: 'male'})}>
-               <FaMars style={{ fontSize: '24px', color: '#0284c7' }} />
-               <span style={{ fontWeight: 'bold' }}>ذكر</span>
+               <FaMars style={{ fontSize: '18px', color: '#0284c7' }} />
+               <span style={{ fontWeight: 'bold', fontSize: '12px' }}>ذكر</span>
             </div>
           </div>
         </div>
 
         {/* اختيار الثيم */}
-        <div style={sectionBox}>
-          <label style={label}><FaPalette /> اختر الثيم المناسب</label>
+        <div className="section-box">
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#1e293b', fontWeight: 'bold', marginBottom: '4px' }}><FaPalette /> اختر الثيم</label>
           {filteredThemes.length === 0 ? (
-            <p style={{ color: '#dc2626', fontSize: '14px', marginTop: '10px', fontWeight: 'bold' }}>لا توجد ثيمات متاحة حالياً.</p>
+            <p style={{ color: '#dc2626', fontSize: '12px', marginTop: '6px', fontWeight: 'bold' }}>لا توجد ثيمات متاحة حالياً.</p>
           ) : (
             <div className="interactive-grid">
               {filteredThemes.map(t => (
@@ -375,8 +404,8 @@ export default function POS() {
                   className={`interactive-card ${formData.theme_id === t.id ? 'active' : ''}`}
                   onClick={() => setFormData({...formData, theme_id: t.id})}
                 >
-                  <FaGift style={{ fontSize: '20px', color: '#94a3b8' }} className="theme-icon" />
-                  <span style={{ fontWeight: 'bold', fontSize: '14px' }}>{t.name}</span>
+                  <FaGift style={{ fontSize: '16px', color: '#94a3b8' }} />
+                  <span style={{ fontWeight: 'bold', fontSize: '12px' }}>{t.name}</span>
                 </div>
               ))}
             </div>
@@ -384,8 +413,8 @@ export default function POS() {
         </div>
 
         {/* اختيار المدة */}
-        <div style={sectionBox}>
-          <label style={label}><FaClock /> مدة الرابط والسعر</label>
+        <div className="section-box">
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#1e293b', fontWeight: 'bold', marginBottom: '4px' }}><FaClock /> مدة الرابط والسعر</label>
           <div className="interactive-grid">
             {Object.entries(DURATION_PRICES).map(([key, val]) => (
               <div 
@@ -394,8 +423,8 @@ export default function POS() {
                 onClick={() => setFormData({...formData, duration_type: key as DurationType})}
                 style={key === 'trial' ? { borderStyle: 'dashed' } : {}}
               >
-                <span style={{ fontWeight: 'bold', fontSize: '14px' }}>{val.label}</span>
-                <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 'bold' }}>
+                <span style={{ fontWeight: 'bold', fontSize: '12px' }}>{val.label}</span>
+                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 'bold' }}>
                   {val.price.toLocaleString()} د.ع
                 </span>
               </div>
@@ -404,81 +433,106 @@ export default function POS() {
         </div>
 
         {/* الأسماء والرسالة */}
-        <div style={sectionBox}>
-          <div style={row}>
-            <div style={group}>
-              <label style={label}><FaPen /> اسم المُهدي</label>
+        <div className="section-box">
+          <div className="row-inputs">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '12px', color: '#1e293b', fontWeight: 'bold' }}><FaPen /> اسم المُهدي</label>
               <input type="text" placeholder="مثال: علي" required onChange={e => setFormData({...formData, sender_name: e.target.value})} className="custom-input" />
             </div>
-            <div style={group}>
-              <label style={label}><FaPen /> اسم المستلم</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '12px', color: '#1e293b', fontWeight: 'bold' }}><FaPen /> اسم المستلم</label>
               <input type="text" placeholder="مثال: نور" required onChange={e => setFormData({...formData, recipient_name: e.target.value})} className="custom-input" />
             </div>
           </div>
           
-          <div style={{ ...group, marginTop: '15px' }}>
-            <label style={label}>رسالة المفاجأة...</label>
-            <textarea placeholder="اكتب هنا الرسالة التي ستظهر للزبون..." required onChange={e => setFormData({...formData, message: e.target.value})} className="custom-input" style={{ height: '110px', resize: 'none' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '10px' }}>
+            <label style={{ fontSize: '12px', color: '#1e293b', fontWeight: 'bold' }}>رسالة المفاجأة...</label>
+            <textarea placeholder="اكتب هنا الرسالة للزبون..." required onChange={e => setFormData({...formData, message: e.target.value})} className="custom-input" style={{ height: '80px', resize: 'none' }} />
           </div>
         </div>
 
         {/* قسم الصوت */}
-        <div style={audioBoxStyle}>
-          <label style={{ ...label, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px', color: '#1e293b' }}>
+        <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', color: '#1e293b', fontSize: '13px', fontWeight: 'bold' }}>
             <FaMusic style={{ color: '#dc2626' }} /> صوت المفاجأة (اختياري)
           </label>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
              <div className="upload-btn-wrapper">
                <div className="upload-btn-styled" style={audioFile ? { background: '#f0fdf4', borderColor: '#22c55e', color: '#16a34a' } : {}}>
-                 <FaUpload style={{ fontSize: '24px' }} />
-                 <span style={{ fontSize: '14px' }}>{audioFile ? `تم تجهيز ملف: ${audioFile.name}` : 'اضغط هنا لرفع ملف بصيغة MP3 (أقل من 3MB)'}</span>
+                 <FaUpload style={{ fontSize: '18px' }} />
+                 <span>{audioFile ? `تم اختيار: ${audioFile.name}` : 'رفع ملف MP3 (أقل من 3MB)'}</span>
                </div>
                <input type="file" accept=".mp3, audio/mpeg" disabled={!!formData.song_url} onChange={handleFileChange} />
              </div>
              
-             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                <hr style={{ flex: 1, border: '0', borderTop: '1px solid #cbd5e1' }} />
-               <span style={{ color: '#94a3b8', fontSize: '12px', fontWeight: 'bold' }}>أو عبر رابط يوتيوب</span>
+               <span style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 'bold' }}>أو عبر رابط يوتيوب</span>
                <hr style={{ flex: 1, border: '0', borderTop: '1px solid #cbd5e1' }} />
              </div>
 
-             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-               <div style={{ flex: '1 1 200px', position: 'relative' }}>
-                 <FaYoutube style={{ position: 'absolute', right: '15px', top: '15px', color: '#dc2626', fontSize: '18px' }} />
-                 <input type="text" placeholder="رابط يوتيوب بدلاً من الملف" disabled={!!audioFile} value={formData.song_url} onChange={e => setFormData({...formData, song_url: e.target.value})} className="custom-input" style={{ background: audioFile ? '#f1f5f9' : '#fff', paddingRight: '45px' }} />
+             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+               <div style={{ flex: '1 1 180px', position: 'relative' }}>
+                 <FaYoutube style={{ position: 'absolute', right: '12px', top: '12px', color: '#dc2626', fontSize: '16px' }} />
+                 <input type="text" placeholder="رابط يوتيوب" disabled={!!audioFile} value={formData.song_url} onChange={e => setFormData({...formData, song_url: e.target.value})} className="custom-input" style={{ background: audioFile ? '#f1f5f9' : '#fff', paddingRight: '36px' }} />
                </div>
-               <input type="number" placeholder="ثانية البدء (مثال: 40)" onChange={e => setFormData({...formData, song_start_seconds: Number(e.target.value)})} className="custom-input" style={{ flex: '0 1 150px' }} />
+               <input type="number" placeholder="البدء بالثواني (مثال: 40)" onChange={e => setFormData({...formData, song_start_seconds: Number(e.target.value)})} className="custom-input" style={{ flex: '1 1 100px' }} />
              </div>
           </div>
         </div>
 
         {/* الفاتورة النهائية */}
-        <div style={financeBoxStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#475569', fontSize: '16px', fontWeight: 'bold' }}>
-              <FaMoneyBillWave style={{ color: '#10b981' }} /> المبلغ المطلوب من الزبون:
+        <div style={{ background: '#f0fdf4', padding: '12px 16px', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', fontSize: '13px', fontWeight: 'bold' }}>
+              <FaMoneyBillWave style={{ color: '#10b981' }} /> المبلغ المطلوب:
             </span>
-            <strong style={{ color: '#dc2626', fontSize: '26px', fontWeight: '900' }}>{currentPrice.toLocaleString()} د.ع</strong>
+            <strong style={{ color: '#dc2626', fontSize: '20px', fontWeight: '900' }}>{currentPrice.toLocaleString()} د.ع</strong>
           </div>
         </div>
 
-        <button type="submit" disabled={isGenerating} style={isGenerating ? submitBtnDisabled : submitBtn}>
-          {isGenerating ? <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}><FaSpinner className="spinner" /> {uploadProgress}</span> : <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}><FaLink /> توليد الرابط النهائي</span>}
+        {/* زر التوليد */}
+        <button 
+          type="submit" 
+          disabled={isGenerating} 
+          style={{
+            background: isGenerating ? '#fca5a5' : '#dc2626',
+            color: '#fff',
+            padding: '14px',
+            borderRadius: '10px',
+            fontSize: '15px',
+            fontWeight: 'bold',
+            border: 'none',
+            cursor: isGenerating ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s',
+            boxShadow: isGenerating ? 'none' : '0 4px 12px rgba(220, 38, 38, 0.25)',
+            marginTop: '4px'
+          }}
+        >
+          {isGenerating ? (
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <FaSpinner className="spinner" /> {uploadProgress}
+            </span>
+          ) : (
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <FaLink /> توليد الرابط النهائي
+            </span>
+          )}
         </button>
       </form>
 
       {/* مودل النجاح */}
       {showModal && (
-        <div style={modalOverlay}>
-          <div style={modalContent}>
-            <FaCheckCircle style={{ color: '#10b981', fontSize: '60px', marginBottom: '15px' }} />
-            <h2 style={{ color: '#1e293b', margin: '0 0 10px', fontWeight: '900' }}>تم التوليد بنجاح</h2>
-            <p style={{ color: '#64748b', margin: '0 0 25px', fontSize: '15px' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
+          <div style={{ background: '#fff', padding: '24px', borderRadius: '16px', textAlign: 'center', width: '100%', maxWidth: '360px', boxShadow: '0 20px 50px rgba(0,0,0,0.15)' }}>
+            <FaCheckCircle style={{ color: '#10b981', fontSize: '48px', marginBottom: '10px' }} />
+            <h3 style={{ color: '#1e293b', margin: '0 0 6px', fontWeight: '900', fontSize: '18px' }}>تم التوليد بنجاح</h3>
+            <p style={{ color: '#64748b', margin: '0 0 16px', fontSize: '13px' }}>
               {formData.duration_type === 'trial' ? 'الرابط التجريبي صالح لمدة 30 دقيقة فقط للتصوير' : 'انسخ الرابط الآن وأرسله للزبون'}
             </p>
-            <div style={urlDisplay}>{generatedLink}</div>
-            <button onClick={() => { navigator.clipboard.writeText(generatedLink); Toast.fire({ icon: 'success', title: 'تم نسخ الرابط!' }); setShowModal(false); }} style={copyBtn}>
+            <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', color: '#3b82f6', marginBottom: '16px', direction: 'ltr', overflowX: 'auto', fontSize: '13px', fontWeight: 'bold' }}>{generatedLink}</div>
+            <button onClick={() => { navigator.clipboard.writeText(generatedLink); Toast.fire({ icon: 'success', title: 'تم نسخ الرابط!' }); setShowModal(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#dc2626', color: '#fff', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', width: '100%', transition: 'all 0.2s' }}>
               <FaCopy /> نسخ الرابط للمشاركة
             </button>
           </div>
@@ -487,33 +541,3 @@ export default function POS() {
     </div>
   );
 }
-
-// الستايلات المحدثة
-const posPage: React.CSSProperties = { minHeight: '100vh', padding: '20px', direction: 'rtl', fontFamily: 'Tajawal, system-ui, -apple-system, sans-serif' };
-
-const topHeader: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '850px', margin: '0 auto 30px', flexWrap: 'wrap', gap: '15px', background: '#fff', padding: '15px 25px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.02)', border: '1px solid #e2e8f0' };
-const logoArea: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '12px' };
-const logoImage: React.CSSProperties = { width: '40px', height: '40px', objectFit: 'contain' };
-const logoText: React.CSSProperties = { fontSize: '24px', fontWeight: '900', color: '#dc2626', margin: 0, fontFamily: '"Aref Ruqaa", serif' };
-
-const badgeArea: React.CSSProperties = { display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' };
-const badge: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '6px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', padding: '8px 14px', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px' };
-const badgeAdmin: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '6px', background: '#dc2626', color: '#ffffff', padding: '8px 14px', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px' };
-const logoutStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '6px', background: '#fff', color: '#64748b', border: '1px solid #cbd5e1', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', transition: 'all 0.2s' };
-
-const formStyle: React.CSSProperties = { background: '#ffffff', padding: '35px', borderRadius: '20px', maxWidth: '850px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '25px', boxShadow: '0 8px 30px rgba(0, 0, 0, 0.03)', border: '1px solid #e2e8f0' };
-const sectionBox: React.CSSProperties = { borderBottom: '1px solid #f1f5f9', paddingBottom: '25px' };
-const row: React.CSSProperties = { display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-start' };
-const group: React.CSSProperties = { flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '8px' };
-const label: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', color: '#1e293b', fontWeight: '900', marginBottom: '5px' };
-
-const audioBoxStyle: React.CSSProperties = { background: '#f8fafc', padding: '25px', borderRadius: '16px', border: '1px solid #e2e8f0' };
-const financeBoxStyle: React.CSSProperties = { background: '#f0fdf4', padding: '25px', borderRadius: '16px', border: '1px solid #bbf7d0' };
-
-const submitBtn: React.CSSProperties = { background: '#dc2626', color: '#fff', padding: '18px', borderRadius: '14px', fontSize: '18px', fontWeight: 'bold', border: 'none', cursor: 'pointer', transition: 'all 0.3s', boxShadow: '0 4px 15px rgba(220, 38, 38, 0.3)', marginTop: '10px' };
-const submitBtnDisabled: React.CSSProperties = { ...submitBtn, background: '#fca5a5', cursor: 'not-allowed', boxShadow: 'none' };
-
-const modalOverlay: React.CSSProperties = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(5px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 };
-const modalContent: React.CSSProperties = { background: '#fff', padding: '40px', borderRadius: '24px', textAlign: 'center', width: '90%', maxWidth: '420px', boxShadow: '0 20px 50px rgba(0,0,0,0.15)' };
-const urlDisplay: React.CSSProperties = { background: '#f8fafc', padding: '18px', borderRadius: '12px', border: '1px solid #e2e8f0', color: '#3b82f6', marginBottom: '25px', direction: 'ltr', overflowX: 'auto', fontSize: '15px', fontWeight: 'bold' };
-const copyBtn: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#dc2626', color: '#fff', padding: '16px', borderRadius: '12px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px', width: '100%', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(220, 38, 38, 0.2)' };
