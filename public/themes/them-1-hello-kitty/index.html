@@ -7,7 +7,7 @@
     <meta property="og:image" content="https://your-domain.com/themes/them-1-hello-kitty/music-art.jpeg" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>مفاجأة خاصة ✨</title>
+    <title>oomniah | ثيم 1</title>
     <style>
         :root { --bg-color: #3d2a30; --pink-main: #ff7898; --pink-glow: rgba(255, 120, 152, 0.6); --text-white: #ffffff; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; user-select: none; }
@@ -23,50 +23,91 @@
         @keyframes fall { to { transform: translateY(110vh) rotate(360deg); } }
         .click-heart { position: absolute; pointer-events: none; color: #ff7898; font-size: 0.9rem; text-shadow: none; animation: clickFloat 0.8s ease-out forwards; z-index: 9999; }
         @keyframes clickFloat { 0% { transform: translate(-50%, -50%) scale(0.5) translateY(0); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.2) translateY(-50px) translateX(var(--random-x, 0px)); opacity: 0; } }
+        
         .app-container { width: 100%; max-width: 430px; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; z-index: 5; }
         .card { width: 100%; display: none; flex-direction: column; align-items: center; animation: fadeIn 0.4s ease-in-out forwards; }
         .card.active { display: flex; }
+        
+        /* 🖼️ تصميم الصور (رجعناه للتصميم الأصلي) */
         .image-box { width: 105%; aspect-ratio: 1 / 1; border-radius: 24px; overflow: hidden; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4); margin-bottom: 25px; background: #ffeef2; border: none; }
         .image-box img { width: 100%; height: 100%; object-fit: cover; }
+        
         #heartTrigger { font-size: 7.5rem; cursor: pointer; color: #ff7898; filter: drop-shadow(0 0 25px rgba(255, 120, 152, 0.8)); display: none; animation: heartBeat 2.5s infinite ease-in-out; }
         @keyframes heartBeat { 0% { transform: scale(1); } 14% { transform: scale(1.06); } 28% { transform: scale(1); } 42% { transform: scale(1.04); } 70% { transform: scale(1); } 100% { transform: scale(1); } }
-        .question-bar { background-color: #0b090a; color: var(--text-white); padding: 14px 30px; border-radius: 16px; font-size: 1.1rem; font-weight: 500; text-align: center; min-width: 220px; margin-bottom: 25px; border: 2px solid #ff7898; box-shadow: 0 4px 15px rgba(0,0,0,0.4); transition: box-shadow 0.3s ease, border-color 0.3s ease; }
-        .question-bar.typing-active { border-color: var(--pink-main); box-shadow: 0 0 20px var(--pink-glow), inset 0 0 10px rgba(255, 120, 152, 0.2); animation: borderPulse 1s infinite alternate; }
-        @keyframes borderPulse { 0% { box-shadow: 0 0 10px var(--pink-glow); } 100% { box-shadow: 0 0 25px var(--pink-main); } }
-        .btn-reply { background-color: var(--pink-main); color: var(--text-white); border: none; padding: 14px 55px; border-radius: 25px; font-size: 1.1rem; font-weight: bold; cursor: pointer; box-shadow: 0 0 15px var(--pink-glow); transition: transform 0.1s, opacity 0.3s ease; opacity: 0; pointer-events: none; }
+        
+        /* 📝 شريط السؤال بالتصميم الجديد (المنقط) */
+        .question-bar { 
+            background-color: #ffffff; 
+            color: #d63031; 
+            padding: 16px 30px; 
+            border-radius: 24px; 
+            font-size: 1.2rem; 
+            font-weight: 900; 
+            text-align: center; 
+            min-width: 240px; 
+            margin-bottom: 25px; 
+            border: 4px dotted #ff7898; 
+            box-shadow: 0 8px 20px rgba(255, 120, 152, 0.2); 
+            transition: box-shadow 0.3s ease, border-color 0.3s ease; 
+        }
+        .question-bar.typing-active { 
+            border-color: #ff4757; 
+            box-shadow: 0 0 25px rgba(255, 120, 152, 0.5); 
+            animation: borderPulse 1s infinite alternate; 
+        }
+        @keyframes borderPulse { 0% { box-shadow: 0 8px 20px rgba(255, 120, 152, 0.2); } 100% { box-shadow: 0 0 25px rgba(255, 120, 152, 0.6); } }
+        
+        /* 🖲️ زر الرد بالتصميم الجديد (3D) */
+        .btn-reply { 
+            background: #ff7898; 
+            color: #fff; 
+            border: 4px solid #fff; 
+            padding: 14px 45px; 
+            border-radius: 20px; 
+            font-size: 1.15rem; 
+            font-weight: 900; 
+            cursor: pointer; 
+            box-shadow: 0 6px 0 rgba(220, 80, 120, 0.6), 0 10px 20px rgba(255, 120, 152, 0.4); 
+            transition: all 0.1s ease; 
+            opacity: 0; 
+            pointer-events: none; 
+        }
         .btn-reply.show { opacity: 1; pointer-events: auto; }
+        .btn-reply:active { 
+            transform: translateY(4px); 
+            box-shadow: 0 2px 0 rgba(220, 80, 120, 0.6), 0 5px 10px rgba(255, 120, 152, 0.4); 
+        }
+
         .start-circle { width: 70px; height: 70px; background: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 2rem; margin-bottom: 25px; box-shadow: 0 0 25px rgba(255, 255, 255, 0.6); animation: strongPulse 1.2s infinite ease-in-out; }
         @keyframes strongPulse { 0% { transform: scale(1); box-shadow: 0 0 15px rgba(255, 255, 255, 0.5); } 50% { transform: scale(1.2); box-shadow: 0 0 35px rgba(255, 120, 152, 0.8); } 100% { transform: scale(1); box-shadow: 0 0 15px rgba(255, 255, 255, 0.5); } }
         .start-text { color: var(--text-white); font-size: 1.6rem; font-weight: bold; cursor: pointer; text-shadow: 0 0 10px rgba(255,120,152,0.5); }
-        .player-card { width: 100%; background: rgba(255, 255, 255, 0.05); border: 2.5px solid rgba(255, 120, 152, 0.35); backdrop-filter: blur(15px); border-radius: 40px; padding: 35px 25px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 15px 35px rgba(0,0,0,0.4), 0 0 25px rgba(255, 120, 152, 0.15); position: relative; }
+        
+        .player-card { width: 100%; background: rgba(255, 255, 255, 0.1); border: 4px solid rgba(255, 255, 255, 0.8); backdrop-filter: blur(25px); border-radius: 30px; padding: 35px 25px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 15px 35px rgba(0,0,0,0.4), 0 0 25px rgba(255, 120, 152, 0.2); position: relative; }
         .player-card::before { content: '💗'; position: absolute; top: 20px; right: 25px; font-size: 1.1rem; opacity: 0.9; }
         .player-header { color: var(--text-white); font-size: 1.3rem; font-weight: bold; margin-bottom: 25px; display: flex; align-items: center; gap: 8px; }
+        
+        /* 🎵 صورة الأغنية (رجعناها للتصميم الأصلي) */
         .player-art { width: 200px; height: 200px; border-radius: 28px; overflow: hidden; margin-bottom: 30px; border: none; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
         .player-art img { width: 100%; height: 100%; object-fit: cover; }
         
         .progress-container { width: 95%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 25px; direction: ltr; }
-        .progress-bar { width: 100%; height: 8px; background: rgba(255,255,255,0.2); border-radius: 10px; position: relative; cursor: pointer; touch-action: none; }
+        .progress-bar { width: 100%; height: 8px; background: rgba(255,255,255,0.3); border-radius: 10px; position: relative; cursor: pointer; touch-action: none; }
         .progress-current { width: 0%; height: 100%; background: var(--pink-main); border-radius: 10px; box-shadow: 0 0 10px var(--pink-main); position: relative; pointer-events: none; }
         .progress-knob { position: absolute; right: -7px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; background: #fff; border-radius: 50%; box-shadow: 0 0 8px rgba(0,0,0,0.4); opacity: 0; transition: opacity 0.2s, transform 0.1s; pointer-events: auto; }
         .progress-bar:hover .progress-knob, .progress-bar:active .progress-knob, .progress-knob.dragging { opacity: 1; transform: translateY(-50%) scale(1.2); }
-        .time-info { display: flex; justify-content: space-between; color: rgba(255,255,255,0.6); font-size: 0.85rem; font-weight: bold; }
+        .time-info { display: flex; justify-content: space-between; color: rgba(255,255,255,0.8); font-size: 0.85rem; font-weight: bold; }
         
         .controls { display: flex; align-items: center; justify-content: center; gap: 25px; width: 100%; direction: ltr; }
-        .control-btn { background: none; border: none; color: rgba(255, 255, 255, 0.8); font-size: 1.6rem; cursor: pointer; transition: color 0.2s; }
+        .control-btn { background: none; border: none; color: #fff; font-size: 1.6rem; cursor: pointer; transition: color 0.2s; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));}
         .control-btn:active { color: var(--pink-main); }
-        .play-pause { width: 65px; height: 65px; background: var(--pink-main); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.4rem; box-shadow: 0 6px 20px rgba(255, 120, 152, 0.4); cursor: pointer; transition: transform 0.1s; }
-        .play-pause:active { transform: scale(0.95); }
-        .btn-restart { background: var(--pink-main); color: white; border: none; padding: 14px 50px; border-radius: 25px; font-weight: bold; font-size: 1.1rem; box-shadow: 0 5px 15px rgba(0,0,0,0.3); cursor: pointer; margin-top: 35px; transition: transform 0.2s; }
-        .btn-restart:active { transform: scale(0.95); }
+        
+        /* 🖲️ زر التشغيل والميوزك بنفس ستايل 3D */
+        .play-pause { width: 65px; height: 65px; background: #fff; color: #ff7898; border: 4px solid #ff7898; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.4rem; box-shadow: 0 6px 0 rgba(220, 80, 120, 0.6); cursor: pointer; transition: all 0.1s ease; }
+        .play-pause:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(220, 80, 120, 0.6); }
+        .btn-restart { background: #ff7898; color: white; border: 4px solid #fff; padding: 14px 50px; border-radius: 20px; font-weight: 900; font-size: 1.1rem; box-shadow: 0 6px 0 rgba(220, 80, 120, 0.6); cursor: pointer; margin-top: 35px; transition: all 0.1s ease; }
+        .btn-restart:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(220, 80, 120, 0.6); }
+        
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-        
-        @keyframes modalFadeIn {
-            from { opacity: 0; transform: scale(0.9) translateY(10px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        
-        #info-modal-overlay button:hover { background: #e2e8f0 !important; color: #0f172a !important; }
-        #info-modal-overlay a:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(220, 39, 67, 0.5) !important; }
     </style>
 </head>
 <body>
@@ -95,32 +136,32 @@
 
         <div class="card" id="card1">
             <div class="image-box"><img src="kit1.png" alt="Hello Kitty Winking"></div>
-            <div class="question-bar" id="dyn-q1" data-text="هلو"></div>
-            <button class="btn-reply" onclick="nextCard(2)">هلووووو</button>
+            <div class="question-bar" id="dyn-q1" data-text="..."></div>
+            <button class="btn-reply" onclick="nextCard(2)">...</button>
         </div>
 
         <div class="card" id="card2">
             <div class="image-box"><img src="kit2.png" alt="Hello Kitty Thinking"></div>
-            <div class="question-bar" data-text="عندي سؤال"></div>
-            <button class="btn-reply" onclick="nextCard(3)">شنو السؤال!</button>
+            <div class="question-bar" id="dyn-q2" data-text="..."></div>
+            <button class="btn-reply" onclick="nextCard(3)">...</button>
         </div>
 
         <div class="card" id="card3">
             <div class="image-box"><img src="kit3.png" alt="Hello Kitty Shy"></div>
-            <div class="question-bar" data-text="هاي ورد 🌷 قبل السؤال"></div>
-            <button class="btn-reply" onclick="nextCard(4)">كيوتتتتت</button>
+            <div class="question-bar" id="dyn-q3" data-text="..."></div>
+            <button class="btn-reply" onclick="nextCard(4)">...</button>
         </div>
 
         <div class="card" id="card4">
             <div class="image-box"><img src="kit4.jpeg" alt="Hello Kitty Cute"></div>
             <div class="question-bar" id="dyn-q4" data-text="..."></div>
-            <button class="btn-reply" onclick="nextCard(5)">مدري</button>
+            <button class="btn-reply" onclick="nextCard(5)">...</button>
         </div>
 
         <div class="card" id="card5">
             <div class="image-box"><img src="kit5.jpeg" alt="Hello Kitty Angry/Sad"></div>
             <div class="question-bar" id="dyn-q5" data-text="..."></div>
-            <button class="btn-reply" onclick="nextCard(6)">اممممم?</button>
+            <button class="btn-reply" onclick="nextCard(6)">...</button>
         </div>
 
         <div class="card" id="card6">
@@ -130,7 +171,7 @@
         </div>
 
         <div class="card" id="card7">
-            <div class="question-bar" id="dyn-message" style="height: auto; padding: 25px 20px; line-height: 1.6;" data-text="رسالة مخصصة هنا..."></div>
+            <div class="question-bar" id="dyn-message" style="height: auto; padding: 25px 20px; line-height: 1.6;" data-text="..."></div>
             <button class="btn-reply" onclick="nextCard(8)">شكراً 🥺❤️</button>
         </div>
 
@@ -169,65 +210,22 @@
 
 <!-- نافذة الشروط وإخلاء المسؤولية -->
 <div id="info-modal-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 100000; display: none; justify-content: center; align-items: center; direction: rtl; font-family: 'Tajawal', 'Segoe UI', sans-serif; padding: 20px; box-sizing: border-box; opacity: 1; transition: opacity 0.3s ease;">
-    
     <div style="background: #ffffff; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; border-radius: 24px; padding: 35px 25px; text-align: center; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); box-sizing: border-box;">
-        
-        <!-- زر الإغلاق -->
         <button onclick="document.getElementById('info-modal-overlay').style.display='none'" style="position: absolute; top: 20px; right: 20px; background: #f1f5f9; border: 1px solid #e2e8f0; width: 36px; height: 36px; border-radius: 50%; color: #64748b; font-weight: bold; cursor: pointer; font-size: 16px; display: flex; justify-content: center; align-items: center; transition: all 0.2s ease;">✕</button>
-        
-        <!-- الأيقونة والعنوان -->
         <div style="font-size: 45px; margin-bottom: 10px; filter: drop-shadow(0 4px 6px rgba(220,38,38,0.2));">🛡️</div>
         <h3 style="color: #1e293b; font-size: 22px; margin-top: 0; margin-bottom: 5px; font-weight: 900;">إخلاء مسؤولية وشروط الاستخدام</h3>
         <p style="color: #64748b; font-size: 14px; margin-bottom: 25px; font-weight: 600;">يرجى قراءة الشروط التالية بعناية</p>
         
-        <!-- قائمة الشروط -->
         <div style="text-align: right; display: flex; flex-direction: column; gap: 15px; background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 25px;">
-            
-            <div style="display: flex; gap: 10px; align-items: flex-start;">
-                <span style="color: #dc2626; font-size: 16px; margin-top: 2px;">⚠️</span>
-                <p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">
-                    تخلي منصة "أمنية" مسؤوليتها الكاملة عن أي استخدام سيء، غير أخلاقي، أو غير قانوني لمواقعنا وثيماتنا من قبل أي شخص.
-                </p>
-            </div>
-            
-            <div style="display: flex; gap: 10px; align-items: flex-start;">
-                <span style="color: #dc2626; font-size: 16px; margin-top: 2px;">©️</span>
-                <p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">
-                    جميع الثيمات والتصاميم والمواقع هي ملكية فكرية حصرية لمنصة "أمنية"، ومسجلة بحقوق طبع ونشر.
-                </p>
-            </div>
-            
-            <div style="display: flex; gap: 10px; align-items: flex-start;">
-                <span style="color: #dc2626; font-size: 16px; margin-top: 2px;">🚫</span>
-                <p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">
-                    لا يتم بيع أو تداول خدماتنا في أي مكان آخر إلا عبر حساباتنا الرسمية ووكلائنا المعتمدين المنشورة أسماؤهم في موقعنا فقط.
-                </p>
-            </div>
-            
-            <div style="display: flex; gap: 10px; align-items: flex-start;">
-                <span style="color: #dc2626; font-size: 16px; margin-top: 2px;">💰</span>
-                <p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">
-                    إذا رصدتم أي جهة أو حساب يسرق تصاميمنا أو ينتحل صفتنا، يرجى إبلاغنا فوراً عبر حساباتنا الرسمية. <span style="color: #16a34a;">(توجد مكافأة مالية للإبلاغ الصحيح).</span>
-                </p>
-            </div>
-
+            <div style="display: flex; gap: 10px; align-items: flex-start;"><span style="color: #dc2626; font-size: 16px; margin-top: 2px;">⚠️</span><p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">تخلي منصة "أمنية" مسؤوليتها الكاملة عن أي استخدام سيء، غير أخلاقي، أو غير قانوني لمواقعنا وثيماتنا من قبل أي شخص.</p></div>
+            <div style="display: flex; gap: 10px; align-items: flex-start;"><span style="color: #dc2626; font-size: 16px; margin-top: 2px;">©️</span><p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">جميع الثيمات والتصاميم والمواقع هي ملكية فكرية حصرية لمنصة "أمنية"، ومسجلة بحقوق طبع ونشر.</p></div>
+            <div style="display: flex; gap: 10px; align-items: flex-start;"><span style="color: #dc2626; font-size: 16px; margin-top: 2px;">🚫</span><p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">لا يتم بيع أو تداول خدماتنا في أي مكان آخر إلا عبر حساباتنا الرسمية ووكلائنا المعتمدين المنشورة أسماؤهم في موقعنا فقط.</p></div>
         </div>
 
-        <!-- أزرار التواصل -->
         <div style="display: flex; flex-direction: column; gap: 10px;">
-            <a href="https://www.instagram.com/oomnia.1/" target="_blank" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: #ffffff; text-decoration: none; padding: 14px; border-radius: 12px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 15px rgba(220, 39, 67, 0.3); transition: all 0.2s ease;">
-                تواصل معنا عبر الانستغرام 📸
-            </a>
-            
-            <a href="https://oomniah.netlify.app" target="_blank" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: #1e293b; color: #ffffff; text-decoration: none; padding: 14px; border-radius: 12px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 15px rgba(30, 41, 59, 0.3); transition: all 0.2s ease;">
-                زيارة الموقع الرسمي للمنصة 🌐
-            </a>
+            <a href="https://www.instagram.com/oomnia.1/" target="_blank" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: #ffffff; text-decoration: none; padding: 14px; border-radius: 12px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 15px rgba(220, 39, 67, 0.3); transition: all 0.2s ease;">تواصل معنا عبر الانستغرام 📸</a>
+            <a href="https://oomniah.netlify.app" target="_blank" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: #1e293b; color: #ffffff; text-decoration: none; padding: 14px; border-radius: 12px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 15px rgba(30, 41, 59, 0.3); transition: all 0.2s ease;">زيارة الموقع الرسمي للمنصة 🌐</a>
         </div>
-
-        <p style="color: #94a3b8; font-size: 12px; font-weight: bold; margin-top: 20px; margin-bottom: 0;">
-            شاكرين تعاونكم — إدارة أمنية (Oomniah)
-        </p>
-        
     </div>
 </div>
 
@@ -236,9 +234,11 @@
         
         const sender = urlParams.get('sender') || '[أسم المرسل]';
         const recipient = urlParams.get('recipient') || '[أسم المستلم]';
-        const message = (urlParams.get('message') || 'رسالتك التي ترسلها الى المتجر عند شراء الرابط').replace(/\n/g, '<br>');
-        const gender = urlParams.get('gender') || 'female';
         
+        // ✍️ تغيير النص الافتراضي للرسالة
+        const message = (urlParams.get('message') || 'رسالتك التي تريد إرسالها للشخص المستلم ستظهر هنا ✨').replace(/\n/g, '<br>');
+        
+        const gender = urlParams.get('gender') || 'female';
         const rawAudioUrl = urlParams.get('yt_clean') || urlParams.get('yt') || '';
         
         let startTime = parseInt(urlParams.get('start'));
@@ -253,16 +253,47 @@
 
         const isMale = (gender === 'male' || gender === 'ذكر');
         const textAreYou = isMale ? "انتَ" : "انتِ";
-        const textLove = isMale ? "تحب" : "تحبين";
-        const textClick = isMale ? "دوس" : "دوسي";
-
+        
         document.getElementById('dyn-are-you').innerText = textAreYou;
         document.getElementById('dyn-recipient1').innerText = recipient;
         
-        document.getElementById('dyn-q1').setAttribute('data-text', `هلو ${recipient} ✨`);
-        document.getElementById('dyn-q4').setAttribute('data-text', `${recipient} ${textLove} ${sender} ؟ 🫣`);
-        document.getElementById('dyn-q5').setAttribute('data-text', `شنو مدرييي!!! اكيد ${textLove} ${sender} 🤨`);
-        document.getElementById('dyn-q6').setAttribute('data-text', `اذا ${textLove} ${sender} ${textClick} على القلب 🫣`);
+        // ✍️ نصوص حصرية وبدون كلمة الله أو حلفان
+        if(isMale){
+            document.getElementById('dyn-q1').setAttribute('data-text', `يا هلا بـ ${recipient} ✨`);
+            document.querySelector('#card1 .btn-reply').innerText = 'يا هلا بيك ✨';
+
+            document.getElementById('dyn-q2').setAttribute('data-text', `عندي إلك مفاجأة كلش حلوة..`);
+            document.querySelector('#card2 .btn-reply').innerText = 'صدك؟ شنو هي؟';
+
+            document.getElementById('dyn-q3').setAttribute('data-text', `بس قبلها.. هاي وردة إلك 🌷`);
+            document.querySelector('#card3 .btn-reply').innerText = 'تسلميلي 🥺';
+
+            document.getElementById('dyn-q4').setAttribute('data-text', `المفاجأة دزها إلك ${sender} 🫣`);
+            document.querySelector('#card4 .btn-reply').innerText = 'شنو دزتلي؟ 🤍';
+
+            document.getElementById('dyn-q5').setAttribute('data-text', `متحمس تشوفها؟ 🤨`);
+            document.querySelector('#card5 .btn-reply').innerText = 'أكيد يلا 😂';
+
+            document.getElementById('dyn-q6').setAttribute('data-text', `لعد دوس على القلب 🩷`);
+        } else {
+            document.getElementById('dyn-q1').setAttribute('data-text', `يا هلا بـ ${recipient} ✨`);
+            document.querySelector('#card1 .btn-reply').innerText = 'يا هلا بيج ✨';
+
+            document.getElementById('dyn-q2').setAttribute('data-text', `عندي إلج مفاجأة كلش حلوة..`);
+            document.querySelector('#card2 .btn-reply').innerText = 'صدك؟ شنو هي؟';
+
+            document.getElementById('dyn-q3').setAttribute('data-text', `بس قبلها.. هاي وردة لأحلى عيون 🌷`);
+            document.querySelector('#card3 .btn-reply').innerText = 'تسلملي 🥺';
+
+            document.getElementById('dyn-q4').setAttribute('data-text', `المفاجأة دزها إلج ${sender} 🫣`);
+            document.querySelector('#card4 .btn-reply').innerText = 'شنو دزلي؟ 🤍';
+
+            document.getElementById('dyn-q5').setAttribute('data-text', `متحمسة تشوفيها؟ 🤨`);
+            document.querySelector('#card5 .btn-reply').innerText = 'أكيد يلا 😂';
+
+            document.getElementById('dyn-q6').setAttribute('data-text', `لعد دوسي ع القلب 🩷`);
+        }
+        
         document.getElementById('dyn-message').setAttribute('data-text', message);
 
         document.addEventListener('contextmenu', e => e.preventDefault());
@@ -275,7 +306,7 @@
         let isAudioLoaded = false;
         let progressInterval;
         let isDragging = false;
-        let appStarted = false; // ⬇️ متغير جديد يراقب اذا المستخدم داس البداية لو لا
+        let appStarted = false; 
 
         const playPauseBtn = document.getElementById('playPauseBtn');
         const progressCurrent = document.getElementById('progressCurrent');
@@ -288,8 +319,6 @@
             if (isMp3File) {
                 localAudio = new Audio(rawAudioUrl);
                 localAudio.preload = 'auto';
-                
-                // ⬇️ حل مشكلة الإعادة للملفات الصوتية العادية ⬇️
                 localAudio.addEventListener('ended', () => {
                     localAudio.currentTime = startTime;
                     localAudio.play();
@@ -318,7 +347,6 @@
                         events: {
                             'onReady': (e) => { 
                                 isAudioLoaded = true; 
-                                // ⬇️ حل مشكلة النقر السريع: اذا كان الزبون دايس مسبقاً، شغله هسه ⬇️
                                 if (appStarted) {
                                     e.target.playVideo();
                                     setTimeout(() => { e.target.seekTo(startTime, true); }, 200);
@@ -330,7 +358,6 @@
                                 if(e.data === YT.PlayerState.PLAYING) {
                                     playPauseBtn.innerText = '⏸';
                                 } else if (e.data === YT.PlayerState.ENDED) {
-                                    // ⬇️ حل مشكلة الإعادة والتصفير لليوتيوب ⬇️
                                     ytPlayer.seekTo(startTime, true);
                                     ytPlayer.playVideo();
                                 } else {
@@ -344,7 +371,7 @@
         }
 
         function startAppWithMusic() {
-            appStarted = true; // تسجيل دخول المستخدم
+            appStarted = true; 
             if (hasAudio) {
                 if (isMp3File && localAudio) {
                     localAudio.currentTime = startTime;
@@ -359,7 +386,6 @@
                     playPauseBtn.innerText = '⏸';
                     startProgressTracker();
                 }
-                // اذا مشغل اليوتيوب بعده ما محمل، راح يتكفل بيها حدث onReady فوگ
             }
             nextCard(1);
         }
@@ -400,7 +426,6 @@
                     currentTime = localAudio.currentTime;
                     actualDuration = localAudio.duration || 200;
                 } else if (!isMp3File && ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
-                    // ⬇️ التعديل هنا: العداد يستمر بالقراءة حتى لو الفيديو مؤقت أو ديبدأ من جديد ⬇️
                     currentTime = ytPlayer.getCurrentTime() || 0;
                     actualDuration = ytPlayer.getDuration() || 200;
                 } else {
@@ -409,8 +434,6 @@
 
                 const totalDuration = actualDuration - startTime;
                 const currentProgress = currentTime - startTime;
-                
-                // منع النسبة من النزول تحت الصفر اذا رجع لبداية الاغنية
                 const progressPercent = Math.max(0, Math.min(100, (currentProgress / totalDuration) * 100));
                 
                 if(progressCurrent) progressCurrent.style.width = `${progressPercent}%`;
@@ -460,39 +483,23 @@
 
         if(progressBar) {
             progressBar.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                progressKnob.classList.add('dragging');
-                updateProgressFromEvent(e);
+                isDragging = true; progressKnob.classList.add('dragging'); updateProgressFromEvent(e);
             });
-            document.addEventListener('mousemove', (e) => {
-                if (isDragging) updateProgressFromEvent(e);
-            });
+            document.addEventListener('mousemove', (e) => { if (isDragging) updateProgressFromEvent(e); });
             document.addEventListener('mouseup', (e) => {
-                if (isDragging) {
-                    let percent = updateProgressFromEvent(e);
-                    seekToPercent(percent);
-                    isDragging = false;
-                    progressKnob.classList.remove('dragging');
-                }
+                if (isDragging) { let percent = updateProgressFromEvent(e); seekToPercent(percent); isDragging = false; progressKnob.classList.remove('dragging'); }
             });
 
             progressBar.addEventListener('touchstart', (e) => {
-                isDragging = true;
-                progressKnob.classList.add('dragging');
-                updateProgressFromEvent(e);
+                isDragging = true; progressKnob.classList.add('dragging'); updateProgressFromEvent(e);
             }, {passive: true});
-            document.addEventListener('touchmove', (e) => {
-                if (isDragging) updateProgressFromEvent(e);
-            }, {passive: true});
+            document.addEventListener('touchmove', (e) => { if (isDragging) updateProgressFromEvent(e); }, {passive: true});
             document.addEventListener('touchend', (e) => {
                 if (isDragging) {
                     const rect = progressBar.getBoundingClientRect();
                     let clientX = e.changedTouches[0].clientX;
-                    let x = clientX - rect.left;
-                    let percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
-                    seekToPercent(percent);
-                    isDragging = false;
-                    progressKnob.classList.remove('dragging');
+                    let percent = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+                    seekToPercent(percent); isDragging = false; progressKnob.classList.remove('dragging');
                 }
             });
         }
@@ -549,17 +556,20 @@
             const cards = document.querySelectorAll('.card');
             cards.forEach(card => card.classList.remove('active'));
             const targetCard = document.getElementById('card' + cardIndex);
+            
             if (targetCard) {
                 targetCard.classList.add('active');
                 const qBar = targetCard.querySelector('.question-bar');
                 const replyBtn = targetCard.querySelector('.btn-reply');
                 const heartTrigger = targetCard.querySelector('#heartTrigger');
+                
                 if (qBar && qBar.getAttribute('data-text')) {
                     const fullText = qBar.getAttribute('data-text');
                     qBar.innerHTML = '';
                     qBar.classList.add('typing-active');
                     if(replyBtn) replyBtn.classList.remove('show');
                     if(heartTrigger) heartTrigger.style.display = 'none';
+                    
                     typeWriter(qBar, fullText, 0, function() {
                         qBar.classList.remove('typing-active');
                         if(replyBtn) replyBtn.classList.add('show');
@@ -568,6 +578,21 @@
                 }
             }
         }
+        
+        function forcePlayOnTouch() {
+            if (hasAudio) {
+                if (isMp3File && localAudio && localAudio.paused) {
+                    localAudio.play().catch(e => console.log(e));
+                    if(playPauseBtn) playPauseBtn.innerText = '⏸';
+                } else if (!isMp3File && ytPlayer && typeof ytPlayer.playVideo === 'function') {
+                    try { ytPlayer.playVideo(); if(playPauseBtn) playPauseBtn.innerText = '⏸'; } catch(e){}
+                }
+            }
+            document.removeEventListener('click', forcePlayOnTouch);
+            document.removeEventListener('touchstart', forcePlayOnTouch);
+        }
+        document.addEventListener('click', forcePlayOnTouch, { once: true });
+        document.addEventListener('touchstart', forcePlayOnTouch, { once: true });
     </script>
 </body>
 </html>

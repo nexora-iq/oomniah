@@ -5,8 +5,8 @@ import {
   FaBook, FaExclamationCircle, FaCheckCircle, 
   FaHandHoldingUsd, FaReceipt, FaPrint, 
   FaFileExcel, FaLink, FaClock, FaBuilding, 
-  FaUserTie, FaMoneyBillWave 
-} from 'react-icons/fa'; // 🌟 استدعاء الأيقونات
+  FaUserTie, FaMoneyBillWave, FaSpinner 
+} from 'react-icons/fa';
 
 const Toast = Swal.mixin({
   toast: true,
@@ -28,31 +28,22 @@ export default function FinancialWallet() {
   const [finLogs, setFinLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // حالة الأزرار أثناء الدفع (التحميل)
+  const [clearingBranchId, setClearingBranchId] = useState<string | null>(null);
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 1. جلب الفروع
-      const { data: pagesData, error: pagesError } = await supabase.from('pages')
-        .select('id, name, type, owner_percentage')
-        .eq('status', 'active');
-        
+      const { data: pagesData, error: pagesError } = await supabase.from('pages').select('id, name, type, owner_percentage').eq('status', 'active');
       if (pagesError) throw pagesError;
 
-      // 2. جلب الروابط
-      const { data: linksData, error: linksError } = await supabase.from('gift_links')
-        .select('id, price, owner_cut, is_cleared, created_at, expires_at, status, page_id, creator_id, created_by, theme_id');
-        
+      const { data: linksData, error: linksError } = await supabase.from('gift_links').select('id, price, owner_cut, is_cleared, created_at, expires_at, status, page_id, creator_id, created_by, theme_id');
       if (linksError) throw linksError;
 
-      // 3. جلب الثيمات، الموظفين، وسجلات التصفية
       const { data: themesData } = await supabase.from('themes').select('id, name');
       const { data: profilesData } = await supabase.from('profiles').select('id, fullname, full_name');
-      const { data: sysLogs } = await supabase.from('system_logs')
-        .select('*')
-        .eq('action_type', 'تصفية مالية')
-        .order('created_at', { ascending: false });
+      const { data: sysLogs } = await supabase.from('system_logs').select('*').eq('action_type', 'تصفية مالية').order('created_at', { ascending: false });
 
-      // حساب الوقت للفلترة
       const now = new Date();
       const filterDate = new Date();
       if (timeFilter === 'hour') filterDate.setHours(now.getHours() - 1);
@@ -76,24 +67,15 @@ export default function FinancialWallet() {
             const actualPrice = Number(l.price || 0);
             const platformCut = Number(l.owner_cut || 0);
             const themeName = themesData?.find(t => t.id === l.theme_id)?.name || 'ثيم غير محدد';
-            
             const creator = profilesData?.find(p => p.id === l.creator_id || p.id === l.created_by);
             const empName = creator?.fullname || creator?.full_name || 'موظف غير معروف';
 
             if (isWithinTime) {
               const isExpired = l.expires_at ? new Date(l.expires_at) < new Date() : false;
               allFinancialEvents.push({
-                id: l.id,
-                type: 'sale',
-                desc: `مبيعات (${themeName})`,
-                branchName: branch.name,
-                employeeName: empName,
-                amount: actualPrice,
-                platform_amount: platformCut,
-                date: l.created_at,
-                is_cleared: l.is_cleared,
-                status: l.status,
-                isExpired
+                id: l.id, type: 'sale', desc: `مبيعات (${themeName})`, branchName: branch.name,
+                employeeName: empName, amount: actualPrice, platform_amount: platformCut,
+                date: l.created_at, is_cleared: l.is_cleared, status: l.status, isExpired
               });
             }
             return l.is_cleared === false && isWithinTime;
@@ -101,7 +83,6 @@ export default function FinancialWallet() {
 
           const totalGross = validLinks.reduce((sum: number, l: any) => sum + Number(l.price || 0), 0); 
           const totalPlatformShare = validLinks.reduce((sum: number, l: any) => sum + Number(l.owner_cut || 0), 0); 
-          
           const linkIdsToClear = validLinks.map((l: any) => l.id);
 
           grandTotalGross += totalGross;
@@ -119,25 +100,15 @@ export default function FinancialWallet() {
         sysLogs.forEach(log => {
           const logDate = new Date(log.created_at);
           if (timeFilter === 'all' || logDate >= filterDate) {
-            allFinancialEvents.push({
-              id: log.id,
-              type: 'clearance',
-              desc: log.details,
-              branchName: log.pos_name || 'المنصة',
-              employeeName: 'الإدارة العامة',
-              amount: 0,
-              date: log.created_at
-            });
+            allFinancialEvents.push({ id: log.id, type: 'clearance', desc: log.details, branchName: log.pos_name || 'المنصة', employeeName: 'الإدارة العامة', amount: 0, date: log.created_at });
           }
         });
       }
 
       allFinancialEvents.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setFinLogs(allFinancialEvents);
-      
     } catch (err: any) {
-      console.error("General error in FinancialWallet:", err);
-      Toast.fire({ icon: 'error', title: 'فشل جلب الحسابات: ' + err.message });
+      Toast.fire({ icon: 'error', title: 'فشل جلب الحسابات' });
     }
     setLoading(false);
   };
@@ -147,6 +118,7 @@ export default function FinancialWallet() {
   const handleClearance = async (branchId: string, branchName: string, totalPlatformShare: number, linkIds: string[]) => {
     if(linkIds.length === 0 || totalPlatformShare === 0) return Toast.fire({ icon: 'info', title: 'الحساب مصفر مسبقاً.' });
     
+    // هذا سيفضل سويت ألاريت لأن تصفير الفلوس مسألة حساسة وتتطلب الموافقة!
     const result = await Swal.fire({
       title: 'تصفية الحساب',
       text: `هل تؤكد استلام مبلغ (${totalPlatformShare.toLocaleString()} د.ع) من فرع "${branchName}"؟`,
@@ -159,21 +131,22 @@ export default function FinancialWallet() {
     });
     
     if (result.isConfirmed) {
+      setClearingBranchId(branchId);
       const { error } = await supabase.from('gift_links').update({ is_cleared: true }).in('id', linkIds);
       
       if (error) {
         Toast.fire({ icon: 'error', title: error.message });
+        setClearingBranchId(null);
         return;
       }
       
       await supabase.from('system_logs').insert([{ 
-        admin_name: 'المدير العام', 
-        pos_name: branchName, 
-        action_type: 'تصفية مالية', 
+        admin_name: 'المدير العام', pos_name: branchName, action_type: 'تصفية مالية', 
         details: `تصفية مالية واستلام مبلغ ${totalPlatformShare.toLocaleString()} د.ع من فرع ${branchName}` 
       }]);
       
       Toast.fire({ icon: 'success', title: 'تم تصفير الحساب بنجاح!' });
+      setClearingBranchId(null);
       fetchData();
     }
   };
@@ -182,11 +155,8 @@ export default function FinancialWallet() {
     const headers = ["النوع", "التفاصيل", "الفرع", "الموظف", "مبلغ المبيعات الكلي", "حصة المنصة", "التاريخ"];
     const rows = finLogs.map(log => [
       log.type === 'sale' ? 'مبيعات' : 'تصفية',
-      log.desc,
-      log.branchName,
-      log.employeeName,
-      log.type === 'sale' ? log.amount : 0,
-      log.type === 'sale' ? log.platform_amount : 0,
+      log.desc, log.branchName, log.employeeName,
+      log.type === 'sale' ? log.amount : 0, log.type === 'sale' ? log.platform_amount : 0,
       new Date(log.date).toLocaleString('en-IQ')
     ]);
     const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
@@ -211,6 +181,8 @@ export default function FinancialWallet() {
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @media print { .no-print { display: none !important; } }
         
+        button, a, input, select { outline: none !important; -webkit-tap-highlight-color: transparent !important; }
+
         .filter-btn { background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px 16px; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: bold; color: #64748b; transition: all 0.2s; white-space: nowrap; }
         .filter-btn:hover { background: #f1f5f9; }
         .filter-btn.active { background: #dc2626; color: #fff; border-color: #dc2626; box-shadow: 0 4px 10px rgba(220, 38, 38, 0.2); }
@@ -230,9 +202,9 @@ export default function FinancialWallet() {
         .action-btn.export { background: #10b981; color: #fff; }
         .action-btn.export:hover { background: #059669; }
         .action-btn.print { background: #f8fafc; border: 1px solid #cbd5e1; color: #475569; }
+        .spinner { animation: spin 0.8s linear infinite; }
       `}</style>
 
-      {/* الهيدر والفلاتر */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', marginBottom: '25px', background: '#fff', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }} className="no-print">
         <div>
           <h2 style={{ margin: 0, fontSize: '22px', color: '#1e293b', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -252,7 +224,6 @@ export default function FinancialWallet() {
         </div>
       </div>
       
-      {/* صندوق الإجماليات */}
       <div style={{ background: 'linear-gradient(135deg, #fef2f2 0%, #fff 100%)', padding: '30px', borderRadius: '20px', border: '1px solid #fecaca', textAlign: 'center', marginBottom: '25px', display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: '20px' }}>
         <div>
           <div style={{ fontSize: '14px', color: '#64748b', fontWeight: 'bold' }}>إجمالي المبيعات الكلية بالسوق</div>
@@ -266,7 +237,6 @@ export default function FinancialWallet() {
         </div>
       </div>
 
-      {/* بطاقات الفروع */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginBottom: '30px' }} className="no-print">
         {branchesData.map(branch => (
           <div key={branch.id} className="branch-card">
@@ -294,20 +264,19 @@ export default function FinancialWallet() {
             <button 
               onClick={() => handleClearance(branch.id, branch.name, branch.totalPlatformShare, branch.linkIdsToClear)} 
               className="clear-btn"
-              disabled={branch.totalPlatformShare === 0}
+              disabled={branch.totalPlatformShare === 0 || clearingBranchId === branch.id}
             >
-              {branch.totalPlatformShare === 0 ? <><FaCheckCircle /> الحساب مصفر</> : <><FaHandHoldingUsd /> استلام وتصفير الحساب</>}
+              {clearingBranchId === branch.id ? <><FaSpinner className="spinner"/> جاري التصفية...</> : branch.totalPlatformShare === 0 ? <><FaCheckCircle /> الحساب مصفر</> : <><FaHandHoldingUsd /> استلام وتصفير الحساب</>}
             </button>
           </div>
         ))}
         {branchesData.length === 0 && <p style={{ color: '#94a3b8', fontSize: '14px', gridColumn: '1/-1', textAlign: 'center', padding: '20px' }}>لا توجد فروع مسجلة لتصفيتها.</p>}
       </div>
 
-      {/* سجل الحركات المالي المفصل */}
       <div style={{ background: '#fff', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
           <h4 style={{ margin: 0, fontSize: '18px', color: '#1e293b', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FaReceipt style={{ color: '#94a3b8' }} /> سجل المعاملات الدقيق (مع تفاصيل الموظفين والفروع)
+            <FaReceipt style={{ color: '#94a3b8' }} /> سجل المعاملات الدقيق
           </h4>
           <div style={{ display: 'flex', gap: '8px' }} className="no-print">
             <button onClick={() => window.print()} className="action-btn print"><FaPrint /> طباعة</button>
@@ -346,12 +315,8 @@ export default function FinancialWallet() {
                     )}
                   </td>
                   <td className="td-cell">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', color: '#334155' }}>
-                      <FaBuilding style={{ color: '#94a3b8' }} /> {log.branchName}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                      <FaUserTie style={{ color: '#cbd5e1' }} /> {log.employeeName}
-                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', color: '#334155' }}><FaBuilding style={{ color: '#94a3b8' }} /> {log.branchName}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#64748b', marginTop: '4px' }}><FaUserTie style={{ color: '#cbd5e1' }} /> {log.employeeName}</div>
                   </td>
                   <td className="td-cell" style={{ fontWeight: 'bold', color: log.type === 'sale' ? '#dc2626' : '#10b981' }}>
                     {log.type === 'sale' ? `مبيعات: ${log.amount.toLocaleString()} | حصة: ${log.platform_amount.toLocaleString()}` : 'عملية تصفية واستلام'}
@@ -361,7 +326,7 @@ export default function FinancialWallet() {
                   </td>
                 </tr>
               ))}
-              {finLogs.length === 0 && <tr><td colSpan={5} style={{ padding: '30px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>لا توجد حركات مالية مسجلة في هذا النطاق.</td></tr>}
+              {finLogs.length === 0 && <tr><td colSpan={5} style={{ padding: '30px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>لا توجد حركات مالية مسجلة.</td></tr>}
             </tbody>
           </table>
         </div>

@@ -6,7 +6,7 @@ import {
   FaGift, FaBan, FaHourglassEnd, FaSearch, 
   FaExclamationTriangle, FaHeadset, FaSyncAlt, 
   FaRocket 
-} from 'react-icons/fa'; // 🌟 استدعاء الأيقونات
+} from 'react-icons/fa';
 
 const getCleanYouTubeEmbed = (url: string, start: number) => {
   if (!url) return '';
@@ -31,12 +31,19 @@ export default function Viewer() {
   const [error, setError] = useState<string | null>(null);
   const [readyUrl, setReadyUrl] = useState<string | null>(null);
   const [isOpened, setIsOpened] = useState(false);
+  
+  // 🌟 [جديد] حالة اكتشاف متصفح الانستغرام
+  const [isInAppBrowser, setIsInAppBrowser] = useState(false);
 
   const OOMNIAH_INSTAGRAM = "https://www.instagram.com/oomnia.1/";
 
-  // دالة جلب بيانات الهدية من Supabase وتجهيز الثيم
   useEffect(() => {
-    
+    // 🌟 [جديد] فحص نوع المتصفح
+    const ua = navigator.userAgent || navigator.vendor;
+    if (ua.includes('Instagram') || ua.includes('FBAN') || ua.includes('FBAV') || ua.includes('TikTok')) {
+      setIsInAppBrowser(true);
+    }
+
     const processGift = async () => {
       try {
         if (!themeSlug || !shortId) return;
@@ -49,7 +56,6 @@ export default function Viewer() {
         if (cachedData) {
           giftData = JSON.parse(cachedData);
         } else {
-          // جلب بيانات الهدية
           const { data, error: fetchError } = await supabase
             .from('gift_links')
             .select('*')
@@ -65,21 +71,18 @@ export default function Viewer() {
           sessionStorage.setItem(cacheKey, JSON.stringify(giftData));
         }
 
-        // 🛡️ فحص الحماية 1 (الإيقاف)
         if (giftData.status === 'inactive' || giftData.status === 'disabled') {
           sessionStorage.removeItem(cacheKey); 
           setError('blocked');
           return;
         }
 
-        // 🛡️ فحص الحماية 2 (انتهاء الصلاحية)
         if (new Date(giftData.expires_at) < new Date()) {
           sessionStorage.removeItem(cacheKey); 
           setError('expired');
           return;
         }
 
-        // السحر هنا: جلب صورة الثيم لإضافتها كـ OG Image للواتساب والانستا 
         const { data: themeInfo } = await supabase
           .from('themes')
           .select('name, description, img_url')
@@ -87,7 +90,6 @@ export default function Viewer() {
           .single();
 
         if (themeInfo && themeInfo.img_url) {
-          // دالة مساعدة لإضافة Meta Tag
           const setMetaTag = (property: string, content: string) => {
             let element = document.querySelector(`meta[property="${property}"]`);
             if (!element) {
@@ -98,7 +100,6 @@ export default function Viewer() {
             element.setAttribute('content', content);
           };
 
-          // تغيير عنوان المتصفح والبيانات
           document.title = `مفاجأة من أمنية | ${themeInfo.name}`;
           setMetaTag('og:title', `مفاجأة خاصة لك - ${themeInfo.name}`);
           setMetaTag('og:description', giftData.message ? `"${giftData.message}"` : (themeInfo.description || 'اضغط هنا لفتح هديتك السرية!'));
@@ -121,7 +122,6 @@ export default function Viewer() {
           gender: giftData.recipient_gender || 'female'
         }).toString();
         
-        // رابط الثيم للتشغيل داخل الـ iframe
         setReadyUrl(`/themes/${themeSlug}/index.html?${queryParams}`);
         
       } catch (err) {
@@ -186,7 +186,6 @@ export default function Viewer() {
     objectFit: 'contain'
   };
 
-  // شاشة الإيقاف اليدوي
   if (error === 'blocked') return (
     <div style={pageContainer}>
       <div style={{...cardStyle, borderTop: '5px solid #dc2626'}}>
@@ -203,7 +202,6 @@ export default function Viewer() {
     </div>
   );
 
-  // شاشة انتهاء الصلاحية
   if (error === 'expired') return (
     <div style={pageContainer}>
       <div style={{...cardStyle, borderTop: '5px solid #ea580c'}}>
@@ -223,7 +221,6 @@ export default function Viewer() {
     </div>
   );
 
-  // شاشة الرابط الخاطئ أو المحذوف
   if (error === 'not_found' || error === 'unexpected') return (
     <div style={pageContainer}>
       <div style={cardStyle}>
@@ -243,27 +240,18 @@ export default function Viewer() {
     </div>
   );
 
-  // عرض الثيم (تم إضافة ستايلات متقدمة لسد الفراغات)
   if (isOpened && readyUrl) return (
     <iframe 
       src={readyUrl} 
       style={{ 
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw', 
-        height: '100vh', 
-        border: 'none',
-        margin: 0,
-        padding: 0,
-        display: 'block'
+        position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
+        border: 'none', margin: 0, padding: 0, display: 'block'
       }} 
       allow="autoplay; fullscreen"
       title="Oomniah Gift"
     />
   );
 
-  // صفحة فتح الهدية الأولية
   if (readyUrl) return (
     <div style={pageContainer}>
       <div style={{...cardStyle, background: 'transparent', border: 'none', boxShadow: 'none'}}>
@@ -276,6 +264,16 @@ export default function Viewer() {
         <h2 style={{ color: '#1e293b', fontSize: '26px', marginBottom: '5px', fontWeight: '900' }}>لديك مفاجأة</h2>
         <p style={{ color: '#64748b', fontSize: '16px', marginBottom: '30px' }}>اضغط على الزر أدناه لفتح هديتك</p>
         
+        {/* 🌟 [جديد] التنبيه الخاص بمتصفح الانستغرام */}
+        {isInAppBrowser && (
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '15px', borderRadius: '12px', marginBottom: '20px', color: '#dc2626', fontSize: '13px', fontWeight: 'bold', lineHeight: '1.6', textAlign: 'center', width: '100%' }}>
+            <FaExclamationTriangle style={{ fontSize: '18px', marginBottom: '5px' }} /> <br/>
+            أنت تستخدم متصفح داخلي وقد لا يعمل الصوت.<br/>
+            لأفضل تجربة، اضغط على النقاط (•••) بالأعلى واختر<br/>
+            <span style={{ background: '#dc2626', color: '#fff', padding: '3px 8px', borderRadius: '4px', margin: '0 4px', display: 'inline-block', marginTop: '6px' }}>فتح في المتصفح الخارجي</span>
+          </div>
+        )}
+
         <button 
           onClick={() => setIsOpened(true)}
           style={actionBtnStyle}
@@ -294,7 +292,6 @@ export default function Viewer() {
     </div>
   );
 
-  // شاشة التحميل الأولية
   return (
     <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f8fafc' }}>
       <img 

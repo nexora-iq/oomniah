@@ -228,12 +228,16 @@ export default function Login() {
 
       <div className="login-card">
         {/* اللوغو */}
+       {/* اللوغو */}
         <div className="logo-container">
           <img 
-            src="/logo-oomniah5.png" 
+            src="/oomniah-logo.png" 
             alt="شعار أمنية" 
             className="logo-img"
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            onError={(e) => { 
+              e.currentTarget.style.display = 'none'; 
+              console.log("خطأ في تحميل الشعار، تأكد من وجود صورة oomniah-logo.png في مجلد public"); 
+            }}
           />
         </div>
 

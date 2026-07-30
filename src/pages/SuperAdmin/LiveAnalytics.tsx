@@ -1,11 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabase';
+import Swal from 'sweetalert2';
 import { 
   FaChartPie, FaBoxOpen, FaBuilding, FaUserTie, FaMoneyBillWave, 
   FaRocket, FaWallet, FaLink, FaPalette, FaSignOutAlt, FaPlus, 
-  FaReceipt, FaUserCircle, FaPaintBrush 
-} from 'react-icons/fa'; // 🌟 استدعاء الأيقونات
+  FaReceipt, FaUserCircle, FaPaintBrush, FaSpinner 
+} from 'react-icons/fa';
+
+// إعداد الإشعار الجانبي الأنيق
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  background: '#fff',
+  color: '#1e293b'
+});
 
 export default function FinancialWallet() {
   const navigate = useNavigate();
@@ -33,6 +45,7 @@ export default function FinancialWallet() {
   const [expenseTitle, setExpenseTitle] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
   const [addingExpense, setAddingExpense] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -46,7 +59,7 @@ export default function FinancialWallet() {
 
       const { data: profile } = await supabase.from('profiles').select('role, fullname').eq('id', session.user.id).single();
       if (!profile || profile.role !== 'super_admin') {
-        alert('غير مصرح لك بالدخول لهذه الصفحة!');
+        Toast.fire({ icon: 'error', title: 'غير مصرح لك بالدخول لهذه الصفحة!' });
         return navigate('/secure-portal-access');
       }
       setAdminName(profile.fullname || 'المدير العام');
@@ -60,9 +73,7 @@ export default function FinancialWallet() {
 
       const { data: themesData } = await supabase.from('themes').select('id, name');
       const { data: pagesData } = await supabase.from('pages').select('id, name');
-      
       const { data: profilesData } = await supabase.from('profiles').select('id, fullname');
-
       const { data: expensesData } = await supabase.from('system_expenses').select('*').order('created_at', { ascending: false });
 
       let myTotalProfits = 0; 
@@ -70,7 +81,6 @@ export default function FinancialWallet() {
       
       const bProfitsMap: Record<string, any> = {};
       const eProfitsMap: Record<string, any> = {};
-      
       const packagesMap: Record<string, any> = {
         daily: { label: 'باقة يومية (24 ساعة)', count: 0, revenue: 0 },
         weekly: { label: 'باقة أسبوعية', count: 0, revenue: 0 },
@@ -82,49 +92,33 @@ export default function FinancialWallet() {
         linksData.forEach((link: any) => {
           const linkPrice = Number(link.price) || 0;
           const platformCut = Number(link.owner_cut) || 0;
-          
-          const theme = themesData?.find(t => t.id === link.theme_id);
-          const themeName = theme?.name || 'ثيم غير محدد أو محذوف';
-
-          const page = pagesData?.find(p => p.id === link.page_id || p.id === link.pos_id);
-          const pName = page?.name || 'فرع غير معروف أو محذوف';
-
-          const creator = profilesData?.find(p => p.id === link.creator_id || p.id === link.created_by);
-          
-          const empName = creator?.fullname || 'موظف محذوف';
+          const themeName = themesData?.find(t => t.id === link.theme_id)?.name || 'ثيم محذوف';
+          const pName = pagesData?.find(p => p.id === link.page_id || p.id === link.pos_id)?.name || 'فرع محذوف';
+          const empName = profilesData?.find(p => p.id === link.creator_id || p.id === link.created_by)?.fullname || 'موظف محذوف';
 
           totalGrossRev += linkPrice;
           myTotalProfits += platformCut;
 
-          // تجميع أرباح الفروع
           const pId = link.page_id || link.pos_id || 'unknown';
           if (!bProfitsMap[pId]) bProfitsMap[pId] = { name: pName, totalSales: 0, branchShare: 0, platformShare: 0 };
           bProfitsMap[pId].totalSales += linkPrice;
           bProfitsMap[pId].branchShare += Number(link.page_cut) || 0;
           bProfitsMap[pId].platformShare += platformCut;
 
-          // تجميع أرباح الموظفين وتفصيل الثيمات
           const empId = link.creator_id || link.created_by || 'deleted';
-          if (!eProfitsMap[empId]) {
-            eProfitsMap[empId] = { name: empName, totalSales: 0, profitsForPlatform: 0, themesSold: {} };
-          }
+          if (!eProfitsMap[empId]) eProfitsMap[empId] = { name: empName, totalSales: 0, profitsForPlatform: 0, themesSold: {} };
           eProfitsMap[empId].totalSales += linkPrice;
           eProfitsMap[empId].profitsForPlatform += platformCut;
 
-          if (!eProfitsMap[empId].themesSold[themeName]) {
-            eProfitsMap[empId].themesSold[themeName] = { count: 0, revenue: 0 };
-          }
+          if (!eProfitsMap[empId].themesSold[themeName]) eProfitsMap[empId].themesSold[themeName] = { count: 0, revenue: 0 };
           eProfitsMap[empId].themesSold[themeName].count += 1;
           eProfitsMap[empId].themesSold[themeName].revenue += linkPrice;
 
-          // تحليل الباقات
           if (link.created_at && link.expires_at) {
-            const diffTime = Math.abs(new Date(link.expires_at).getTime() - new Date(link.created_at).getTime());
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
+            const diffDays = Math.ceil(Math.abs(new Date(link.expires_at).getTime() - new Date(link.created_at).getTime()) / (1000 * 60 * 60 * 24));
             if (diffDays <= 2) { packagesMap.daily.count++; packagesMap.daily.revenue += linkPrice; }
-            else if (diffDays > 2 && diffDays <= 8) { packagesMap.weekly.count++; packagesMap.weekly.revenue += linkPrice; }
-            else if (diffDays > 8 && diffDays <= 32) { packagesMap.monthly.count++; packagesMap.monthly.revenue += linkPrice; }
+            else if (diffDays <= 8) { packagesMap.weekly.count++; packagesMap.weekly.revenue += linkPrice; }
+            else if (diffDays <= 32) { packagesMap.monthly.count++; packagesMap.monthly.revenue += linkPrice; }
             else { packagesMap.permanent.count++; packagesMap.permanent.revenue += linkPrice; }
           }
         });
@@ -149,7 +143,7 @@ export default function FinancialWallet() {
       if (expensesData) setExpenses(expensesData);
 
     } catch (error) {
-      console.error('Error fetching data:', error);
+      Toast.fire({ icon: 'error', title: 'حدث خطأ في جلب البيانات' });
     } finally {
       setLoading(false);
     }
@@ -166,22 +160,35 @@ export default function FinancialWallet() {
     }]);
 
     setAddingExpense(false);
-    if (error) alert(`خطأ في إضافة المصروف: ${error.message}`);
-    else { setExpenseTitle(''); setExpenseAmount(''); fetchDashboardData(); }
+    if (error) {
+        Toast.fire({ icon: 'error', title: `خطأ: ${error.message}` });
+    } else { 
+        Toast.fire({ icon: 'success', title: 'تم تسجيل المصروف بنجاح' });
+        setExpenseTitle(''); 
+        setExpenseAmount(''); 
+        fetchDashboardData(); 
+    }
   };
 
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     await supabase.auth.signOut();
     navigate('/secure-portal-access');
   };
 
-  if (loading) return <div style={centerScreen}><div className="spinner"></div></div>;
+  if (loading) return (
+      <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f8fafc' }}>
+          <FaSpinner className="spinner" style={{ fontSize: '40px', color: '#dc2626' }} />
+          <style>{`.spinner { animation: spin 1s linear infinite; } @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      </div>
+  );
 
   return (
-    <div style={dashboardContainer}>
+    <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '30px 20px', direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
       <style>{`
         body { background-color: #f8fafc; margin: 0; }
-        .spinner { border: 4px solid rgba(220, 38, 38, 0.2); border-top: 4px solid #dc2626; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        button, a, input, select { outline: none !important; -webkit-tap-highlight-color: transparent !important; }
+        .spinner { animation: spin 0.8s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
         .tab-btn { display: flex; align-items: center; gap: 8px; padding: 12px 20px; font-weight: bold; border-radius: 12px; cursor: pointer; transition: all 0.2s; border: none; font-size: 14px; }
@@ -195,14 +202,12 @@ export default function FinancialWallet() {
         .list-card { background: #fff; padding: 18px 20px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.01); }
         .theme-sub-card { background: #f8fafc; padding: 10px 15px; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }
         
-        .input-style { padding: 12px 16px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 14px; outline: none; transition: 0.3s; background: #f8fafc; }
+        .input-style { padding: 12px 16px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 14px; outline: none; transition: 0.3s; background: #f8fafc; width: 100%; box-sizing: border-box; }
         .input-style:focus { border-color: #dc2626; background: #fff; }
-
-        .logout-btn:hover { background: #fca5a5 !important; color: #b91c1c !important; }
       `}</style>
 
       {/* الهيدر */}
-      <div style={headerStyle}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '20px', borderRadius: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <img src="/oomniah-logo.png" alt="أمنية" style={{ width: '45px', height: '45px' }} onError={(e) => { e.currentTarget.style.display = 'none' }} />
           <div>
@@ -210,28 +215,19 @@ export default function FinancialWallet() {
             <p style={{ margin: 0, color: '#64748b', fontSize: '13px', fontWeight: 'bold' }}>الإحصائيات المالية | أهلاً {adminName}</p>
           </div>
         </div>
-        <button onClick={handleLogout} style={logoutBtn} className="logout-btn">
-          <FaSignOutAlt style={{ fontSize: '14px' }} /> تسجيل خروج
+        <button onClick={handleLogout} disabled={isLoggingOut} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: isLoggingOut ? '#f1f5f9' : '#fef2f2', color: isLoggingOut ? '#94a3b8' : '#ef4444', border: '1px solid', borderColor: isLoggingOut ? '#cbd5e1' : '#fecaca', padding: '10px 20px', borderRadius: '10px', fontWeight: 'bold', cursor: isLoggingOut ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}>
+          {isLoggingOut ? <FaSpinner className="spinner" /> : <FaSignOutAlt style={{ fontSize: '14px' }} />}
+          {isLoggingOut ? 'جاري الخروج...' : 'تسجيل خروج'}
         </button>
       </div>
 
       {/* أزرار التنقل */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', flexWrap: 'wrap' }}>
-        <button className={`tab-btn ${activeTab === 'overview' ? 'active' : 'inactive'}`} onClick={() => setActiveTab('overview')}>
-          <FaChartPie /> المالية العامة
-        </button>
-        <button className={`tab-btn ${activeTab === 'packages' ? 'active' : 'inactive'}`} onClick={() => setActiveTab('packages')}>
-          <FaBoxOpen /> الباقات والثيمات
-        </button>
-        <button className={`tab-btn ${activeTab === 'branches' ? 'active' : 'inactive'}`} onClick={() => setActiveTab('branches')}>
-          <FaBuilding /> أرباح الفروع
-        </button>
-        <button className={`tab-btn ${activeTab === 'employees' ? 'active' : 'inactive'}`} onClick={() => setActiveTab('employees')}>
-          <FaUserTie /> أداء الموظفين
-        </button>
-        <button className={`tab-btn ${activeTab === 'expenses' ? 'active' : 'inactive'}`} onClick={() => setActiveTab('expenses')}>
-          <FaMoneyBillWave /> المصاريف
-        </button>
+        <button className={`tab-btn ${activeTab === 'overview' ? 'active' : 'inactive'}`} onClick={() => setActiveTab('overview')}><FaChartPie /> المالية العامة</button>
+        <button className={`tab-btn ${activeTab === 'packages' ? 'active' : 'inactive'}`} onClick={() => setActiveTab('packages')}><FaBoxOpen /> الباقات والثيمات</button>
+        <button className={`tab-btn ${activeTab === 'branches' ? 'active' : 'inactive'}`} onClick={() => setActiveTab('branches')}><FaBuilding /> أرباح الفروع</button>
+        <button className={`tab-btn ${activeTab === 'employees' ? 'active' : 'inactive'}`} onClick={() => setActiveTab('employees')}><FaUserTie /> أداء الموظفين</button>
+        <button className={`tab-btn ${activeTab === 'expenses' ? 'active' : 'inactive'}`} onClick={() => setActiveTab('expenses')}><FaMoneyBillWave /> المصاريف</button>
       </div>
 
       {/* 1. المالية العامة */}
@@ -239,23 +235,17 @@ export default function FinancialWallet() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
             <div className="stat-card" style={{ borderBottom: '4px solid #8b5cf6', background: '#f5f3ff', borderColor: '#ddd6fe' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#6d28d9', fontSize: '14px', fontWeight: 'bold' }}>
-                <FaRocket style={{ fontSize: '16px' }} /> إجمالي الإيرادات الكلية للمنصة
-              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#6d28d9', fontSize: '14px', fontWeight: 'bold' }}><FaRocket /> إجمالي الإيرادات الكلية للمنصة</span>
               <span style={{ color: '#7c3aed', fontSize: '32px', fontWeight: '900' }}>{stats.totalGrossRevenue.toLocaleString()} د.ع</span>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
             <div className="stat-card" style={{ borderBottom: '4px solid #10b981' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', fontSize: '14px', fontWeight: 'bold' }}>
-                <FaWallet style={{ color: '#10b981' }} /> إيرادات النظام (حصة أمنية فقط)
-              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', fontSize: '14px', fontWeight: 'bold' }}><FaWallet style={{ color: '#10b981' }} /> إيرادات النظام (حصة أمنية فقط)</span>
               <span style={{ color: '#10b981', fontSize: '26px', fontWeight: '900' }}>{stats.totalPlatformProfits.toLocaleString()} د.ع</span>
             </div>
             <div className="stat-card" style={{ borderBottom: '4px solid #3b82f6', background: '#f0f9ff', borderColor: '#bae6fd' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0369a1', fontSize: '14px', fontWeight: 'bold' }}>
-                <FaMoneyBillWave style={{ color: '#0284c7' }} /> صافي الربح الفعلي بعد المصاريف
-              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0369a1', fontSize: '14px', fontWeight: 'bold' }}><FaMoneyBillWave style={{ color: '#0284c7' }} /> صافي الربح الفعلي بعد المصاريف</span>
               <span style={{ color: '#0284c7', fontSize: '26px', fontWeight: '900' }}>{stats.netProfit.toLocaleString()} د.ع</span>
             </div>
           </div>
@@ -267,20 +257,15 @@ export default function FinancialWallet() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
             <div className="stat-card small-card" style={{ borderBottom: '4px solid #f43f5e' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b', fontSize: '14px', fontWeight: 'bold' }}>
-                <FaLink style={{ color: '#f43f5e' }} /> إجمالي الروابط المباعة
-              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b', fontSize: '14px', fontWeight: 'bold' }}><FaLink style={{ color: '#f43f5e' }} /> إجمالي الروابط المباعة</span>
               <span style={{ color: '#f43f5e', fontSize: '28px', fontWeight: '900' }}>{stats.totalLinksSold}</span>
             </div>
             <div className="stat-card small-card" style={{ borderBottom: '4px solid #8b5cf6' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b', fontSize: '14px', fontWeight: 'bold' }}>
-                <FaPalette style={{ color: '#8b5cf6' }} /> الثيمات المتاحة بالنظام
-              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b', fontSize: '14px', fontWeight: 'bold' }}><FaPalette style={{ color: '#8b5cf6' }} /> الثيمات المتاحة</span>
               <span style={{ color: '#8b5cf6', fontSize: '28px', fontWeight: '900' }}>{stats.themesCount}</span>
             </div>
           </div>
-
-          <h3 style={{ margin: '10px 0', color: '#1e293b' }}>مبيعات الباقات الزمنية:</h3>
+          <h3 style={{ margin: '10px 0', color: '#1e293b' }}>مبيعات الباقات:</h3>
           <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
             {packageStats.map((pkg, i) => (
               <div key={i} className="stat-card" style={{ minWidth: '200px' }}>
@@ -299,10 +284,8 @@ export default function FinancialWallet() {
           {branchProfits.map((branch, i) => (
             <div key={i} className="list-card" style={{display:'flex', justifyContent:'space-between', alignItems: 'center'}}>
               <div>
-                <h3 style={{ margin: '0 0 5px 0', color: '#1e293b', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <FaBuilding style={{ color: '#94a3b8', fontSize: '16px' }} /> {branch.name}
-                </h3>
-                <span style={{ color: '#64748b', fontSize: '13px' }}>إجمالي مبيعات الفرع: <strong>{branch.totalSales.toLocaleString()} د.ع</strong></span>
+                <h3 style={{ margin: '0 0 5px 0', color: '#1e293b', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}><FaBuilding style={{ color: '#94a3b8' }} /> {branch.name}</h3>
+                <span style={{ color: '#64748b', fontSize: '13px' }}>إجمالي المبيعات: <strong>{branch.totalSales.toLocaleString()} د.ع</strong></span>
               </div>
               <div style={{ textAlign: 'left' }}>
                 <div style={{ color: '#10b981', fontWeight: 'bold', fontSize: '14px' }}>أرباح المنصة: {branch.platformShare.toLocaleString()} د.ع</div>
@@ -310,7 +293,7 @@ export default function FinancialWallet() {
               </div>
             </div>
           ))}
-          {branchProfits.length === 0 && <p style={{ color: '#64748b' }}>لا توجد أرباح فروع حتى الآن.</p>}
+          {branchProfits.length === 0 && <p style={{ color: '#64748b' }}>لا توجد أرباح فروع.</p>}
         </div>
       )}
 
@@ -319,26 +302,20 @@ export default function FinancialWallet() {
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {employeeProfits.map((emp, i) => (
             <div key={i} className="list-card">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', borderBottom: '1px solid #f1f5f9', paddingBottom: '15px', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', borderBottom: '1px solid #f1f5f9', paddingBottom: '15px' }}>
                 <div style={{ width: '45px', height: '45px', background: '#fee2e2', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                   <FaUserCircle style={{ fontSize: '24px', color: '#f87171' }} />
                 </div>
                 <div>
-                  <h3 style={{ margin: '0 0 5px 0', color: '#1e293b', fontSize: '18px' }}>
-                    {emp.name} {emp.name === adminName && <span style={{ color: '#0ea5e9', fontSize: '14px' }}>(أنت)</span>}
-                    {emp.name === 'موظف محذوف' && <span style={{fontSize:'11px', background:'#fee2e2', color:'#dc2626', padding:'2px 6px', borderRadius:'5px', marginRight:'5px'}}>محذوف</span>}
-                  </h3>
-                  <span style={{ color: '#64748b', fontSize: '14px' }}>المبيعات الإجمالية: <strong style={{color:'#dc2626'}}>{emp.totalSales.toLocaleString()} د.ع</strong></span>
+                  <h3 style={{ margin: '0 0 5px 0', color: '#1e293b', fontSize: '18px' }}>{emp.name} {emp.name === adminName && <span style={{ color: '#0ea5e9', fontSize: '14px' }}>(أنت)</span>}</h3>
+                  <span style={{ color: '#64748b', fontSize: '14px' }}>المبيعات: <strong style={{color:'#dc2626'}}>{emp.totalSales.toLocaleString()} د.ع</strong></span>
                 </div>
               </div>
-              
-              <div style={{ width: '100%', marginTop: '10px' }}>
-                <h4 style={{ margin: '0 0 10px 0', color: '#475569', fontSize: '14px' }}>تفاصيل مبيعات الثيمات:</h4>
+              <div style={{ marginTop: '10px' }}>
+                <h4 style={{ margin: '0 0 10px 0', color: '#475569', fontSize: '14px' }}>الثيمات المباعة:</h4>
                 {Object.keys(emp.themesSold).map((themeName, idx) => (
                   <div key={idx} className="theme-sub-card">
-                    <span style={{fontWeight:'bold', color:'#334155', fontSize:'14px', display:'flex', alignItems:'center', gap:'8px'}}>
-                      <FaPaintBrush style={{ color: '#64748b' }} /> {themeName}
-                    </span>
+                    <span style={{fontWeight:'bold', color:'#334155', fontSize:'14px', display:'flex', alignItems:'center', gap:'8px'}}><FaPaintBrush style={{ color: '#64748b' }} /> {themeName}</span>
                     <div style={{display:'flex', gap:'20px'}}>
                       <span style={{color:'#64748b', fontSize:'13px'}}>العدد: <strong>{emp.themesSold[themeName].count}</strong></span>
                       <span style={{color:'#10b981', fontSize:'13px'}}>أرباح: <strong>{emp.themesSold[themeName].revenue.toLocaleString()} د.ع</strong></span>
@@ -348,7 +325,7 @@ export default function FinancialWallet() {
               </div>
             </div>
           ))}
-          {employeeProfits.length === 0 && <p style={{ color: '#64748b' }}>لم يقم أي موظف بتوليد روابط حتى الآن.</p>}
+          {employeeProfits.length === 0 && <p style={{ color: '#64748b' }}>لا يوجد موظفين نشطين.</p>}
         </div>
       )}
 
@@ -356,16 +333,16 @@ export default function FinancialWallet() {
       {activeTab === 'expenses' && (
         <div>
           <form onSubmit={handleAddExpense} style={{ background: '#fff', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0', marginBottom: '25px', display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>عنوان المصروف</label>
+            <div style={{ flex: '1 1 200px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#475569', display: 'block', marginBottom:'8px' }}>عنوان المصروف</label>
               <input type="text" value={expenseTitle} onChange={e => setExpenseTitle(e.target.value)} className="input-style" required />
             </div>
-            <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>المبلغ (بالدينار)</label>
+            <div style={{ flex: '1 1 200px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#475569', display: 'block', marginBottom:'8px' }}>المبلغ (دينار)</label>
               <input type="number" value={expenseAmount} onChange={e => setExpenseAmount(e.target.value)} className="input-style" required />
             </div>
-            <button type="submit" disabled={addingExpense} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#dc2626', color: '#fff', padding: '12px 24px', borderRadius: '10px', border: 'none', fontWeight: 'bold', cursor: 'pointer', height: '43px' }}>
-              {addingExpense ? 'جاري الإضافة...' : <><FaPlus /> تسجيل المصروف</>}
+            <button type="submit" disabled={addingExpense} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: addingExpense ? '#fca5a5' : '#dc2626', color: '#fff', padding: '12px 24px', borderRadius: '10px', border: 'none', fontWeight: 'bold', cursor: addingExpense ? 'not-allowed' : 'pointer', height: '43px', transition: '0.3s' }}>
+              {addingExpense ? <><FaSpinner className="spinner" /> جاري الإضافة...</> : <><FaPlus /> تسجيل المصروف</>}
             </button>
           </form>
           
@@ -382,15 +359,10 @@ export default function FinancialWallet() {
                 <span style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '16px' }}>- {exp.amount.toLocaleString()} د.ع</span>
               </div>
             ))}
-            {expenses.length === 0 && <p style={{ color: '#64748b' }}>لا توجد مصاريف مسجلة حتى الآن.</p>}
+            {expenses.length === 0 && <p style={{ color: '#64748b' }}>لا توجد مصاريف.</p>}
           </div>
         </div>
       )}
     </div>
   );
 }
-
-const centerScreen: React.CSSProperties = { height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f8fafc' };
-const dashboardContainer: React.CSSProperties = { maxWidth: '1000px', margin: '0 auto', padding: '30px 20px', direction: 'rtl', fontFamily: 'Tajawal, system-ui, -apple-system, sans-serif' };
-const headerStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '20px', borderRadius: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' };
-const logoutBtn: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '8px', background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', padding: '10px 20px', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' };
