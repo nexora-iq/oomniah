@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../supabase';
-import DisableDevtool from 'disable-devtool';
 import { 
   FaGift, FaBan, FaHourglassEnd, FaSearch, 
   FaExclamationTriangle, FaHeadset, FaSyncAlt, 
-  FaRocket 
+  FaRocket, FaExternalLinkAlt 
 } from 'react-icons/fa';
 
 const getCleanYouTubeEmbed = (url: string, start: number) => {
@@ -32,16 +31,25 @@ export default function Viewer() {
   const [readyUrl, setReadyUrl] = useState<string | null>(null);
   const [isOpened, setIsOpened] = useState(false);
   
-  // 🌟 [جديد] حالة اكتشاف متصفح الانستغرام
+  // 🌟 حالات اكتشاف المتصفح والجهاز
   const [isInAppBrowser, setIsInAppBrowser] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
 
   const OOMNIAH_INSTAGRAM = "https://www.instagram.com/oomnia.1/";
 
   useEffect(() => {
-    // 🌟 [جديد] فحص نوع المتصفح
+    // 🌟 فحص نوع المتصفح والجهاز
     const ua = navigator.userAgent || navigator.vendor;
-    if (ua.includes('Instagram') || ua.includes('FBAN') || ua.includes('FBAV') || ua.includes('TikTok')) {
+    
+    if (ua.includes('Instagram') || ua.includes('FBAN') || ua.includes('FBAV') || ua.includes('TikTok') || ua.includes('Snapchat')) {
       setIsInAppBrowser(true);
+    }
+    
+    if (/iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream) {
+      setIsIOS(true);
+    } else if (/android/i.test(ua)) {
+      setIsAndroid(true);
     }
 
     const processGift = async () => {
@@ -49,7 +57,6 @@ export default function Viewer() {
         if (!themeSlug || !shortId) return;
 
         let giftData = null;
-        let themeData = null; 
         const cacheKey = `oomniah_gift_${shortId}`;
         const cachedData = sessionStorage.getItem(cacheKey);
 
@@ -133,57 +140,60 @@ export default function Viewer() {
     processGift();
   }, [themeSlug, shortId]);
 
+  // 🌟 [الخدعة البرمجية] إجبار الجهاز على فتح المتصفح الخارجي
+  const forceOpenExternalBrowser = () => {
+    const currentUrl = window.location.href;
+    
+    if (isAndroid) {
+      // خدعة الأندرويد (تفتح الرابط بكروم حصراً وتطرد الانستغرام)
+      const intentUrl = `intent://${currentUrl.replace(/^https?:\/\//i, '')}#Intent;scheme=https;package=com.android.chrome;end`;
+      window.location.href = intentUrl;
+    } else if (isIOS) {
+      // خدعة الايفون (تفتح متصفح سفاري)
+      // أحياناً تفشل لأن أبل صارمة، فإذا فشلت، نطلب منه ينسخ الرابط
+      const safariUrl = `googlechrome://${currentUrl.replace(/^https?:\/\//i, '')}`;
+      window.location.href = safariUrl; // محاولة أولى للكروم عالايفون
+      setTimeout(() => {
+        // محاولة ثانية لسفاري إذا ماعنده كروم
+        window.location.href = `x-web-search://?${currentUrl}`; 
+      }, 500);
+    } else {
+      // للأجهزة غير المعروفة
+      window.open(currentUrl, '_system');
+    }
+  };
+
   const pageContainer: React.CSSProperties = {
-    height: '100vh',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    background: '#f8fafc',
-    fontFamily: 'Tajawal, system-ui, -apple-system, sans-serif',
-    padding: '20px',
-    direction: 'rtl'
+    height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center',
+    background: '#f8fafc', fontFamily: 'Tajawal, system-ui, -apple-system, sans-serif',
+    padding: '20px', direction: 'rtl'
   };
 
   const cardStyle: React.CSSProperties = {
-    background: '#ffffff',
-    padding: '40px 30px',
-    borderRadius: '24px',
-    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.05)',
-    textAlign: 'center',
-    maxWidth: '400px',
-    width: '100%',
-    border: '1px solid #e2e8f0',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center'
+    background: '#ffffff', padding: '40px 30px', borderRadius: '24px',
+    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.05)', textAlign: 'center',
+    maxWidth: '400px', width: '100%', border: '1px solid #e2e8f0',
+    display: 'flex', flexDirection: 'column', alignItems: 'center'
   };
 
   const actionBtnStyle: React.CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '10px',
-    background: '#dc2626',
-    color: '#ffffff',
-    textDecoration: 'none',
-    padding: '16px 32px',
-    borderRadius: '16px',
-    fontWeight: '900',
-    fontSize: '16px',
-    boxShadow: '0 8px 25px rgba(220, 38, 38, 0.4)',
-    transition: 'all 0.3s ease',
-    marginTop: '10px',
-    width: '100%',
-    boxSizing: 'border-box',
-    cursor: 'pointer',
-    border: 'none'
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+    background: '#dc2626', color: '#ffffff', textDecoration: 'none', padding: '16px 32px',
+    borderRadius: '16px', fontWeight: '900', fontSize: '16px', boxShadow: '0 8px 25px rgba(220, 38, 38, 0.4)',
+    transition: 'all 0.3s ease', marginTop: '10px', width: '100%', boxSizing: 'border-box',
+    cursor: 'pointer', border: 'none', outline: 'none'
+  };
+
+  const externalBtnStyle: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+    background: '#2563eb', color: '#ffffff', textDecoration: 'none', padding: '14px 20px',
+    borderRadius: '12px', fontWeight: 'bold', fontSize: '15px', boxShadow: '0 6px 20px rgba(37, 99, 235, 0.3)',
+    transition: 'all 0.3s ease', marginTop: '15px', width: '100%', boxSizing: 'border-box',
+    cursor: 'pointer', border: 'none', outline: 'none'
   };
 
   const logoStyle: React.CSSProperties = {
-    width: '70px',
-    height: '70px',
-    marginBottom: '20px',
-    objectFit: 'contain'
+    width: '70px', height: '70px', marginBottom: '20px', objectFit: 'contain'
   };
 
   if (error === 'blocked') return (
@@ -215,9 +225,6 @@ export default function Viewer() {
           <FaSyncAlt /> طلب تجديد الرابط
         </a>
       </div>
-      <style>{`
-        .hover-effect-orange:hover { transform: translateY(-3px) scale(1.02); background: #c2410c !important; }
-      `}</style>
     </div>
   );
 
@@ -234,19 +241,13 @@ export default function Viewer() {
           <FaRocket /> تصفح خدمات منصة أمنية
         </a>
       </div>
-      <style>{`
-        .hover-effect-dark:hover { transform: translateY(-3px) scale(1.02); background: #0f172a !important; }
-      `}</style>
     </div>
   );
 
   if (isOpened && readyUrl) return (
     <iframe 
       src={readyUrl} 
-      style={{ 
-        position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
-        border: 'none', margin: 0, padding: 0, display: 'block'
-      }} 
+      style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', border: 'none', margin: 0, padding: 0, display: 'block' }} 
       allow="autoplay; fullscreen"
       title="Oomniah Gift"
     />
@@ -256,31 +257,36 @@ export default function Viewer() {
     <div style={pageContainer}>
       <div style={{...cardStyle, background: 'transparent', border: 'none', boxShadow: 'none'}}>
         <img 
-          src="/oomniah-logo.png" 
-          alt="أمنية" 
+          src="/oomniah-logo.png" alt="أمنية" 
           style={{ width: '120px', height: '120px', animation: 'float 3s ease-in-out infinite', objectFit: 'contain', marginBottom: '25px', filter: 'drop-shadow(0 10px 15px rgba(220,38,38,0.2))' }} 
           onError={(e) => { e.currentTarget.style.display = 'none' }}
         />
         <h2 style={{ color: '#1e293b', fontSize: '26px', marginBottom: '5px', fontWeight: '900' }}>لديك مفاجأة</h2>
         <p style={{ color: '#64748b', fontSize: '16px', marginBottom: '30px' }}>اضغط على الزر أدناه لفتح هديتك</p>
         
-        {/* 🌟 [جديد] التنبيه الخاص بمتصفح الانستغرام */}
-        {isInAppBrowser && (
-          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '15px', borderRadius: '12px', marginBottom: '20px', color: '#dc2626', fontSize: '13px', fontWeight: 'bold', lineHeight: '1.6', textAlign: 'center', width: '100%' }}>
-            <FaExclamationTriangle style={{ fontSize: '18px', marginBottom: '5px' }} /> <br/>
-            أنت تستخدم متصفح داخلي وقد لا يعمل الصوت.<br/>
-            لأفضل تجربة، اضغط على النقاط (•••) بالأعلى واختر<br/>
-            <span style={{ background: '#dc2626', color: '#fff', padding: '3px 8px', borderRadius: '4px', margin: '0 4px', display: 'inline-block', marginTop: '6px' }}>فتح في المتصفح الخارجي</span>
+        {/* 🌟 التنبيه وزر الانتقال للمتصفح الخارجي */}
+        {isInAppBrowser ? (
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '15px', borderRadius: '12px', marginBottom: '20px', color: '#dc2626', fontSize: '13px', fontWeight: 'bold', lineHeight: '1.6', textAlign: 'center', width: '100%', boxShadow: '0 4px 15px rgba(220, 38, 38, 0.1)' }}>
+            <FaExclamationTriangle style={{ fontSize: '20px', marginBottom: '8px' }} /> <br/>
+            أنت تفتح الرابط من داخل انستغرام، <br/> والصوت <span style={{ textDecoration: 'underline' }}>لن يعمل</span> بسبب سياسات التطبيق.<br/>
+            
+            <button 
+              onClick={forceOpenExternalBrowser}
+              style={externalBtnStyle}
+              className="hover-effect-blue"
+            >
+              <FaExternalLinkAlt /> اضغط هنا لفتح الهدية بمتصفح الجهاز
+            </button>
+            
+            <div style={{ marginTop: '12px', fontSize: '11px', color: '#991b1b' }}>
+              إذا لم يعمل الزر، اضغط على النقاط (•••) في الأعلى واختر "فتح في متصفح خارجي" أو "Open in Browser"
+            </div>
           </div>
+        ) : (
+          <button onClick={() => setIsOpened(true)} style={actionBtnStyle} className="hover-effect pulse-btn">
+            <FaGift style={{ fontSize: '20px' }} /> افتح الهدية الآن
+          </button>
         )}
-
-        <button 
-          onClick={() => setIsOpened(true)}
-          style={actionBtnStyle}
-          className="hover-effect pulse-btn"
-        >
-          <FaGift style={{ fontSize: '20px' }} /> افتح الهدية الآن
-        </button>
       </div>
 
       <style>{`
@@ -288,21 +294,15 @@ export default function Viewer() {
         @keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); } 70% { box-shadow: 0 0 0 20px rgba(220, 38, 38, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); } }
         .pulse-btn { animation: pulse-ring 2s infinite; }
         .hover-effect:hover { transform: translateY(-3px) scale(1.02); background: #b91c1c !important; }
+        .hover-effect-blue:hover { transform: translateY(-3px) scale(1.02); background: #1d4ed8 !important; }
       `}</style>
     </div>
   );
 
   return (
     <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f8fafc' }}>
-      <img 
-        src="/oomniah-logo.png" 
-        alt="أمنية" 
-        style={{ width: '80px', height: '80px', animation: 'pulse 1s infinite ease-in-out', objectFit: 'contain' }} 
-        onError={(e) => { e.currentTarget.style.display = 'none' }}
-      />
-      <style>{`
-        @keyframes pulse { 0% { transform: scale(0.95); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; filter: drop-shadow(0 0 15px rgba(220,38,38,0.3)); } 100% { transform: scale(0.95); opacity: 0.8; } }
-      `}</style>
+      <img src="/oomniah-logo.png" alt="أمنية" style={{ width: '80px', height: '80px', animation: 'pulse 1s infinite ease-in-out', objectFit: 'contain' }} onError={(e) => { e.currentTarget.style.display = 'none' }} />
+      <style>{`@keyframes pulse { 0% { transform: scale(0.95); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; filter: drop-shadow(0 0 15px rgba(220,38,38,0.3)); } 100% { transform: scale(0.95); opacity: 0.8; } }`}</style>
     </div>
   );
 }
