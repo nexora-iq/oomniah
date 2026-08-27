@@ -5,8 +5,8 @@ import {
   FaLink, FaChartBar, FaPrint, FaSearch, FaGift, 
   FaPalette, FaBuilding, FaUserTie, FaClock, 
   FaCheckCircle, FaExclamationCircle, FaTimesCircle, 
-  FaBan, FaCheck, FaSyncAlt, FaCalendarAlt 
-} from 'react-icons/fa'; // 🌟 استدعاء الأيقونات
+  FaBan, FaCheck, FaSyncAlt, FaCalendarAlt, FaQrcode, FaTicketAlt 
+} from 'react-icons/fa';
 
 // إعداد الإشعارات الجانبية (Toasts) الأنيقة
 const Toast = Swal.mixin({
@@ -155,7 +155,8 @@ export default function LinksMaster() {
       }
     }
   };
-  const exportToExcel = () => { /* نفس الكود السابق */ };
+  
+  const exportToExcel = () => { /* يمكن إضافة كود التصدير هنا */ };
 
   const filteredLinks = links.filter(link => {
     let isMatch = true;
@@ -211,12 +212,23 @@ export default function LinksMaster() {
         
         .stats-badge { background: #dc2626; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; display: inline-flex; align-items: center; gap: 6px; }
 
-        .table-container { background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; overflow-x: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+        /* ستايلات الجدول للحاسبة والبطاقات للموبايل */
+        .desktop-table-container { background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; overflow-x: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
         .data-table { width: 100%; border-collapse: collapse; min-width: 1050px; }
         .data-table th { background: #f8fafc; padding: 15px; text-align: right; font-size: 13px; color: #64748b; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
         .data-table td { padding: 15px; font-size: 13px; color: #1e293b; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
         .data-table tr:hover td { background: #fef2f2; }
         
+        .mobile-card-list { display: none; flex-direction: column; gap: 15px; }
+        .mobile-link-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); position: relative; }
+        
+        @media (max-width: 768px) {
+          .desktop-table-container { display: none; }
+          .mobile-card-list { display: flex; }
+          .header-card { flex-direction: column; align-items: stretch; text-align: center; }
+          .stats-badge { justify-content: center; }
+        }
+
         .badge { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
         .badge.active { background: #dcfce7; color: #16a34a; }
         .badge.expired { background: #fef3c7; color: #d97706; }
@@ -225,8 +237,8 @@ export default function LinksMaster() {
         .control-btn { padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; border: 1px solid; transition: 0.2s; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
         .control-btn.disable { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
         .control-btn.enable { background: #f0fdf4; border-color: #bbf7d0; color: #16a34a; }
-        .control-btn.extend { background: #fffbeb; border-color: #fef08a; color: #d97706; }
-        .open-link-btn { background: #2563eb; color: #fff; text-decoration: none; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .control-btn.extend { background: #fffbeb; border-color: #fef08a; color: #d97706; width: 100%; justify-content: center; }
+        .open-link-btn { background: #2563eb; color: #fff; text-decoration: none; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; justify-content: center; }
         .open-link-btn:hover { background: #1d4ed8; }
         
         .spinner { width: 50px; height: 50px; border: 5px solid #f8fafc; border-top: 5px solid #dc2626; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
@@ -238,9 +250,9 @@ export default function LinksMaster() {
           <h2 style={{ margin: 0, fontSize: '22px', color: '#1e293b', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <FaLink style={{ color: '#dc2626' }} /> سجل الروابط الشامل
           </h2>
-          <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#64748b' }}>إدارة شاملة لجميع الروابط المولدة، تمديد فترات الصلاحية، والمراقبة المركزية.</p>
+          <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#64748b' }}>إدارة ومراقبة الروابط، وتمديد الصلاحيات والفلاتر المتقدمة.</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div className="stats-badge">
             <FaChartBar /> إجمالي الروابط: {filteredLinks.length}
           </div>
@@ -269,7 +281,7 @@ export default function LinksMaster() {
           <option value="permanent">باقات دائمية</option>
         </select>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>من:</span>
           <input type="date" className="date-filter" value={startDate} onChange={e => setStartDate(e.target.value)} />
           <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>إلى:</span>
@@ -277,98 +289,207 @@ export default function LinksMaster() {
         </div>
       </div>
 
-      <div className="table-container">
-        {loading ? (
-          <div style={{ padding: '80px 20px', textAlign: 'center' }}>
-            <div className="spinner"></div>
-            <p style={{ marginTop: '15px', color: '#dc2626', fontWeight: 'bold', fontSize: '15px' }}>جاري تحميل الروابط والبيانات...</p>
-          </div>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>فتح الرابط</th>
-                <th>التفاصيل والمحتوى</th>
-                <th>الفرع والمالية</th>
-                <th>الصلاحية والتاريخ</th>
-                <th>الحالة</th>
-                <th className="no-print">التحكم والتمديد</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredLinks.map(link => {
-                const actualPrice = Number(link.price || 0);
-                const isExpired = new Date(link.expires_at) < new Date();
-                const displayStatus = (link.status === 'inactive' || link.status === 'disabled') ? 'معطل' : (isExpired ? 'منتهي' : 'فعال');
-                const linkCode = link.short_id || link.id.split('-')[0];
+      {loading ? (
+        <div style={{ padding: '80px 20px', textAlign: 'center' }}>
+          <div className="spinner"></div>
+          <p style={{ marginTop: '15px', color: '#dc2626', fontWeight: 'bold', fontSize: '15px' }}>جاري تحميل الروابط والبيانات...</p>
+        </div>
+      ) : (
+        <>
+          {/* 🌟 العرض الخاص بالحاسبة (جدول) */}
+          <div className="desktop-table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>فتح الرابط</th>
+                  <th>التفاصيل والمحتوى</th>
+                  <th>الفرع والمالية</th>
+                  <th>الصلاحية والتاريخ</th>
+                  <th>الحالة</th>
+                  <th className="no-print">التحكم والتمديد</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredLinks.map(link => {
+                  const actualPrice = Number(link.price || 0);
+                  const isExpired = new Date(link.expires_at) < new Date();
+                  const displayStatus = (link.status === 'inactive' || link.status === 'disabled') ? 'معطل' : (isExpired ? 'منتهي' : 'فعال');
+                  const linkCode = link.short_id || link.id.split('-')[0];
 
-                return (
-                  <tr key={link.id}>
-                    <td>
-                      <a href={`/${link.theme_slug}/${linkCode}`} target="_blank" rel="noreferrer" className="open-link-btn">
+                  return (
+                    <tr key={link.id}>
+                      <td>
+                        <a href={`/${link.theme_slug}/${linkCode}`} target="_blank" rel="noreferrer" className="open-link-btn">
+                          <FaGift /> افتح الهدية
+                        </a>
+                        <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px', fontFamily: 'monospace' }}>#{linkCode}</div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}>
+                          <FaPalette style={{ color: '#8b5cf6' }} /> {link.theme_name}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#64748b' }}>من: <strong>{link.sender_name || 'مجهول'}</strong></div>
+                        <div style={{ fontSize: '12px', color: '#64748b' }}>إلى: <strong>{link.recipient_name || 'مجهول'}</strong></div>
+                        
+                        {/* عرض معلومات الباركود والكوبون */}
+                        <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '8px' }}>
+                          {link.is_barcode && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: '#10b981', background: '#ecfdf5', padding: '2px 6px', borderRadius: '4px', border: '1px solid #a7f3d0', fontWeight: 'bold' }}>
+                              <FaQrcode /> باركود
+                            </span>
+                          )}
+                          {link.coupon_code && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: '#0ea5e9', background: '#f0f9ff', padding: '2px 6px', borderRadius: '4px', border: '1px solid #bae6fd', fontWeight: 'bold' }}>
+                              <FaTicketAlt /> كود: {link.coupon_code}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', color: '#1e293b' }}>
+                          <FaBuilding style={{ color: '#94a3b8' }} /> {link.page_name}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                          <FaUserTie style={{ color: '#cbd5e1' }} /> {link.creator_name}
+                        </div>
+                        <div style={{ color: '#dc2626', fontSize: '13px', fontWeight: 'bold', marginTop: '4px' }}>
+                          المبلغ: {actualPrice.toLocaleString()} د.ع
+                          {link.discount_amount > 0 && <span style={{ color: '#10b981', fontSize: '10px', display: 'block' }}>شمل خصم: {link.discount_amount} د.ع</span>}
+                        </div>
+                      </td>
+                      <td dir="ltr" style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', color: isExpired ? '#ea580c' : '#1e293b', fontWeight: isExpired ? 'bold' : 'normal', fontSize: '12px' }}>
+                          الانتهاء: {formatDateFull(link.expires_at)} <FaClock /> 
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>
+                          الإنشاء: {formatDateFull(link.created_at)} <FaCalendarAlt />
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`badge ${displayStatus === 'فعال' ? 'active' : (displayStatus === 'منتهي' ? 'expired' : 'inactive')}`}>
+                          {displayStatus === 'فعال' ? <><FaCheckCircle /> فعال</> : (displayStatus === 'منتهي' ? <><FaExclamationCircle /> منتهي</> : <><FaTimesCircle /> معطل</>)}
+                        </span>
+                      </td>
+                      <td className="no-print">
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <button onClick={() => toggleStatus(link.id, link.status)} className={`control-btn ${link.status === 'active' ? 'disable' : 'enable'}`}>
+                            {link.status === 'active' ? <><FaBan /> إيقاف</> : <><FaCheck /> تفعيل</>}
+                          </button>
+                          <div style={{ display: 'flex', gap: '4px', alignItems: 'center', background: '#f8fafc', padding: '4px', borderRadius: '10px' }}>
+                            <select value={extensions[link.id] || 'daily'} onChange={(e) => setExtensions({...extensions, [link.id]: e.target.value})} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '11px', backgroundColor: '#fff' }}>
+                              <option value="hour">ساعة (مجاناً)</option>
+                              <option value="daily">يومي (+5,000)</option>
+                              <option value="weekly">أسبوعي (+10,000)</option>
+                              <option value="monthly">شهري (+15,000)</option>
+                              <option value="two_months">شهرين (+19,000)</option>
+                              <option value="permanent">دائمي (+50,000)</option>
+                            </select>
+                            <button onClick={() => extendLink(link)} className="control-btn extend">
+                              <FaSyncAlt /> تمديد
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {filteredLinks.length === 0 && !loading && (
+                  <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>لا توجد روابط تطابق خيارات الفرز.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 🌟 العرض الخاص بالموبايل (بطاقات) */}
+          <div className="mobile-card-list">
+            {filteredLinks.map(link => {
+              const actualPrice = Number(link.price || 0);
+              const isExpired = new Date(link.expires_at) < new Date();
+              const displayStatus = (link.status === 'inactive' || link.status === 'disabled') ? 'معطل' : (isExpired ? 'منتهي' : 'فعال');
+              const linkCode = link.short_id || link.id.split('-')[0];
+
+              return (
+                <div key={link.id} className="mobile-link-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px', marginBottom: '15px' }}>
+                    <span className={`badge ${displayStatus === 'فعال' ? 'active' : (displayStatus === 'منتهي' ? 'expired' : 'inactive')}`}>
+                      {displayStatus === 'فعال' ? <FaCheckCircle /> : (displayStatus === 'منتهي' ? <FaExclamationCircle /> : <FaTimesCircle />)} {displayStatus}
+                    </span>
+                    <div style={{ fontSize: '12px', color: '#94a3b8', fontFamily: 'monospace' }}>#{linkCode}</div>
+                  </div>
+
+                  <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FaPalette style={{ color: '#8b5cf6' }} /> {link.theme_name}
+                  </h3>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#475569', marginBottom: '10px' }}>
+                    <span>من: <strong>{link.sender_name || 'مجهول'}</strong></span>
+                    <span>إلى: <strong>{link.recipient_name || 'مجهول'}</strong></span>
+                  </div>
+
+                  <div style={{ background: '#f8fafc', padding: '10px', borderRadius: '8px', marginBottom: '15px', fontSize: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                      <span><FaBuilding style={{ color: '#94a3b8' }}/> {link.page_name}</span>
+                      <span><FaUserTie style={{ color: '#cbd5e1' }}/> {link.creator_name}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #cbd5e1', paddingTop: '5px', marginTop: '5px' }}>
+                      <strong>السعر:</strong>
+                      <span style={{ color: '#dc2626', fontWeight: 'bold' }}>{actualPrice.toLocaleString()} د.ع</span>
+                    </div>
+                    
+                    {/* عرض معلومات الباركود والكوبون للموبايل */}
+                    <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '8px' }}>
+                      {link.is_barcode && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: '#10b981', background: '#ecfdf5', padding: '2px 6px', borderRadius: '4px', border: '1px solid #a7f3d0', fontWeight: 'bold' }}>
+                          <FaQrcode /> باركود
+                        </span>
+                      )}
+                      {link.coupon_code && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: '#0ea5e9', background: '#f0f9ff', padding: '2px 6px', borderRadius: '4px', border: '1px solid #bae6fd', fontWeight: 'bold' }}>
+                          <FaTicketAlt /> كود: {link.coupon_code} (-{link.discount_amount} د.ع)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '15px', direction: 'ltr', textAlign: 'right' }}>
+                    <span style={{ color: isExpired ? '#ea580c' : '#1e293b', fontWeight: isExpired ? 'bold' : 'normal' }}>
+                      Exp: {formatDateFull(link.expires_at)} <FaClock />
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <a href={`/${link.theme_slug}/${linkCode}`} target="_blank" rel="noreferrer" className="open-link-btn" style={{ flex: 1 }}>
                         <FaGift /> افتح الهدية
                       </a>
-                      <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px', fontFamily: 'monospace' }}>#{linkCode}</div>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}>
-                        <FaPalette style={{ color: '#8b5cf6' }} /> {link.theme_name}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#64748b' }}>من: <strong>{link.sender_name || 'مجهول'}</strong></div>
-                      <div style={{ fontSize: '12px', color: '#64748b' }}>إلى: <strong>{link.recipient_name || 'مجهول'}</strong></div>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', color: '#1e293b' }}>
-                        <FaBuilding style={{ color: '#94a3b8' }} /> {link.page_name}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                        <FaUserTie style={{ color: '#cbd5e1' }} /> {link.creator_name}
-                      </div>
-                      <div style={{ color: '#dc2626', fontSize: '13px', fontWeight: 'bold', marginTop: '4px' }}>{actualPrice.toLocaleString()} د.ع</div>
-                    </td>
-                    <td dir="ltr" style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', color: isExpired ? '#ea580c' : '#1e293b', fontWeight: isExpired ? 'bold' : 'normal', fontSize: '12px' }}>
-                        الانتهاء: {formatDateFull(link.expires_at)} <FaClock /> 
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>
-                        الإنشاء: {formatDateFull(link.created_at)} <FaCalendarAlt />
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`badge ${displayStatus === 'فعال' ? 'active' : (displayStatus === 'منتهي' ? 'expired' : 'inactive')}`}>
-                        {displayStatus === 'فعال' ? <><FaCheckCircle /> فعال</> : (displayStatus === 'منتهي' ? <><FaExclamationCircle /> منتهي</> : <><FaTimesCircle /> معطل يدوياً</>)}
-                      </span>
-                    </td>
-                    <td className="no-print">
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <button onClick={() => toggleStatus(link.id, link.status)} className={`control-btn ${link.status === 'active' ? 'disable' : 'enable'}`}>
-                          {link.status === 'active' ? <><FaBan /> إيقاف</> : <><FaCheck /> تفعيل</>}
-                        </button>
-                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center', background: '#f8fafc', padding: '4px', borderRadius: '10px' }}>
-                          <select value={extensions[link.id] || 'daily'} onChange={(e) => setExtensions({...extensions, [link.id]: e.target.value})} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '11px', backgroundColor: '#fff' }}>
-                            <option value="hour">ساعة (مجاناً)</option>
-                            <option value="daily">يومي (+5,000)</option>
-                            <option value="weekly">أسبوعي (+10,000)</option>
-                            <option value="monthly">شهري (+15,000)</option>
-                            <option value="two_months">شهرين (+19,000)</option>
-                            <option value="permanent">دائمي (+50,000)</option>
-                          </select>
-                          <button onClick={() => extendLink(link)} className="control-btn extend">
-                            <FaSyncAlt /> تمديد
-                          </button>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {filteredLinks.length === 0 && !loading && (
-                <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>لا توجد روابط تطابق خيارات الفرز.</td></tr>
-              )}
-            </tbody>
-          </table>
-        )}
-      </div>
+                      <button onClick={() => toggleStatus(link.id, link.status)} className={`control-btn ${link.status === 'active' ? 'disable' : 'enable'}`} style={{ flex: 1, justifyContent: 'center' }}>
+                        {link.status === 'active' ? <><FaBan /> إيقاف</> : <><FaCheck /> تفعيل</>}
+                      </button>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', background: '#f8fafc', padding: '8px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                      <select value={extensions[link.id] || 'daily'} onChange={(e) => setExtensions({...extensions, [link.id]: e.target.value})} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '12px', backgroundColor: '#fff' }}>
+                        <option value="hour">ساعة (مجاناً)</option>
+                        <option value="daily">يومي (+5k)</option>
+                        <option value="weekly">أسبوعي (+10k)</option>
+                        <option value="monthly">شهري (+15k)</option>
+                        <option value="two_months">شهرين (+19k)</option>
+                        <option value="permanent">دائمي (+50k)</option>
+                      </select>
+                      <button onClick={() => extendLink(link)} className="control-btn extend" style={{ flex: 1 }}>
+                        <FaSyncAlt /> تمديد
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {filteredLinks.length === 0 && !loading && (
+              <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8', fontSize: '14px', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>لا توجد روابط تطابق خيارات الفرز.</div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

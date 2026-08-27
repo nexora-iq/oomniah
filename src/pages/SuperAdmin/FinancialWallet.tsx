@@ -5,7 +5,7 @@ import {
   FaBook, FaExclamationCircle, FaCheckCircle, 
   FaHandHoldingUsd, FaReceipt, FaPrint, 
   FaFileExcel, FaLink, FaClock, FaBuilding, 
-  FaUserTie, FaMoneyBillWave, FaSpinner 
+  FaUserTie, FaMoneyBillWave, FaSpinner, FaQrcode 
 } from 'react-icons/fa';
 
 const Toast = Swal.mixin({
@@ -28,7 +28,6 @@ export default function FinancialWallet() {
   const [finLogs, setFinLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // حالة الأزرار أثناء الدفع (التحميل)
   const [clearingBranchId, setClearingBranchId] = useState<string | null>(null);
 
   const fetchData = async () => {
@@ -37,7 +36,7 @@ export default function FinancialWallet() {
       const { data: pagesData, error: pagesError } = await supabase.from('pages').select('id, name, type, owner_percentage').eq('status', 'active');
       if (pagesError) throw pagesError;
 
-      const { data: linksData, error: linksError } = await supabase.from('gift_links').select('id, price, owner_cut, is_cleared, created_at, expires_at, status, page_id, creator_id, created_by, theme_id');
+      const { data: linksData, error: linksError } = await supabase.from('gift_links').select('id, price, owner_cut, is_cleared, created_at, expires_at, status, page_id, creator_id, created_by, theme_id, is_barcode');
       if (linksError) throw linksError;
 
       const { data: themesData } = await supabase.from('themes').select('id, name');
@@ -64,25 +63,29 @@ export default function FinancialWallet() {
             const linkDate = new Date(l.created_at);
             const isWithinTime = timeFilter === 'all' ? true : linkDate >= filterDate;
             
-            const actualPrice = Number(l.price || 0);
-            const platformCut = Number(l.owner_cut || 0);
+            const barcodePrice = l.is_barcode ? 3000 : 0;
+            const actualPrice = Number(l.price || 0) + barcodePrice; 
+            const platformCut = Number(l.owner_cut || 0) + barcodePrice; 
+
             const themeName = themesData?.find(t => t.id === l.theme_id)?.name || 'ثيم غير محدد';
             const creator = profilesData?.find(p => p.id === l.creator_id || p.id === l.created_by);
             const empName = creator?.fullname || creator?.full_name || 'موظف غير معروف';
 
             if (isWithinTime) {
               const isExpired = l.expires_at ? new Date(l.expires_at) < new Date() : false;
+              const saleDesc = l.is_barcode ? `مبيعات (${themeName}) + باركود مميز` : `مبيعات (${themeName})`;
+
               allFinancialEvents.push({
-                id: l.id, type: 'sale', desc: `مبيعات (${themeName})`, branchName: branch.name,
+                id: l.id, type: 'sale', desc: saleDesc, branchName: branch.name,
                 employeeName: empName, amount: actualPrice, platform_amount: platformCut,
-                date: l.created_at, is_cleared: l.is_cleared, status: l.status, isExpired
+                date: l.created_at, is_cleared: l.is_cleared, status: l.status, isExpired, is_barcode: l.is_barcode
               });
             }
             return l.is_cleared === false && isWithinTime;
           });
 
-          const totalGross = validLinks.reduce((sum: number, l: any) => sum + Number(l.price || 0), 0); 
-          const totalPlatformShare = validLinks.reduce((sum: number, l: any) => sum + Number(l.owner_cut || 0), 0); 
+          const totalGross = validLinks.reduce((sum: number, l: any) => sum + Number(l.price || 0) + (l.is_barcode ? 3000 : 0), 0); 
+          const totalPlatformShare = validLinks.reduce((sum: number, l: any) => sum + Number(l.owner_cut || 0) + (l.is_barcode ? 3000 : 0), 0); 
           const linkIdsToClear = validLinks.map((l: any) => l.id);
 
           grandTotalGross += totalGross;
@@ -100,7 +103,7 @@ export default function FinancialWallet() {
         sysLogs.forEach(log => {
           const logDate = new Date(log.created_at);
           if (timeFilter === 'all' || logDate >= filterDate) {
-            allFinancialEvents.push({ id: log.id, type: 'clearance', desc: log.details, branchName: log.pos_name || 'المنصة', employeeName: 'الإدارة العامة', amount: 0, date: log.created_at });
+            allFinancialEvents.push({ id: log.id, type: 'clearance', desc: log.details, branchName: log.pos_name || 'المنصة', employeeName: 'الإدارة العامة', amount: 0, date: log.created_at, is_barcode: false });
           }
         });
       }
@@ -118,7 +121,6 @@ export default function FinancialWallet() {
   const handleClearance = async (branchId: string, branchName: string, totalPlatformShare: number, linkIds: string[]) => {
     if(linkIds.length === 0 || totalPlatformShare === 0) return Toast.fire({ icon: 'info', title: 'الحساب مصفر مسبقاً.' });
     
-    // هذا سيفضل سويت ألاريت لأن تصفير الفلوس مسألة حساسة وتتطلب الموافقة!
     const result = await Swal.fire({
       title: 'تصفية الحساب',
       text: `هل تؤكد استلام مبلغ (${totalPlatformShare.toLocaleString()} د.ع) من فرع "${branchName}"؟`,
@@ -183,6 +185,9 @@ export default function FinancialWallet() {
         
         button, a, input, select { outline: none !important; -webkit-tap-highlight-color: transparent !important; }
 
+        /* 🌟 فلاتر متجاوبة للموبايل */
+        .filter-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; }
+        .filter-container::-webkit-scrollbar { display: none; }
         .filter-btn { background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px 16px; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: bold; color: #64748b; transition: all 0.2s; white-space: nowrap; }
         .filter-btn:hover { background: #f1f5f9; }
         .filter-btn.active { background: #dc2626; color: #fff; border-color: #dc2626; box-shadow: 0 4px 10px rgba(220, 38, 38, 0.2); }
@@ -190,13 +195,30 @@ export default function FinancialWallet() {
         .branch-card { background: #fff; padding: 25px; border-radius: 16px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.02); transition: all 0.3s; position: relative; overflow: hidden; display: flex; flex-direction: column; }
         .branch-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.06); border-color: #fca5a5; }
         
-        .clear-btn { display: flex; align-items: center; justify-content: center; gap: 8px; background: #10b981; color: #fff; border: none; padding: 12px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s; margin-top: auto; }
+        .clear-btn { display: flex; align-items: center; justify-content: center; gap: 8px; background: #10b981; color: #fff; border: none; padding: 12px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s; margin-top: auto; width: 100%; }
         .clear-btn:hover { background: #059669; }
         .clear-btn:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
         
+        /* 🌟 تصميم الجدول للحاسبة والبطاقات للموبايل */
+        .desktop-table { width: 100%; border-collapse: collapse; }
         .table-row { border-bottom: 1px solid #f1f5f9; transition: 0.2s; }
         .table-row:hover { background: #f8fafc; }
         .td-cell { padding: 14px 12px; font-size: 13px; color: #1e293b; }
+        
+        .mobile-log-list { display: none; flex-direction: column; gap: 12px; }
+        .mobile-log-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; position: relative; }
+        
+        @media (max-width: 768px) {
+            .desktop-table-container { display: none; }
+            .mobile-log-list { display: flex; }
+            .top-stats-container { flex-direction: column; gap: 15px !important; }
+            .top-stat-item { width: 100%; border-right: none !important; border-bottom: 1px solid #fecaca; padding-bottom: 15px; padding-right: 0 !important; }
+            .top-stat-item:last-child { border-bottom: none; padding-bottom: 0; }
+        }
+        @media (min-width: 769px) {
+            .mobile-log-list { display: none; }
+            .desktop-table-container { display: block; max-height: 500px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 12px; }
+        }
 
         .action-btn { padding: 8px 15px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: bold; transition: all 0.2s; border: none; display: flex; align-items: center; gap: 6px; }
         .action-btn.export { background: #10b981; color: #fff; }
@@ -205,14 +227,17 @@ export default function FinancialWallet() {
         .spinner { animation: spin 0.8s linear infinite; }
       `}</style>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', marginBottom: '25px', background: '#fff', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }} className="no-print">
-        <div>
-          <h2 style={{ margin: 0, fontSize: '22px', color: '#1e293b', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FaBook style={{ color: '#dc2626' }} /> الدفتر المالي وتصفية الديون
-          </h2>
-          <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#64748b' }}>إدارة الحسابات المعلقة واستلام حصة المنصة من الفروع.</p>
+      {/* 🌟 الهيدر وفلاتر الوقت */}
+      <div style={{ background: '#fff', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0', marginBottom: '20px' }} className="no-print">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', marginBottom: '15px' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '20px', color: '#1e293b', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FaBook style={{ color: '#dc2626' }} /> دفتر الديون والتصفية
+            </h2>
+            <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#64748b' }}>إدارة الحسابات المعلقة واستلام حصة المنصة.</p>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '5px' }}>
+        <div className="filter-container">
           {['all', 'year', 'month', 'week', 'day', 'hour'].map(tf => {
             const labels: any = { all: 'الكل', year: 'هذا العام', month: 'هذا الشهر', week: 'هذا الأسبوع', day: 'اليوم', hour: 'آخر ساعة' };
             return (
@@ -224,41 +249,46 @@ export default function FinancialWallet() {
         </div>
       </div>
       
-      <div style={{ background: 'linear-gradient(135deg, #fef2f2 0%, #fff 100%)', padding: '30px', borderRadius: '20px', border: '1px solid #fecaca', textAlign: 'center', marginBottom: '25px', display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: '20px' }}>
-        <div>
-          <div style={{ fontSize: '14px', color: '#64748b', fontWeight: 'bold' }}>إجمالي المبيعات الكلية بالسوق</div>
-          <div style={{ fontSize: '28px', color: '#1e293b', fontWeight: '900' }}>{totalUnclearedGross.toLocaleString()} د.ع</div>
+      {/* 🌟 الإحصائيات العلوية */}
+      <div className="top-stats-container" style={{ background: 'linear-gradient(135deg, #fef2f2 0%, #fff 100%)', padding: '25px', borderRadius: '20px', border: '1px solid #fecaca', textAlign: 'center', marginBottom: '25px', display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
+        <div className="top-stat-item">
+          <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 'bold', marginBottom: '5px' }}>إجمالي المبيعات الكلية بالسوق</div>
+          <div style={{ fontSize: '24px', color: '#1e293b', fontWeight: '900' }}>{totalUnclearedGross.toLocaleString()} د.ع</div>
         </div>
-        <div style={{ borderRight: '2px solid #fecaca', paddingRight: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '15px', color: '#dc2626', fontWeight: 'bold' }}>
-            حصة أمنية الصافية (المطلوب استلامه) <FaExclamationCircle />
+        <div className="top-stat-item" style={{ borderRight: '2px solid #fecaca', paddingRight: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '14px', color: '#dc2626', fontWeight: 'bold', marginBottom: '5px' }}>
+            <FaExclamationCircle /> المطلوب استلامه (حصة أمنية)
           </div>
-          <div style={{ fontSize: '38px', color: '#dc2626', fontWeight: '900' }}>{totalUnclearedPlatform.toLocaleString()} د.ع</div>
+          <div style={{ fontSize: '32px', color: '#dc2626', fontWeight: '900' }}>{totalUnclearedPlatform.toLocaleString()} د.ع</div>
         </div>
       </div>
 
+      {/* 🌟 بطاقات الفروع */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginBottom: '30px' }} className="no-print">
         {branchesData.map(branch => (
           <div key={branch.id} className="branch-card">
-            <div style={{ position: 'absolute', top: '10px', right: '10px', background: branch.type === 'owned' ? '#dcfce7' : '#fef3c7', color: branch.type === 'owned' ? '#16a34a' : '#d97706', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
+            <div style={{ position: 'absolute', top: '12px', right: '12px', background: branch.type === 'owned' ? '#dcfce7' : '#fef3c7', color: branch.type === 'owned' ? '#16a34a' : '#d97706', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold' }}>
               {branch.type === 'owned' ? 'مملوك (100%)' : `تعاقد (${branch.owner_percentage}%)`}
             </div>
             
-            <h4 style={{ margin: '15px 0 10px 0', fontSize: '20px', fontWeight: '900', color: '#1e293b' }}>{branch.name}</h4>
+            <h4 style={{ margin: '20px 0 15px 0', fontSize: '18px', fontWeight: '900', color: '#1e293b' }}>{branch.name}</h4>
             
             <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '12px', marginBottom: '15px', border: '1px solid #e2e8f0', textAlign: 'right' }}>
-              <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span>إجمالي مبيعات الفرع:</span>
+              <div style={{ fontSize: '13px', color: '#64748b', display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span>مبيعات الفرع:</span>
                 <strong style={{ color: '#1e293b' }}>{branch.totalGross.toLocaleString()} د.ع</strong>
               </div>
-              <div style={{ fontSize: '13px', color: '#0f172a', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: '8px', fontWeight: 'bold' }}>
-                <span>حصة المنصة المطلوبة:</span>
+              <div style={{ fontSize: '14px', color: '#0f172a', display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #cbd5e1', paddingTop: '10px', fontWeight: 'bold' }}>
+                <span>حصة المنصة:</span>
                 <strong style={{ color: '#dc2626', fontSize: '16px' }}>{branch.totalPlatformShare.toLocaleString()} د.ع</strong>
               </div>
             </div>
 
-            <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '15px' }}>
-              عدد الروابط غير المصفاة: <span style={{ fontWeight: 'bold', color: branch.pendingLinksCount > 0 ? '#dc2626' : '#10b981' }}>{branch.pendingLinksCount}</span>
+            <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>روابط غير مصفاة:</span>
+              <span style={{ background: branch.pendingLinksCount > 0 ? '#fee2e2' : '#dcfce7', color: branch.pendingLinksCount > 0 ? '#dc2626' : '#16a34a', padding: '2px 8px', borderRadius: '6px', fontWeight: 'bold' }}>
+                {branch.pendingLinksCount}
+              </span>
             </div>
 
             <button 
@@ -266,30 +296,32 @@ export default function FinancialWallet() {
               className="clear-btn"
               disabled={branch.totalPlatformShare === 0 || clearingBranchId === branch.id}
             >
-              {clearingBranchId === branch.id ? <><FaSpinner className="spinner"/> جاري التصفية...</> : branch.totalPlatformShare === 0 ? <><FaCheckCircle /> الحساب مصفر</> : <><FaHandHoldingUsd /> استلام وتصفير الحساب</>}
+              {clearingBranchId === branch.id ? <><FaSpinner className="spinner"/> جاري التصفية...</> : branch.totalPlatformShare === 0 ? <><FaCheckCircle /> الحساب مصفر</> : <><FaHandHoldingUsd /> تصفية واستلام المبلغ</>}
             </button>
           </div>
         ))}
         {branchesData.length === 0 && <p style={{ color: '#94a3b8', fontSize: '14px', gridColumn: '1/-1', textAlign: 'center', padding: '20px' }}>لا توجد فروع مسجلة لتصفيتها.</p>}
       </div>
 
+      {/* 🌟 سجل المعاملات الدقيق */}
       <div style={{ background: '#fff', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
-          <h4 style={{ margin: 0, fontSize: '18px', color: '#1e293b', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FaReceipt style={{ color: '#94a3b8' }} /> سجل المعاملات الدقيق
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+          <h4 style={{ margin: 0, fontSize: '16px', color: '#1e293b', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FaReceipt style={{ color: '#94a3b8' }} /> سجل المعاملات التفصيلي
           </h4>
           <div style={{ display: 'flex', gap: '8px' }} className="no-print">
             <button onClick={() => window.print()} className="action-btn print"><FaPrint /> طباعة</button>
-            <button onClick={exportFinToExcel} className="action-btn export"><FaFileExcel /> تحميل إكسل</button>
+            <button onClick={exportFinToExcel} className="action-btn export"><FaFileExcel /> إكسل</button>
           </div>
         </div>
         
-        <div style={{ maxHeight: '450px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        {/* العرض الخاص بالحاسبة (جدول) */}
+        <div className="desktop-table-container">
+          <table className="desktop-table">
             <thead style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 10 }}>
               <tr>
                 <th style={{ padding: '12px', textAlign: 'right', fontSize: '13px', color: '#64748b' }}>النوع</th>
-                <th style={{ padding: '12px', textAlign: 'right', fontSize: '13px', color: '#64748b' }}>التفاصيل والثيم</th>
+                <th style={{ padding: '12px', textAlign: 'right', fontSize: '13px', color: '#64748b' }}>التفاصيل</th>
                 <th style={{ padding: '12px', textAlign: 'right', fontSize: '13px', color: '#64748b' }}>الفرع والموظف</th>
                 <th style={{ padding: '12px', textAlign: 'right', fontSize: '13px', color: '#64748b' }}>المبلغ / الحصة</th>
                 <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', color: '#64748b' }}>التاريخ</th>
@@ -303,13 +335,15 @@ export default function FinancialWallet() {
                   </td>
                   <td className="td-cell">
                     <strong style={{ color: log.type === 'clearance' ? '#10b981' : '#1e293b' }}>{log.desc}</strong>
+                    {log.is_barcode && (
+                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#dc2626', background: '#fef2f2', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', marginRight: '6px' }}>
+                         <FaQrcode /> باركود
+                       </div>
+                    )}
                     {log.type === 'sale' && (
                       <div style={{ display: 'flex', gap: '8px', marginTop: '4px', alignItems: 'center' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: log.is_cleared ? '#10b981' : '#dc2626', fontWeight: 'bold' }}>
-                          {log.is_cleared ? <><FaCheckCircle /> مُصفى ومستلم</> : <><FaClock /> دين قيد التحصيل</>}
-                        </span>
-                        <span style={{ fontSize: '11px', background: log.isExpired ? '#fef2f2' : '#f0fdf4', color: log.isExpired ? '#dc2626' : '#16a34a', padding: '1px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
-                          {log.isExpired ? 'منتهي الصلاحية' : 'نشط'}
+                          {log.is_cleared ? <><FaCheckCircle /> مُصفى</> : <><FaClock /> قيد التحصيل</>}
                         </span>
                       </div>
                     )}
@@ -326,9 +360,53 @@ export default function FinancialWallet() {
                   </td>
                 </tr>
               ))}
-              {finLogs.length === 0 && <tr><td colSpan={5} style={{ padding: '30px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>لا توجد حركات مالية مسجلة.</td></tr>}
+              {finLogs.length === 0 && <tr><td colSpan={5} style={{ padding: '30px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>لا توجد حركات مسجلة.</td></tr>}
             </tbody>
           </table>
+        </div>
+
+        {/* 🌟 العرض الخاص بالموبايل (بطاقات) */}
+        <div className="mobile-log-list">
+          {finLogs.map((log, index) => (
+            <div key={index} className="mobile-log-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ background: log.type === 'clearance' ? '#dcfce7' : '#eff6ff', color: log.type === 'clearance' ? '#16a34a' : '#3b82f6', width: '32px', height: '32px', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '16px' }}>
+                    {log.type === 'clearance' ? <FaHandHoldingUsd /> : <FaLink />}
+                  </div>
+                  <div>
+                    <strong style={{ color: log.type === 'clearance' ? '#10b981' : '#1e293b', fontSize: '14px', display: 'block' }}>{log.desc}</strong>
+                    <span style={{ color: '#94a3b8', fontSize: '11px' }} dir="ltr">{new Date(log.date).toLocaleString('en-IQ')}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div style={{ background: '#f8fafc', padding: '10px', borderRadius: '8px', marginBottom: '10px', fontSize: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                  <span style={{ color: '#64748b' }}><FaBuilding /> {log.branchName}</span>
+                  <span style={{ color: '#64748b' }}><FaUserTie /> {log.employeeName}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #e2e8f0', paddingTop: '5px', marginTop: '5px', fontWeight: 'bold' }}>
+                  <span style={{ color: '#475569' }}>المبلغ / الحصة:</span>
+                  <span style={{ color: log.type === 'sale' ? '#dc2626' : '#10b981' }}>
+                    {log.type === 'sale' ? `${log.amount.toLocaleString()} / ${log.platform_amount.toLocaleString()}` : 'تصفية'}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {log.is_barcode && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#dc2626', background: '#fef2f2', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold' }}><FaQrcode /> باركود</span>
+                )}
+                {log.type === 'sale' && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', background: log.is_cleared ? '#f0fdf4' : '#fee2e2', color: log.is_cleared ? '#16a34a' : '#dc2626', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold' }}>
+                    {log.is_cleared ? <><FaCheckCircle /> مُصفى</> : <><FaClock /> قيد التحصيل</>}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+          {finLogs.length === 0 && <p style={{ color: '#94a3b8', textAlign: 'center', fontSize: '13px' }}>لا توجد حركات مسجلة.</p>}
         </div>
       </div>
     </div>

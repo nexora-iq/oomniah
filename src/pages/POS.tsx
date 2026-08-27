@@ -1,13 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 import Swal from 'sweetalert2';
 import { Toast } from '../toast';
+import { QRCodeSVG } from 'qrcode.react'; 
 import { 
   FaStore, FaUserCircle, FaSignOutAlt, FaVenus, FaMars, 
   FaPalette, FaClock, FaUser, FaGift, FaPen, FaMusic, 
   FaUpload, FaYoutube, FaMoneyBillWave, FaLink, 
-  FaCheckCircle, FaCopy, FaSpinner 
+  FaCheckCircle, FaCopy, FaSpinner, FaQrcode, FaDownload, 
+  FaSave, FaFolderOpen, FaChartPie, FaCalendarDay, FaTicketAlt 
 } from 'react-icons/fa';
 
 const DURATION_PRICES = {
@@ -30,8 +32,6 @@ export default function POS() {
   const [adminName, setAdminName] = useState('');
   const [posName, setPosName] = useState('');
   const [posId, setPosId] = useState<string | null>(null);
-  
-  // 🌟 هنا راح نحفظ نسبة المنصة من الفرع (القيمة الافتراضية 50%)
   const [platformPercentage, setPlatformPercentage] = useState<number>(50); 
   
   const [themes, setThemes] = useState<any[]>([]);
@@ -44,6 +44,21 @@ export default function POS() {
   const [uploadProgress, setUploadProgress] = useState(''); 
 
   const [audioFile, setAudioFile] = useState<File | null>(null);
+
+  // 🌟 حالات ميزة الباركود
+  const [withBarcode, setWithBarcode] = useState(false);
+  const [barcodeColor, setBarcodeColor] = useState('#000000');
+  const [barcodeIcon, setBarcodeIcon] = useState(''); 
+
+  // 🌟 حالات الإحصائيات الخاصة بالموظف
+  const [showStatsModal, setShowStatsModal] = useState(false);
+  const [loadingStats, setLoadingStats] = useState(false);
+  const [employeeStats, setEmployeeStats] = useState({ totalSales: 0, todaySales: 0, linksCount: 0, barcodeCount: 0 });
+
+  // 🌟 حالات الكوبون
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<any | null>(null);
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
 
   const [formData, setFormData] = useState({
     theme_id: '', sender_name: '', recipient_name: '', recipient_gender: 'female',
@@ -65,12 +80,13 @@ export default function POS() {
         setAdminName(profile.fullname);
       }
 
-      // 🌟 سحب نسبة الأرباح مع بيانات الفرع
+      let currentBranchId = null;
       const { data: posData } = await supabase.from('pages').select('id, name, owner_percentage').eq('slug', slug).single();
       if (posData) {
         setPosId(posData.id);
+        currentBranchId = posData.id; 
         setPosName(posData.name);
-        setPlatformPercentage(Number(posData.owner_percentage) || 50); // تخزين النسبة
+        setPlatformPercentage(Number(posData.owner_percentage) || 50); 
       } else {
         Toast.fire({ icon: 'error', title: 'خطأ أمني: رابط الفرع غير صالح.' });
         return navigate('/secure-portal-access');
@@ -78,7 +94,11 @@ export default function POS() {
 
       const { data: th } = await supabase.from('themes').select('*').eq('status', 'active');
       if (th && th.length > 0) {
-        setThemes(th);
+        const branchThemes = th.filter(theme => {
+          const allowed = theme.allowed_pages;
+          return !allowed || !Array.isArray(allowed) || allowed.length === 0 || allowed.includes(currentBranchId);
+        });
+        setThemes(branchThemes);
       }
 
       setLoading(false);
@@ -100,9 +120,111 @@ export default function POS() {
     } else {
       setFormData(prev => ({ ...prev, theme_id: '' }));
     }
-  }, [formData.recipient_gender, themes]);
+  }, [formData.recipient_gender, themes]); 
 
-  const currentPrice = DURATION_PRICES[formData.duration_type].price;
+  // 🌟 دوال المسودة (Drafts)
+  const saveDraft = () => {
+    if (!formData.sender_name && !formData.message && !formData.song_url) {
+      return Toast.fire({ icon: 'warning', title: 'لا توجد معلومات مهمة لحفظها كمسودة.' });
+    }
+    const draft = {
+      sender_name: formData.sender_name,
+      message: formData.message,
+      song_url: formData.song_url,
+      song_start_seconds: formData.song_start_seconds
+    };
+    localStorage.setItem('oomniah_pos_draft', JSON.stringify(draft));
+    Toast.fire({ icon: 'success', title: 'تم حفظ المعلومات الحالية لتكرارها لاحقاً!' });
+  };
+
+  const loadDraft = () => {
+    const draftStr = localStorage.getItem('oomniah_pos_draft');
+    if (!draftStr) {
+      return Toast.fire({ icon: 'info', title: 'لا توجد مسودة محفوظة مسبقاً.' });
+    }
+    const draft = JSON.parse(draftStr);
+    setFormData(prev => ({
+      ...prev,
+      sender_name: draft.sender_name || prev.sender_name,
+      message: draft.message || prev.message,
+      song_url: draft.song_url || prev.song_url,
+      song_start_seconds: draft.song_start_seconds || prev.song_start_seconds
+    }));
+    Toast.fire({ icon: 'success', title: 'تم استرجاع المعلومات بنجاح!' });
+  };
+
+  // 🌟 جلب إحصائيات الموظف
+  const fetchEmployeeStats = async () => {
+    setLoadingStats(true);
+    setShowStatsModal(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data } = await supabase.from('gift_links').select('price, is_barcode, created_at').eq('creator_id', session.user.id);
+      let totalSales = 0, todaySales = 0, barcodeCount = 0, linksCount = data?.length || 0;
+      
+      const today = new Date();
+      const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+      data?.forEach(link => {
+         const linkPrice = Number(link.price || 0);
+         totalSales += linkPrice;
+         if (link.is_barcode) barcodeCount++;
+         if (link.created_at && link.created_at.startsWith(todayString)) todaySales += linkPrice;
+      });
+
+      setEmployeeStats({ totalSales, todaySales, barcodeCount, linksCount });
+    } catch (err) {
+      Toast.fire({ icon: 'error', title: 'فشل جلب الإحصائيات' });
+    }
+    setLoadingStats(false);
+  };
+
+  // 🌟 دالة تطبيق الكوبون
+  const handleApplyCoupon = async () => {
+    if (!couponInput.trim()) return Toast.fire({ icon: 'warning', title: 'الرجاء إدخال كود الخصم أولاً.' });
+    setValidatingCoupon(true);
+    try {
+      const { data, error } = await supabase.from('coupons').select('*').eq('code', couponInput.trim()).eq('status', 'active').single();
+      
+      if (error || !data) {
+        Toast.fire({ icon: 'error', title: 'الكوبون غير صحيح أو غير فعال.' });
+        setAppliedCoupon(null);
+      } else {
+        if (data.expires_at && new Date(data.expires_at) < new Date()) {
+          Toast.fire({ icon: 'error', title: 'عذراً، هذا الكوبون منتهي الصلاحية.' });
+          setAppliedCoupon(null);
+        } else if (data.max_uses && data.used_count >= data.max_uses) {
+          Toast.fire({ icon: 'error', title: 'تم تجاوز الحد الأقصى لاستخدام هذا الكوبون.' });
+          setAppliedCoupon(null);
+        } else {
+          setAppliedCoupon(data);
+          Toast.fire({ icon: 'success', title: 'تم تطبيق الخصم بنجاح! 🎉' });
+        }
+      }
+    } catch (err) {
+      Toast.fire({ icon: 'error', title: 'حدث خطأ أثناء فحص الكوبون.' });
+    }
+    setValidatingCoupon(false);
+  };
+
+  // 🌟 حساب الأسعار النهائية (شاملة الباركود والخصم)
+  const originalBasePrice = DURATION_PRICES[formData.duration_type].price;
+  const originalBarcodePrice = withBarcode && formData.duration_type !== 'trial' ? 3000 : 0;
+  const originalTotalPrice = originalBasePrice + originalBarcodePrice;
+
+  let discountAmount = 0;
+  if (appliedCoupon && formData.duration_type !== 'trial') {
+    if (appliedCoupon.discount_type === 'percentage') {
+      discountAmount = originalTotalPrice * (appliedCoupon.discount_value / 100);
+    } else {
+      discountAmount = appliedCoupon.discount_value;
+    }
+    if (discountAmount > originalTotalPrice) discountAmount = originalTotalPrice;
+  }
+
+  const finalPrice = originalTotalPrice - discountAmount;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -110,20 +232,17 @@ export default function POS() {
       setAudioFile(null);
       return;
     }
-    
     if (file.type !== "audio/mpeg" && !file.name.toLowerCase().endsWith('.mp3')) {
       Toast.fire({ icon: 'error', title: 'يقبل ملفات (MP3) فقط!' });
       e.target.value = ''; 
       return;
     }
-
     const MAX_SIZE = 3 * 1024 * 1024; 
     if (file.size > MAX_SIZE) {
       Toast.fire({ icon: 'error', title: 'حجم الملف كبير جداً! الأقصى 3 ميغا.' });
       e.target.value = '';
       return;
     }
-
     setAudioFile(file);
   };
 
@@ -187,12 +306,11 @@ export default function POS() {
     const shortId = Math.random().toString(36).substring(2, 10);
     const isCleared = formData.duration_type === 'trial'; 
 
-    // 🌟 حساب الأرباح بالطريقة الصحيحة بناءً على النسبة المسحوبة من قاعدة البيانات
     const platformRatio = platformPercentage / 100;
     const branchRatio = (100 - platformPercentage) / 100;
 
-    const ownerCut = currentPrice * platformRatio; 
-    const pageCut = currentPrice * branchRatio;  
+    const ownerCut = finalPrice * platformRatio; 
+    const pageCut = finalPrice * branchRatio;  
 
     const { data, error } = await supabase.from('gift_links').insert([{
       page_id: posId,
@@ -207,15 +325,18 @@ export default function POS() {
       song_start_seconds: Number(formData.song_start_seconds) || 0,
       message: formData.message.trim(), 
       duration_type: formData.duration_type,
-      price: currentPrice, 
-      price_at_sale: currentPrice, 
-      pos_share_percentage: platformPercentage, // تسجيل النسبة لحظة البيع للتاريخ
+      price: finalPrice, 
+      price_at_sale: originalTotalPrice, 
+      coupon_code: appliedCoupon ? appliedCoupon.code : null, 
+      discount_amount: discountAmount,
+      pos_share_percentage: platformPercentage, 
       owner_cut: ownerCut,
       page_cut: pageCut,
       status: 'active', 
       is_cleared: isCleared, 
       expires_at: expiresAt.toISOString(), 
-      short_id: shortId
+      short_id: shortId,
+      is_barcode: withBarcode 
     }]).select('short_id').single();
 
     if (error) {
@@ -226,16 +347,74 @@ export default function POS() {
       const fullUrl = `${window.location.origin}/${themeSlug}/${data.short_id}`;
 
       const actionText = formData.duration_type === 'trial' ? 'توليد رابط تجريبي (تصوير)' : 'توليد رابط';
+      let barcodeLog = withBarcode ? ' (+ باقة الباركود المميز)' : '';
+      let couponLog = appliedCoupon ? ` (بخصم كوبون: ${appliedCoupon.code})` : '';
+      
       await supabase.from('system_logs').insert([{
         admin_name: adminName, pos_name: posName, action_type: actionText,
-        details: `توليد ثيم (${selTheme?.name}) | السعر: ${currentPrice} | حصة المنصة: ${ownerCut} | حصة الفرع: ${pageCut} | الرابط: ${fullUrl}`
+        details: `توليد ثيم (${selTheme?.name})${barcodeLog}${couponLog} | السعر بعد الخصم: ${finalPrice} | حصة المنصة: ${ownerCut} | الرابط: ${fullUrl}`
       }]);
       
+      if (appliedCoupon) {
+        await supabase.from('coupons').update({ used_count: appliedCoupon.used_count + 1 }).eq('id', appliedCoupon.id);
+      }
+
       setGeneratedLink(fullUrl);
       setShowModal(true);
       setIsGenerating(false);
       setAudioFile(null); 
     }
+  };
+
+  const generateTextIcon = (text: string, color: string) => {
+    if (!text || text.trim() === '') return ''; 
+    const canvas = document.createElement('canvas');
+    canvas.width = 120;
+    canvas.height = 120;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(60, 60, 60, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.font = '70px Arial'; 
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 60, 65);
+    return canvas.toDataURL('image/png');
+  };
+
+  const downloadQRCode = () => {
+    const svgElement = document.getElementById('barcode-to-download');
+    if (!svgElement) return;
+    const svgData = new XMLSerializer().serializeToString(svgElement);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    canvas.width = 400;
+    canvas.height = 400;
+    img.onload = () => {
+      if(ctx) {
+         ctx.fillStyle = '#ffffff';
+         ctx.fillRect(0, 0, canvas.width, canvas.height);
+         ctx.strokeStyle = '#f1f5f9';
+         ctx.lineWidth = 10;
+         ctx.strokeRect(5, 5, 390, 390);
+         ctx.drawImage(img, 50, 50, 300, 300);
+         ctx.font = 'bold 24px Tajawal, Arial, sans-serif';
+         ctx.fillStyle = '#1e293b';
+         ctx.textAlign = 'center';
+         ctx.fillText('امسح الباركود لفتح هديتك 🎁', 200, 370);
+      }
+      const pngFile = canvas.toDataURL('image/png');
+      const downloadLink = document.createElement('a');
+      downloadLink.download = `Oomniah-Gift-${Date.now()}.png`;
+      downloadLink.href = pngFile;
+      downloadLink.click();
+      Toast.fire({ icon: 'success', title: 'تم تحميل بطاقة الهدية بنجاح!' });
+    };
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
   };
 
   if (showSplash || loading) return (
@@ -275,16 +454,24 @@ export default function POS() {
         .upload-btn-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
         .upload-btn-styled { border: 2px dashed #cbd5e1; color: #64748b; background-color: #f8fafc; padding: 12px; border-radius: 10px; font-size: 12px; font-weight: bold; width: 100%; cursor: pointer; text-align: center; transition: all 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; }
         .upload-btn-wrapper input[type=file] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%; width: 100%; }
-        .interactive-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 8px; margin-top: 8px; }
-        .interactive-card { border: 2px solid #e2e8f0; background: #fff; padding: 10px 6px; border-radius: 10px; text-align: center; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; min-height: 65px; }
+        .interactive-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: 10px; margin-top: 8px; }
+        .interactive-card { border: 2px solid #e2e8f0; background: #fff; padding: 12px 6px; border-radius: 12px; text-align: center; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; min-height: 80px; }
         .interactive-card:hover { border-color: #fca5a5; background: #fef2f2; }
         .interactive-card.active { border-color: #dc2626; background: #dc2626; color: #fff; box-shadow: 0 3px 10px rgba(220, 38, 38, 0.2); }
         .interactive-card.active span, .interactive-card.active svg { color: #fff !important; }
         .gender-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
         .row-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .spinner { animation: spin 0.8s linear infinite; }
+        
+        .barcode-toggle { display: flex; align-items: center; justify-content: space-between; cursor: pointer; background: #fff; border: 1px solid #e2e8f0; padding: 14px 16px; border-radius: 12px; font-weight: bold; font-size: 14px; color: #1e293b; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.02); margin-top: 5px; }
+        .barcode-toggle.active { border-color: #dc2626; background: #fef2f2; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1); }
+        .barcode-settings { background: #fff8f8; border: 1px solid #fecaca; padding: 16px; border-radius: 12px; margin-top: 10px; }
+
+        .draft-btn { display: flex; align-items: center; gap: 5px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .draft-btn:hover { background: #e2e8f0; color: #1e293b; }
+        
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        @media (min-width: 640px) { .pos-page-wrapper { padding: 20px; } .top-header { padding: 15px 25px; margin-bottom: 25px; } .form-container { padding: 30px; gap: 24px; } .interactive-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; } .interactive-card { padding: 14px 10px; min-height: 75px; } .custom-input { padding: 12px 14px; font-size: 14px; } .upload-btn-styled { padding: 18px; font-size: 13px; } }
+        @media (min-width: 640px) { .pos-page-wrapper { padding: 20px; } .top-header { padding: 15px 25px; margin-bottom: 25px; } .form-container { padding: 30px; gap: 24px; } .interactive-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; } .interactive-card { padding: 14px 10px; min-height: 90px; } .custom-input { padding: 12px 14px; font-size: 14px; } .upload-btn-styled { padding: 18px; font-size: 13px; } }
         @media (max-width: 480px) { .row-inputs { grid-template-columns: 1fr; } .top-header { flex-direction: column; align-items: stretch; text-align: center; } .header-badges { justify-content: center; } }
       `}</style>
       
@@ -294,6 +481,9 @@ export default function POS() {
           <h1 style={{ fontSize: '20px', fontWeight: '900', color: '#dc2626', margin: 0, fontFamily: '"Aref Ruqaa", serif' }}>أمنية</h1>
         </div>
         <div className="header-badges" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <button onClick={fetchEmployeeStats} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f0f9ff', color: '#0ea5e9', border: '1px solid #bae6fd', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px', transition: 'all 0.2s' }}>
+                <FaChartPie /> إحصائياتي
+            </button>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', padding: '5px 10px', borderRadius: '6px', fontWeight: 'bold', fontSize: '11px' }}><FaStore /> {posName}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#dc2626', color: '#ffffff', padding: '5px 10px', borderRadius: '6px', fontWeight: 'bold', fontSize: '11px' }}><FaUserCircle /> {adminName}</span>
             <button onClick={handleLogout} disabled={isLoggingOut} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: isLoggingOut ? '#f1f5f9' : '#fff', color: isLoggingOut ? '#94a3b8' : '#64748b', border: '1px solid #cbd5e1', padding: '5px 10px', borderRadius: '6px', cursor: isLoggingOut ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '11px', transition: 'all 0.2s' }}>
@@ -304,6 +494,16 @@ export default function POS() {
       </div>
 
       <form onSubmit={handleSubmit} className="form-container">
+        
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginBottom: '-10px' }}>
+          <button type="button" onClick={saveDraft} className="draft-btn" title="حفظ الرسالة واسم المرسل والأغنية لاستخدامها في روابط أخرى">
+            <FaSave style={{ color: '#10b981' }} /> حفظ كمسودة
+          </button>
+          <button type="button" onClick={loadDraft} className="draft-btn" title="استرجاع آخر معلومات قمت بحفظها">
+            <FaFolderOpen style={{ color: '#0ea5e9' }} /> تعبئة من المسودة
+          </button>
+        </div>
+
         <div className="section-box">
           <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#1e293b', fontWeight: 'bold', marginBottom: '4px' }}><FaUser /> لمن الهدية؟</label>
           <div className="gender-grid">
@@ -319,12 +519,17 @@ export default function POS() {
         <div className="section-box">
           <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#1e293b', fontWeight: 'bold', marginBottom: '4px' }}><FaPalette /> اختر الثيم</label>
           {filteredThemes.length === 0 ? (
-            <p style={{ color: '#dc2626', fontSize: '12px', marginTop: '6px', fontWeight: 'bold' }}>لا توجد ثيمات.</p>
+            <p style={{ color: '#dc2626', fontSize: '12px', marginTop: '6px', fontWeight: 'bold' }}>لا توجد ثيمات متاحة.</p>
           ) : (
             <div className="interactive-grid">
               {filteredThemes.map(t => (
                 <div key={t.id} className={`interactive-card ${formData.theme_id === t.id ? 'active' : ''}`} onClick={() => setFormData({...formData, theme_id: t.id})}>
-                  <FaGift style={{ fontSize: '16px', color: '#94a3b8' }} /><span style={{ fontWeight: 'bold', fontSize: '12px' }}>{t.name}</span>
+                  {t.img_url ? (
+                    <img src={t.img_url} alt={t.name} style={{ width: '45px', height: '45px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #e2e8f0' }} />
+                  ) : (
+                    <FaGift style={{ fontSize: '24px', color: '#94a3b8', marginBottom: '4px' }} />
+                  )}
+                  <span style={{ fontWeight: 'bold', fontSize: '12px' }}>{t.name}</span>
                 </div>
               ))}
             </div>
@@ -347,16 +552,16 @@ export default function POS() {
           <div className="row-inputs">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={{ fontSize: '12px', color: '#1e293b', fontWeight: 'bold' }}><FaPen /> اسم المُهدي</label>
-              <input type="text" placeholder="مثال: علي" required onChange={e => setFormData({...formData, sender_name: e.target.value})} className="custom-input" />
+              <input type="text" placeholder="مثال: علي" value={formData.sender_name} required onChange={e => setFormData({...formData, sender_name: e.target.value})} className="custom-input" />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={{ fontSize: '12px', color: '#1e293b', fontWeight: 'bold' }}><FaPen /> اسم المستلم</label>
-              <input type="text" placeholder="مثال: نور" required onChange={e => setFormData({...formData, recipient_name: e.target.value})} className="custom-input" />
+              <input type="text" placeholder="مثال: نور" value={formData.recipient_name} required onChange={e => setFormData({...formData, recipient_name: e.target.value})} className="custom-input" />
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '10px' }}>
             <label style={{ fontSize: '12px', color: '#1e293b', fontWeight: 'bold' }}>رسالة المفاجأة...</label>
-            <textarea placeholder="الرسالة..." required onChange={e => setFormData({...formData, message: e.target.value})} className="custom-input" style={{ height: '80px', resize: 'none' }} />
+            <textarea placeholder="الرسالة..." value={formData.message} required onChange={e => setFormData({...formData, message: e.target.value})} className="custom-input" style={{ height: '80px', resize: 'none' }} />
           </div>
         </div>
 
@@ -381,17 +586,100 @@ export default function POS() {
                  <FaYoutube style={{ position: 'absolute', right: '12px', top: '12px', color: '#dc2626', fontSize: '16px' }} />
                  <input type="text" placeholder="رابط يوتيوب" disabled={!!audioFile} value={formData.song_url} onChange={e => setFormData({...formData, song_url: e.target.value})} className="custom-input" style={{ background: audioFile ? '#f1f5f9' : '#fff', paddingRight: '36px' }} />
                </div>
-               <input type="number" placeholder="الثواني" onChange={e => setFormData({...formData, song_start_seconds: Number(e.target.value)})} className="custom-input" style={{ flex: '1 1 100px' }} />
+               <input type="number" placeholder="الثواني" value={formData.song_start_seconds} onChange={e => setFormData({...formData, song_start_seconds: Number(e.target.value)})} className="custom-input" style={{ flex: '1 1 100px' }} />
              </div>
           </div>
         </div>
 
-        <div style={{ background: '#f0fdf4', padding: '12px 16px', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+        <div>
+          <div className={`barcode-toggle ${withBarcode ? 'active' : ''}`} onClick={() => setWithBarcode(!withBarcode)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FaQrcode style={{ fontSize: '18px', color: withBarcode ? '#dc2626' : '#64748b' }} />
+              <span>إضافة باقة الباركود المميز</span>
+            </div>
+            <div style={{ color: '#dc2626' }}>+ 3,000 د.ع</div>
+          </div>
+
+          {withBarcode && (
+            <div className="barcode-settings">
+              <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>تخصيص لون وشكل الباركود:</p>
+              <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '120px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>لون الباركود</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#fff', padding: '6px 10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                    <input type="color" value={barcodeColor} onChange={(e) => setBarcodeColor(e.target.value)} style={{ width: '28px', height: '28px', border: 'none', padding: 0, background: 'none', cursor: 'pointer' }} />
+                    <span style={{ fontSize: '13px', fontFamily: 'monospace' }}>{barcodeColor}</span>
+                  </div>
+                </div>
+                <div style={{ flex: 1, minWidth: '120px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>إيموجي / حرف</label>
+                  <input 
+                    type="text" 
+                    className="custom-input" 
+                    placeholder="مثال: 🤍 أو O" 
+                    maxLength={2} 
+                    value={barcodeIcon} 
+                    onChange={(e) => setBarcodeIcon(e.target.value)}
+                    style={{ textAlign: 'center', fontSize: '18px', padding: '8px' }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 🌟 نظام الكوبونات المفقود تم إرجاعه هنا */}
+        {formData.duration_type !== 'trial' && (
+          <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '15px', marginTop: '10px' }}>
+            <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#475569', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <FaTicketAlt style={{ color: '#0ea5e9' }} /> هل تملك كود خصم؟
+            </label>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              <input 
+                type="text" 
+                placeholder="أدخل الكوبون هنا..." 
+                value={couponInput}
+                onChange={e => setCouponInput(e.target.value.toUpperCase())}
+                className="custom-input" 
+                disabled={!!appliedCoupon}
+                style={{ background: appliedCoupon ? '#f0fdf4' : '#fff' }}
+              />
+              {!appliedCoupon ? (
+                <button type="button" onClick={handleApplyCoupon} disabled={validatingCoupon} style={{ background: '#1e293b', color: 'white', border: 'none', padding: '0 15px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: '0.2s' }}>
+                  {validatingCoupon ? <FaSpinner className="spinner" /> : 'تطبيق'}
+                </button>
+              ) : (
+                <button type="button" onClick={() => { setAppliedCoupon(null); setCouponInput(''); }} style={{ background: '#fef2f2', color: '#dc2626', border: 'none', padding: '0 15px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' }}>
+                  إلغاء
+                </button>
+              )}
+            </div>
+            {appliedCoupon && (
+              <p style={{ color: '#16a34a', fontSize: '12px', margin: '8px 0 0 0', fontWeight: 'bold' }}>
+                🎉 تم خصم ({appliedCoupon.discount_type === 'percentage' ? `${appliedCoupon.discount_value}%` : `${appliedCoupon.discount_value} د.ع`}) من السعر الكلي!
+              </p>
+            )}
+          </div>
+        )}
+
+        <div style={{ background: '#f0fdf4', padding: '12px 16px', borderRadius: '12px', border: '1px solid #bbf7d0', marginTop: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', fontSize: '13px', fontWeight: 'bold' }}>
-              <FaMoneyBillWave style={{ color: '#10b981' }} /> المبلغ:
+              <FaMoneyBillWave style={{ color: '#10b981' }} /> الإجمالي:
             </span>
-            <strong style={{ color: '#dc2626', fontSize: '20px', fontWeight: '900' }}>{currentPrice.toLocaleString()} د.ع</strong>
+            <div style={{ textAlign: 'left' }}>
+              {appliedCoupon && formData.duration_type !== 'trial' ? (
+                <>
+                  <div style={{ fontSize: '12px', color: '#94a3b8', textDecoration: 'line-through', marginBottom: '2px' }}>{originalTotalPrice.toLocaleString()} د.ع</div>
+                  <strong style={{ color: '#16a34a', fontSize: '20px', fontWeight: '900' }}>{finalPrice.toLocaleString()} د.ع</strong>
+                </>
+              ) : (
+                <>
+                  {withBarcode && <div style={{ fontSize: '10px', color: '#16a34a', fontWeight: 'bold', marginBottom: '2px' }}>الباقة + الباركود</div>}
+                  <strong style={{ color: '#dc2626', fontSize: '20px', fontWeight: '900' }}>{finalPrice.toLocaleString()} د.ع</strong>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
@@ -399,20 +687,91 @@ export default function POS() {
           {isGenerating ? (
             <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><FaSpinner className="spinner" /> {uploadProgress}</span>
           ) : (
-            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><FaLink /> توليد الرابط</span>
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><FaLink /> {withBarcode ? 'توليد الرابط والباركود' : 'توليد الرابط'}</span>
           )}
         </button>
       </form>
 
+      {showStatsModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
+          <div style={{ background: '#fff', padding: '24px', borderRadius: '20px', width: '100%', maxWidth: '400px', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', position: 'relative' }}>
+            <button onClick={() => setShowStatsModal(false)} style={{ position: 'absolute', top: '15px', right: '15px', background: '#f1f5f9', border: 'none', width: '30px', height: '30px', borderRadius: '50%', color: '#64748b', fontWeight: 'bold', cursor: 'pointer' }}>✕</button>
+            <h3 style={{ margin: '0 0 20px 0', color: '#1e293b', fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FaChartPie style={{ color: '#0ea5e9' }}/> إحصائياتي
+            </h3>
+            
+            {loadingStats ? (
+              <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8' }}>
+                <FaSpinner className="spinner" style={{ fontSize: '30px', color: '#0ea5e9', marginBottom: '10px' }} />
+                <div>جاري حساب المبيعات...</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '15px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#166534', fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}><FaMoneyBillWave/> إجمالي المبيعات الكلية:</span>
+                  <span style={{ color: '#15803d', fontWeight: '900', fontSize: '18px' }}>{employeeStats.totalSales.toLocaleString()} د.ع</span>
+                </div>
+                
+                <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', padding: '15px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#0369a1', fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}><FaCalendarDay/> مبيعاتي لليوم:</span>
+                  <span style={{ color: '#0284c7', fontWeight: '900', fontSize: '18px' }}>{employeeStats.todaySales.toLocaleString()} د.ع</span>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <div style={{ flex: 1, background: '#f8fafc', border: '1px solid #e2e8f0', padding: '15px', borderRadius: '12px', textAlign: 'center' }}>
+                    <div style={{ color: '#64748b', fontSize: '12px', marginBottom: '5px', fontWeight: 'bold' }}>روابط مولدة</div>
+                    <div style={{ color: '#1e293b', fontSize: '20px', fontWeight: '900' }}>{employeeStats.linksCount}</div>
+                  </div>
+                  <div style={{ flex: 1, background: '#f8fafc', border: '1px solid #e2e8f0', padding: '15px', borderRadius: '12px', textAlign: 'center' }}>
+                    <div style={{ color: '#64748b', fontSize: '12px', marginBottom: '5px', fontWeight: 'bold' }}>باقات باركود</div>
+                    <div style={{ color: '#1e293b', fontSize: '20px', fontWeight: '900' }}>{employeeStats.barcodeCount}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {showModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
-          <div style={{ background: '#fff', padding: '24px', borderRadius: '16px', textAlign: 'center', width: '100%', maxWidth: '360px', boxShadow: '0 20px 50px rgba(0,0,0,0.15)' }}>
-            <FaCheckCircle style={{ color: '#10b981', fontSize: '48px', marginBottom: '10px' }} />
-            <h3 style={{ color: '#1e293b', margin: '0 0 6px', fontWeight: '900', fontSize: '18px' }}>تم التوليد</h3>
-            <p style={{ color: '#64748b', margin: '0 0 16px', fontSize: '13px' }}>{formData.duration_type === 'trial' ? 'الرابط التجريبي صالح 5 دقائق' : 'انسخ الرابط الآن'}</p>
-            <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', color: '#3b82f6', marginBottom: '16px', direction: 'ltr', overflowX: 'auto', fontSize: '13px', fontWeight: 'bold' }}>{generatedLink}</div>
-            <button onClick={() => { navigator.clipboard.writeText(generatedLink); Toast.fire({ icon: 'success', title: 'تم نسخ الرابط!' }); setShowModal(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#dc2626', color: '#fff', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', width: '100%', transition: 'all 0.2s' }}>
-              <FaCopy /> نسخ الرابط
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
+          <div style={{ background: '#fff', padding: '24px', borderRadius: '16px', textAlign: 'center', width: '100%', maxWidth: '360px', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxHeight: '90vh', overflowY: 'auto' }}>
+            <FaCheckCircle style={{ color: '#10b981', fontSize: '48px', margin: '0 auto 10px', display: 'block' }} />
+            <h3 style={{ color: '#1e293b', margin: '0 0 16px', fontWeight: '900', fontSize: '18px' }}>تم التوليد بنجاح</h3>
+            
+            {withBarcode ? (
+              <>
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '15px', marginBottom: '15px' }}>
+                  <QRCodeSVG 
+                    id="barcode-to-download"
+                    value={generatedLink} 
+                    size={200} 
+                    level="H" 
+                    fgColor={barcodeColor} 
+                    bgColor="#f8fafc"
+                    style={{ margin: '0 auto', display: 'block' }}
+                    imageSettings={barcodeIcon.trim() !== '' ? { 
+                      src: generateTextIcon(barcodeIcon, barcodeColor), height: 45, width: 45, excavate: true 
+                    } : undefined}
+                  />
+                  <p style={{ color: '#64748b', fontSize: '14px', margin: '15px 0 0', fontWeight: 'bold' }}>امسح الباركود لفتح الهدية 🎁</p>
+                  <button onClick={downloadQRCode} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#1e293b', color: '#fff', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', width: '100%', marginTop: '15px', transition: '0.2s' }}>
+                    <FaDownload /> تحميل كبطاقة إهداء (صورة)
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p style={{ color: '#64748b', margin: '0 0 16px', fontSize: '13px' }}>{formData.duration_type === 'trial' ? 'الرابط التجريبي صالح 5 دقائق' : 'انسخ الرابط الآن'}</p>
+                <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', color: '#3b82f6', marginBottom: '16px', direction: 'ltr', overflowX: 'auto', fontSize: '13px', fontWeight: 'bold' }}>{generatedLink}</div>
+                <button onClick={() => { navigator.clipboard.writeText(generatedLink); Toast.fire({ icon: 'success', title: 'تم نسخ الرابط!' }); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#dc2626', color: '#fff', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', width: '100%', transition: 'all 0.2s', marginBottom: '10px' }}>
+                  <FaCopy /> نسخ الرابط النصي
+                </button>
+              </>
+            )}
+
+            <button onClick={() => setShowModal(false)} style={{ background: 'transparent', color: '#64748b', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', width: '100%', padding: '10px' }}>
+              إغلاق
             </button>
           </div>
         </div>

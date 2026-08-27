@@ -6,7 +6,7 @@ import {
   FaHourglassHalf, FaImage, FaShoppingBag, FaEye, FaShoppingCart, 
   FaMoneyBillWave, FaInfinity, FaCreditCard, FaShieldAlt, FaCheckCircle, 
   FaLink, FaGlobe, FaInstagram, FaTiktok, FaHandshake, FaHeadset, 
-  FaLightbulb, FaTimes, FaCheck 
+  FaLightbulb, FaTimes, FaCheck, FaQrcode 
 } from 'react-icons/fa';
 
 // 🌟 الذاكرة المؤقتة (Memory Cache)
@@ -47,7 +47,7 @@ export default function Home() {
           }
         }
 
-        // 2. جلب البيجات المعتمدة (مع كامل بيانات المنصات والمدفوعات)
+        // 2. جلب البيجات المعتمدة
         if (memoryPagesCache) {
           setVerifiedPages(memoryPagesCache);
         } else {
@@ -247,6 +247,29 @@ export default function Home() {
 
       {/* 7. الأسعار والباقات */}
       <section id="pricing-section" style={{ padding: '20px 5% 60px', background: '#f8fafc' }}>
+        
+        {/* 🌟 باقة الباركود المميزة (Upsell Add-on) */}
+        <div style={{ maxWidth: '800px', margin: '0 auto 40px', background: 'linear-gradient(135deg, #fef2f2 0%, #ffffff 100%)', borderRadius: '20px', border: '2px solid #fecaca', padding: '30px', boxShadow: '0 10px 30px rgba(220, 38, 38, 0.1)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '20px' }}>
+          <div style={{ flex: '1 1 300px' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '24px', color: '#dc2626', fontWeight: '900', margin: '0 0 10px' }}>
+              <FaQrcode /> ترقية الباركود المميز
+            </h3>
+            <p style={{ color: '#64748b', fontSize: '15px', lineHeight: '1.6', margin: '0 0 15px' }}>
+              اجعل هديتك أكثر تميزاً! يمكنك إضافة "بطاقة الإهداء الرقمية" لأي باقة تختارها. استلم باركود مخصص بلونك المفضل مع إيموجي أو حرف يزين منتصف الباركود، جاهز للإرسال والمشاركة فوراً.
+            </p>
+            <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', color: '#10b981', fontSize: '14px', fontWeight: 'bold' }}>
+               <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><FaCheckCircle /> تخصيص اللون</span>
+               <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><FaCheckCircle /> إضافة إيموجي أو حرف</span>
+               <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><FaCheckCircle /> تصميم بطاقة إهداء</span>
+            </div>
+          </div>
+          <div style={{ flex: '0 0 auto', background: '#fff', border: '1px solid #fecaca', borderRadius: '15px', padding: '20px', textAlign: 'center', minWidth: '150px' }}>
+            <div style={{ fontSize: '14px', color: '#64748b', fontWeight: 'bold', marginBottom: '5px' }}>تُضاف على أي باقة بـ</div>
+            <div style={{ fontSize: '28px', color: '#dc2626', fontWeight: '900' }}>3,000<span style={{ fontSize: '14px', color: '#94a3b8' }}> د.ع</span></div>
+          </div>
+        </div>
+
+        {/* باقي الباقات الأساسية */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', maxWidth: '1200px', margin: '0 auto' }}>
           {/* باقة 1 */}
           <div style={{ background: '#fff', padding: '30px 20px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>

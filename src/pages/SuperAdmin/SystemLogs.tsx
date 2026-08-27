@@ -4,8 +4,8 @@ import {
   FaShieldAlt, FaSearch, FaSyncAlt, FaSignInAlt, 
   FaSignOutAlt, FaTrashAlt, FaEdit, FaPlusCircle, 
   FaClipboardList, FaUserTie, FaBuilding, FaSpinner, 
-  FaExclamationCircle 
-} from 'react-icons/fa'; // 🌟 استدعاء الأيقونات
+  FaExclamationCircle, FaQrcode 
+} from 'react-icons/fa'; // 🌟 تم إضافة FaQrcode
 
 export default function SystemLogs() {
   const [loading, setLoading] = useState(true);
@@ -37,7 +37,7 @@ export default function SystemLogs() {
     }
   };
 
-  // 🛡️ فلترة آمنة وذكية
+  // 🛡️ فلترة آمنة وذكية (تم تعديلها لتشمل الباركود بشكل دقيق)
   const filteredLogs = logs.filter(log => {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch = 
@@ -45,20 +45,29 @@ export default function SystemLogs() {
       ((log.details || '').toLowerCase().includes(searchLower)) ||
       ((log.pos_name || '').toLowerCase().includes(searchLower));
       
-    const matchesFilter = filterType === 'all' || (log.action_type || '').includes(filterType);
+    // فحص الفلتر: إذا اختار "باركود"، نبحث عنه بنوع الحركة أو بالتفاصيل
+    const matchesFilter = filterType === 'all' || 
+                          (log.action_type || '').includes(filterType) ||
+                          (filterType === 'باركود' && (log.details || '').includes('باركود'));
     
     return matchesSearch && matchesFilter;
   });
 
-  // 🛡️ ألوان وأيقونات الحركات (تم استبدال الإيموجيز بأيقونات FontAwesome)
-  const getActionStyle = (type?: string | null) => {
-    if (!type) return { bg: '#f3f4f6', color: '#4b5563', icon: <FaClipboardList />, border: '#e2e8f0' };
+  // 🛡️ ألوان وأيقونات الحركات (تم إضافة ستايل خاص للباركود)
+  const getActionStyle = (type?: string | null, details?: string | null) => {
+    const t = type || '';
+    const d = details || '';
+
+    if (!t && !d) return { bg: '#f3f4f6', color: '#4b5563', icon: <FaClipboardList />, border: '#e2e8f0' };
     
-    if (type.includes('دخول')) return { bg: '#dcfce7', color: '#16a34a', icon: <FaSignInAlt />, border: '#bbf7d0' };
-    if (type.includes('خروج')) return { bg: '#f1f5f9', color: '#64748b', icon: <FaSignOutAlt />, border: '#e2e8f0' };
-    if (type.includes('حذف') || type.includes('خطأ')) return { bg: '#fee2e2', color: '#dc2626', icon: <FaTrashAlt />, border: '#fecaca' };
-    if (type.includes('تعديل') || type.includes('تحديث') || type.includes('تصفية')) return { bg: '#fef3c7', color: '#d97706', icon: <FaEdit />, border: '#fde68a' };
-    if (type.includes('إنشاء') || type.includes('توليد') || type.includes('إضافة') || type.includes('مبيعات')) return { bg: '#dbeafe', color: '#2563eb', icon: <FaPlusCircle />, border: '#bfdbfe' };
+    // 🌟 ميزة الباركود (لون بنفسجي مميز لسهولة المراقبة)
+    if (t.includes('باركود') || d.includes('باركود')) return { bg: '#f3e8ff', color: '#9333ea', icon: <FaQrcode />, border: '#e9d5ff' };
+    
+    if (t.includes('دخول')) return { bg: '#dcfce7', color: '#16a34a', icon: <FaSignInAlt />, border: '#bbf7d0' };
+    if (t.includes('خروج')) return { bg: '#f1f5f9', color: '#64748b', icon: <FaSignOutAlt />, border: '#e2e8f0' };
+    if (t.includes('حذف') || t.includes('خطأ')) return { bg: '#fee2e2', color: '#dc2626', icon: <FaTrashAlt />, border: '#fecaca' };
+    if (t.includes('تعديل') || t.includes('تحديث') || t.includes('تصفية')) return { bg: '#fef3c7', color: '#d97706', icon: <FaEdit />, border: '#fde68a' };
+    if (t.includes('إنشاء') || t.includes('توليد') || t.includes('إضافة') || t.includes('مبيعات')) return { bg: '#dbeafe', color: '#2563eb', icon: <FaPlusCircle />, border: '#bfdbfe' };
     
     return { bg: '#f3f4f6', color: '#4b5563', icon: <FaClipboardList />, border: '#e2e8f0' };
   };
@@ -113,7 +122,7 @@ export default function SystemLogs() {
           <FaSearch style={{ color: '#94a3b8' }} />
           <input 
             type="text" 
-            placeholder="ابحث عن اسم الموظف، الفرع، أو تفاصيل الحركة..." 
+            placeholder="ابحث عن اسم الموظف، الفرع، الباركود، أو تفاصيل الحركة..." 
             value={searchTerm} 
             onChange={(e) => setSearchTerm(e.target.value)} 
             className="search-input"
@@ -125,6 +134,8 @@ export default function SystemLogs() {
           className="filter-select"
         >
           <option value="all">جميع الحركات</option>
+          {/* 🌟 تم إضافة فلتر الباركود هنا */}
+          <option value="باركود">طلبات الباركود 🔲</option> 
           <option value="دخول">تسجيل الدخول</option>
           <option value="خروج">تسجيل الخروج</option>
           <option value="توليد">توليد الروابط</option>
@@ -153,7 +164,7 @@ export default function SystemLogs() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {filteredLogs.map((log) => {
-            const style = getActionStyle(log.action_type);
+            const style = getActionStyle(log.action_type, log.details);
             return (
               <div key={log.id || Math.random()} className="log-card">
                 <div style={{ width: '50px', height: '50px', borderRadius: '12px', background: style.bg, border: `1px solid ${style.border}`, color: style.color, display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '20px', flexShrink: 0 }}>

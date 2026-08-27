@@ -5,9 +5,10 @@ export default function Terms() {
   useEffect(() => {
     window.scrollTo({
       top: 0,
-      behavior: 'smooth' // هذا اللي راح يخليها تصعد بأنيميشن ناعم
+      behavior: 'smooth'
     });
   }, []);
+
   return (
     <div style={{ fontFamily: 'Tajawal, sans-serif', direction: 'rtl', padding: '130px 5% 80px', background: '#f8fafc', minHeight: '100vh' }}>
       <div style={{ maxWidth: '800px', margin: '0 auto', background: '#ffffff', padding: '40px', borderRadius: '20px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
@@ -15,7 +16,10 @@ export default function Terms() {
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <div style={{ fontSize: '50px', marginBottom: '10px' }}>⚖️</div>
           <h1 style={{ color: '#dc2626', fontSize: '36px', fontWeight: '900', margin: '0 0 10px 0' }}>شروط الاستخدام</h1>
-          <p style={{ color: '#64748b', fontSize: '16px' }}>يرجى قراءة الشروط والأحكام بعناية قبل إتمام عملية الشراء.</p>
+          <p style={{ color: '#64748b', fontSize: '16px', margin: '0 0 15px 0' }}>يرجى قراءة الشروط والأحكام بعناية قبل إتمام عملية الشراء.</p>
+          <span style={{ display: 'inline-block', background: '#f1f5f9', color: '#475569', padding: '6px 15px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>
+            آخر تحديث: 27 أغسطس 2026
+          </span>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
@@ -62,6 +66,16 @@ export default function Terms() {
             </h2>
             <p style={{ color: '#475569', lineHeight: '1.8', fontSize: '16px', margin: 0 }}>
               في حال انتهاء صلاحية الباقة التي قمت بشرائها، يمكنك تمديد الرابط لنفس الهدية لأي مدة إضافية عن طريق دفع سعر المدة المطلوبة فقط دون الحاجة لإنشاء الهدية من جديد، وذلك بشرط طلب التمديد قبل الحذف النهائي من السيرفر.
+            </p>
+          </section>
+
+          {/* 🌟 البند الجديد الخاص بتعديل الشروط */}
+          <section>
+            <h2 style={{ color: '#1e293b', fontSize: '22px', fontWeight: 'bold', borderRight: '4px solid #dc2626', paddingRight: '10px', marginBottom: '15px' }}>
+              6. تعديل الشروط والأحكام
+            </h2>
+            <p style={{ color: '#475569', lineHeight: '1.8', fontSize: '16px', margin: 0 }}>
+              تحتفظ الإدارة العليا لمنصة "أمنية" بالحق الكامل في تعديل، إضافة، أو حذف أي من هذه الشروط في أي وقت ودون إشعار مسبق. يُعتبر استمرارك في استخدام خدماتنا بعد أي تعديلات بمثابة موافقة صريحة منك على الشروط الجديدة.
             </p>
           </section>
 
