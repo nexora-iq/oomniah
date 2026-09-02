@@ -4,8 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <meta name="theme-color" content="#dc2626" />
+<!-- إجبار المتصفح على اللون الأحمر في الوضع الفاتح -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#dc2626" />
     
+    <!-- إجبار المتصفح على اللون الأحمر في الوضع الداكن (Dark Mode) -->
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#dc2626" />
+
+    <!-- دعم مخصص لأجهزة الآيفون (Safari) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />    
     <link rel="icon" type="image/png" href="/oomniah-logo.png" />
     
     <title>منصة أمنية | Oomniah - هدايا رقمية وثيمات تفاعلية</title>

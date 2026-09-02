@@ -1,28 +1,49 @@
-import React, { useEffect, useState, type ReactNode } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, Link } from 'react-router-dom';
+import React, { useEffect, useState, Suspense, lazy, type ReactNode } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, Link, useSearchParams } from 'react-router-dom';
 import { supabase } from './supabase';
 import { FaHome, FaInstagram, FaTiktok, FaExclamationTriangle } from 'react-icons/fa'; 
 
-// ==========================================
-// 1. استيراد صفحات النظام الأساسية
-// ==========================================
-import POS from './pages/pos/POS';
-import Login from './pages/Login';
-import Viewer from './pages/Viewer';
-import ThemePreview from './pages/ThemePreview';
-import SuperAdmin from './pages/SuperAdmin/SuperAdmin';
+// System Views
+const POS = lazy(() => import('./pages/pos/POS'));
+const Login = lazy(() => import('./pages/Login'));
+const Viewer = lazy(() => import('./pages/Viewer'));
+const ThemePreview = lazy(() => import('./pages/ThemePreview'));
+const SuperAdmin = lazy(() => import('./pages/SuperAdmin/SuperAdmin'));
 
-// استيراد مكونات الموقع الرسمي
-import Navbar from './pages/oomniah/Navbar'; 
-import Home from './pages/oomniah/Home';
-import Footer from './pages/oomniah/Footer'; 
-import PrivacyPolicy from './pages/oomniah/PrivacyPolicy'; 
-import Terms from './pages/oomniah/Terms'; 
-import Certificate from './pages/oomniah/Certificate'; // 👈 استدعاء صفحة الشهادة الجديدة
+// Public Views
+const Navbar = lazy(() => import('./pages/oomniah/Navbar')); 
+const Home = lazy(() => import('./pages/oomniah/Home'));
+const Footer = lazy(() => import('./pages/oomniah/Footer')); 
+const PrivacyPolicy = lazy(() => import('./pages/oomniah/PrivacyPolicy')); 
+const Terms = lazy(() => import('./pages/oomniah/Terms')); 
+const Certificate = lazy(() => import('./pages/oomniah/Certificate'));
 
-// ==========================================
-// 2. مكونات الحماية (Guards) للنظام
-// ==========================================
+const PageLoader = () => (
+  <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f8fafc' }}>
+    <div style={{ border: '4px solid #f3f3f3', borderTop: '4px solid #dc2626', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite' }} />
+    <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+  </div>
+);
+
+// App Boundaries
+const PortalBoundary = ({ children }: { children: ReactNode }) => {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+  const sysMode = localStorage.getItem('_sys_pref_mode');
+  const accessRef = import.meta.env.VITE_PORTAL_KEY;
+
+  if (token === accessRef) {
+    localStorage.setItem('_sys_pref_mode', 'active');
+    return <>{children}</>;
+  }
+
+  if (sysMode === 'active') {
+    return <>{children}</>;
+  }
+
+  return <ErrorPage />;
+};
+
 const RequireSuperAdmin = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
@@ -36,7 +57,7 @@ const RequireSuperAdmin = ({ children }: { children: ReactNode }) => {
     checkAuth();
   }, []);
 
-  if (isAuthenticated === null) return <div style={{ height: '100vh', background: '#ffffff' }}></div>; 
+  if (isAuthenticated === null) return <PageLoader />; 
   if (isAuthenticated === false) return <Navigate to="/secure-portal-access" replace />; 
   return <>{children}</>; 
 };
@@ -54,14 +75,11 @@ const RequirePageAdmin = ({ children }: { children: ReactNode }) => {
     checkAuth();
   }, []);
 
-  if (isAuthenticated === null) return <div style={{ height: '100vh', background: '#ffffff' }}></div>; 
+  if (isAuthenticated === null) return <PageLoader />; 
   if (isAuthenticated === false) return <Navigate to="/secure-portal-access" replace />; 
   return <>{children}</>; 
 };
 
-// ==========================================
-// 3. الغلاف العام للموقع الرسمي (يحتوي على الهيدر والفوتر)
-// ==========================================
 const PublicLayout = () => {
   return (
     <div style={{ background: '#ffffff', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -74,40 +92,42 @@ const PublicLayout = () => {
   );
 };
 
-// ==========================================
-// 4. تطبيق التوجيه (Router) الأساسي
-// ==========================================
 export default function App() {
   return (
     <Router>
-      <Routes>
-        
-        {/* 🌐 مسارات الموقع الرسمي (تحتوي على هيدر وفوتر) */}
-        <Route element={<PublicLayout />}>
-          <Route path="/" element={<Home />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/terms" element={<Terms />} />
-        </Route>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<Terms />} />
+          </Route>
 
-        {/* 📜 مسار شهادة الاعتماد (بدون هيدر وفوتر لتكون الشهادة واضحة وكاملة) */}
-        <Route path="/certificate/:handle" element={<Certificate />} />
+          <Route path="/certificate/:handle" element={<Certificate />} />
 
-        {/* ⚙️ مسارات النظام والمنصة (لوحات التحكم والعرض) */}
-        <Route path="/secure-portal-access" element={<Login />} />
-        <Route path="/master-dashboard" element={<RequireSuperAdmin><SuperAdmin /></RequireSuperAdmin>} />
-        <Route path="/branch/:slug" element={<RequirePageAdmin><POS /></RequirePageAdmin>} /> 
-        <Route path="/:themeSlug/:shortId" element={<Viewer />} />        
-        <Route path="/preview/:themeSlug" element={<ThemePreview />} />
-        <Route path="*" element={<ErrorPage />} />
-        
-      </Routes>
+          <Route 
+            path="/secure-portal-access" 
+            element={
+              <PortalBoundary>
+                <Login />
+              </PortalBoundary>
+            } 
+          />
+          
+          <Route path="/master-dashboard" element={<RequireSuperAdmin><SuperAdmin /></RequireSuperAdmin>} />
+          <Route path="/branch/:slug" element={<RequirePageAdmin><POS /></RequirePageAdmin>} /> 
+          <Route path="/:themeSlug/:shortId" element={<Viewer />} />        
+          <Route path="/preview/:themeSlug" element={<ThemePreview />} />
+          
+          <Route path="*" element={<ErrorPage />} />
+          
+        </Routes>
+      </Suspense>
     </Router>
   );
 }
 
-// ==========================================
-// 5. صفحة الأخطاء 404
-// ==========================================
 function ErrorPage() {
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#f8fafc', fontFamily: 'Tajawal, system-ui, -apple-system, sans-serif', padding: '20px', textAlign: 'center', direction: 'rtl' }}>
