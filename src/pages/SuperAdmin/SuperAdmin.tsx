@@ -141,7 +141,7 @@ export default function SuperAdmin() {
           <img src={logoImg} alt="أمنية" className="royal-logo" onError={(e) => { e.currentTarget.style.display = 'none' }} />
           <h1 className="royal-name">حسين ايهاب نعيم</h1>
           <div className="royal-line"></div>
-          <div className="royal-role">المؤسس والمدير التنفيذي</div>
+          <div className="royal-role">المدير</div>
         </div>
       </div>
     );

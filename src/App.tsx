@@ -1,22 +1,24 @@
 import React, { useEffect, useState, type ReactNode } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, Link } from 'react-router-dom';
 import { supabase } from './supabase';
-import { FaHome, FaInstagram, FaTiktok, FaExclamationTriangle } from 'react-icons/fa'; // 🌟 استدعاء الأيقونات
+import { FaHome, FaInstagram, FaTiktok, FaExclamationTriangle } from 'react-icons/fa'; 
 
 // ==========================================
 // 1. استيراد صفحات النظام الأساسية
 // ==========================================
-import POS from './pages/POS';
+import POS from './pages/pos/POS';
 import Login from './pages/Login';
 import Viewer from './pages/Viewer';
+import ThemePreview from './pages/ThemePreview';
 import SuperAdmin from './pages/SuperAdmin/SuperAdmin';
 
 // استيراد مكونات الموقع الرسمي
 import Navbar from './pages/oomniah/Navbar'; 
 import Home from './pages/oomniah/Home';
-import Footer from './pages/oomniah/Footer'; // 👈 الفوتر المعزول الجديد
-import PrivacyPolicy from './pages/oomniah/PrivacyPolicy'; // 👈 صفحة الخصوصية
-import Terms from './pages/oomniah/Terms'; // 👈 صفحة الشروط
+import Footer from './pages/oomniah/Footer'; 
+import PrivacyPolicy from './pages/oomniah/PrivacyPolicy'; 
+import Terms from './pages/oomniah/Terms'; 
+import Certificate from './pages/oomniah/Certificate'; // 👈 استدعاء صفحة الشهادة الجديدة
 
 // ==========================================
 // 2. مكونات الحماية (Guards) للنظام
@@ -67,7 +69,7 @@ const PublicLayout = () => {
       <main style={{ marginTop: '130px', flexGrow: 1 }}>
         <Outlet /> 
       </main>
-      <Footer /> {/* 👈 استدعاء الفوتر الجديد المليان روابط */}
+      <Footer />
     </div>
   );
 };
@@ -83,15 +85,19 @@ export default function App() {
         {/* 🌐 مسارات الموقع الرسمي (تحتوي على هيدر وفوتر) */}
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicy />} /> {/* مسار الخصوصية */}
-          <Route path="/terms" element={<Terms />} /> {/* مسار الشروط */}
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<Terms />} />
         </Route>
+
+        {/* 📜 مسار شهادة الاعتماد (بدون هيدر وفوتر لتكون الشهادة واضحة وكاملة) */}
+        <Route path="/certificate/:handle" element={<Certificate />} />
 
         {/* ⚙️ مسارات النظام والمنصة (لوحات التحكم والعرض) */}
         <Route path="/secure-portal-access" element={<Login />} />
         <Route path="/master-dashboard" element={<RequireSuperAdmin><SuperAdmin /></RequireSuperAdmin>} />
         <Route path="/branch/:slug" element={<RequirePageAdmin><POS /></RequirePageAdmin>} /> 
         <Route path="/:themeSlug/:shortId" element={<Viewer />} />        
+        <Route path="/preview/:themeSlug" element={<ThemePreview />} />
         <Route path="*" element={<ErrorPage />} />
         
       </Routes>
@@ -100,7 +106,7 @@ export default function App() {
 }
 
 // ==========================================
-// 5. صفحة الأخطاء 404 المحدثة
+// 5. صفحة الأخطاء 404
 // ==========================================
 function ErrorPage() {
   return (
@@ -125,12 +131,10 @@ function ErrorPage() {
           يبدو أن الرابط الذي تحاول الوصول إليه غير صحيح أو تم حذفه. تأكد من نسخ الرابط بشكل كامل.
         </p>
         
-        {/* زر العودة للموقع الرسمي */}
         <Link to="/" className="home-btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#dc2626', color: '#ffffff', textDecoration: 'none', padding: '14px 28px', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px', boxShadow: '0 4px 15px rgba(220, 38, 38, 0.3)', width: '100%', boxSizing: 'border-box', marginBottom: '25px' }}>
           <FaHome /> العودة للموقع الرسمي
         </Link>
 
-        {/* روابط التواصل الاجتماعي */}
         <div style={{ width: '100%', borderTop: '1px solid #f1f5f9', paddingTop: '20px' }}>
           <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '15px', fontWeight: 'bold' }}>أو تواصل معنا عبر حساباتنا الرسمية:</p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '15px' }}>

@@ -11,6 +11,18 @@
         html, body { width: 100%; height: 100%; margin: 0; padding: 0; background-color: #fff0f5; overflow: hidden; position: fixed; top: 0; left: 0; }
         body { color: #800020; display: flex; justify-content: center; align-items: center; }
 
+        /* 🌟 الخدعة الذكية لإخفاء اليوتيوب بدون ما يوكف الـ API 🌟 */
+        #youtube-wrapper {
+            position: absolute;
+            top: -9999px; /* ندفعه برا الشاشة */
+            left: -9999px;
+            width: 300px; /* نخليه كبير حتى يوتيوب يقتنع */
+            height: 300px;
+            opacity: 0.01; /* شبه شفاف بس مو مخفي كلياً */
+            pointer-events: none;
+            z-index: -100;
+        }
+
         /* تأثير اللمس (وشاح ميكاسا والقلوب) */
         .touch-emoji {
             position: fixed; pointer-events: none; z-index: 999999;
@@ -96,7 +108,6 @@
 
         .player-header { color: #d81b60; font-size: 1.3rem; font-weight: bold; margin-bottom: 25px; display: flex; align-items: center; gap: 8px; }
         
-        /* 🌟 تم تعديل مسار صورة اللوجو هنا 🌟 */
         .player-art { width: 180px; height: 180px; border-radius: 28px; overflow: hidden; margin-bottom: 30px; border: 1px solid #fee2e2; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02), 0 8px 20px rgba(0,0,0,0.15); background: #fff5f5; display: flex; justify-content: center; align-items: center; padding: 15px; }
         .player-art img { width: 100%; height: 100%; object-fit: contain; }
         
@@ -118,6 +129,11 @@
     </style>
 </head>
 <body>
+
+    <!-- 🌟 الحاوية الجديدة لليوتيوب 🌟 -->
+    <div id="youtube-wrapper">
+        <div id="yt-audio-player"></div>
+    </div>
 
     <img src="mikasa.png" class="bg-mikasa" alt="Mikasa">
     <img src="eren-mikasa1.png" class="bg-center" alt="Eren and Mikasa">
@@ -157,7 +173,6 @@
     <div class="player-card" id="musicCard">
         <div class="player-header">🎵 أغنيتنا المفضلة</div>
         
-        <!-- 🌟 تم استخدام لوجو منصة أمنية بالمسار المباشر 🌟 -->
         <div class="player-art">
             <img src="oomniah-logo.png" alt="Oomniah Logo" style="width: 100%; height: 100%; object-fit: contain;">
         </div>
@@ -183,28 +198,21 @@
         <button class="btn-restart" onclick="location.reload()">العودة للبداية 🤍</button>
     </div>
 
-    <div id="yt-audio-player" style="position:fixed; width:1px; height:1px; opacity:0.001; pointer-events:none;"></div>
-
-
-<!-- زر فتح الشروط (علامة تعجب أو درع) -->
+<!-- زر فتح الشروط -->
 <button onclick="document.getElementById('info-modal-overlay').style.display='flex'" style="position: fixed; bottom: 25px; left: 25px; width: 50px; height: 50px; border-radius: 50%; background: rgba(220, 38, 38, 0.15); border: 1px solid rgba(220, 38, 38, 0.3); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: #dc2626; font-size: 22px; display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 99999; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); transition: all 0.3s ease;">
     📜
 </button>
 
-<!-- نافذة الشروط وإخلاء المسؤولية -->
 <div id="info-modal-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 100000; display: none; justify-content: center; align-items: center; direction: rtl; font-family: 'Tajawal', 'Segoe UI', sans-serif; padding: 20px; box-sizing: border-box; opacity: 1; transition: opacity 0.3s ease;">
     
     <div style="background: #ffffff; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; border-radius: 24px; padding: 35px 25px; text-align: center; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); box-sizing: border-box;">
         
-        <!-- زر الإغلاق -->
         <button onclick="document.getElementById('info-modal-overlay').style.display='none'" style="position: absolute; top: 20px; right: 20px; background: #f1f5f9; border: 1px solid #e2e8f0; width: 36px; height: 36px; border-radius: 50%; color: #64748b; font-weight: bold; cursor: pointer; font-size: 16px; display: flex; justify-content: center; align-items: center; transition: all 0.2s ease;">✕</button>
         
-        <!-- الأيقونة والعنوان -->
         <div style="font-size: 45px; margin-bottom: 10px; filter: drop-shadow(0 4px 6px rgba(220,38,38,0.2));">🛡️</div>
         <h3 style="color: #1e293b; font-size: 22px; margin-top: 0; margin-bottom: 5px; font-weight: 900;">إخلاء مسؤولية وشروط الاستخدام</h3>
         <p style="color: #64748b; font-size: 14px; margin-bottom: 25px; font-weight: 600;">يرجى قراءة الشروط التالية بعناية</p>
         
-        <!-- قائمة الشروط -->
         <div style="text-align: right; display: flex; flex-direction: column; gap: 15px; background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 25px;">
             
             <div style="display: flex; gap: 10px; align-items: flex-start;">
@@ -231,19 +239,27 @@
             <div style="display: flex; gap: 10px; align-items: flex-start;">
                 <span style="color: #dc2626; font-size: 16px; margin-top: 2px;">💰</span>
                 <p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">
-                    إذا رصدتم أي جهة أو حساب يسرق تصاميمنا أو ينتحل صفتنا، يرجى إبلاغنا فوراً عبر حساباتنا الرسمية. <span style="color: #16a34a;">(توجد مكافأة مالية للإبلاغ الصحيح).</span>
+                    إذا رصدتم أي جهة أو حساب يسرق تصاميمنا أو ينتحل صفتنا، يرجى إبلاغنا فوراً عبر حساباتنا الرسمية. <span style="color: #16a34a;">(توجد مكافأة للإبلاغ الصحيح).</span>
                 </p>
             </div>
 
         </div>
 
-        <!-- أزرار التواصل -->
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <a href="/terms" target="_blank" style="flex: 1; background: #f1f5f9; color: #475569; text-decoration: none; padding: 12px; border-radius: 12px; font-weight: bold; font-size: 13px; transition: all 0.2s ease; border: 1px solid #e2e8f0;">
+                📜 الشروط والأحكام
+            </a>
+            <a href="/privacy" target="_blank" style="flex: 1; background: #f1f5f9; color: #475569; text-decoration: none; padding: 12px; border-radius: 12px; font-weight: bold; font-size: 13px; transition: all 0.2s ease; border: 1px solid #e2e8f0;">
+                🔒 سياسة الخصوصية
+            </a>
+        </div>
+
         <div style="display: flex; flex-direction: column; gap: 10px;">
             <a href="https://www.instagram.com/oomnia.1/" target="_blank" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: #ffffff; text-decoration: none; padding: 14px; border-radius: 12px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 15px rgba(220, 39, 67, 0.3); transition: all 0.2s ease;">
                 تواصل معنا عبر الانستغرام 📸
             </a>
             
-            <a href="https://oomniah.netlify.app" target="_blank" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: #1e293b; color: #ffffff; text-decoration: none; padding: 14px; border-radius: 12px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 15px rgba(30, 41, 59, 0.3); transition: all 0.2s ease;">
+            <a href="/" target="_blank" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: #1e293b; color: #ffffff; text-decoration: none; padding: 14px; border-radius: 12px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 15px rgba(30, 41, 59, 0.3); transition: all 0.2s ease;">
                 زيارة الموقع الرسمي للمنصة 🌐
             </a>
         </div>
@@ -255,10 +271,10 @@
     </div>
 </div>
 
+
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         
-        // 🌟 [تعديل] البيانات التجريبية تظهر للمعاينة فقط إذا لم يكن هناك إدخال حقيقي 🌟
         const db_recipient = urlParams.get('recipient') || "اسم المستلم";
         const db_sender = urlParams.get('sender') || "اسم المرسل";
         const gender = urlParams.get('gender') || 'female'; 
@@ -277,13 +293,13 @@
         }
 
         const isMale = (gender === 'male' || gender === 'ذكر');
-        document.getElementById('dyn-you').innerText = isMale ? "أنتَ" : "أنتِ";
-        document.getElementById('dyn-click').innerText = isMale ? "دوس عالقلب حتى تكمل 😍😉" : "دوسي عالقلب حتى تكملين 😍😉";
-        document.getElementById('dyn-rotate-title').innerText = isMale ? "من فضلكَ، دور الهاتف 🔄" : "من فضلكِ، دوري الهاتف 🔄";
-        document.getElementById('dyn-rotate-desc').innerText = isMale ? "حتى تشوف المفاجأة أحلى😍👌" : "حتى تشوفين المفاجأة أحلى😍👌";
+        if(document.getElementById('dyn-you')) document.getElementById('dyn-you').innerText = isMale ? "أنتَ" : "أنتِ";
+        if(document.getElementById('dyn-click')) document.getElementById('dyn-click').innerText = isMale ? "دوس عالقلب حتى تكمل 😍😉" : "دوسي عالقلب حتى تكملين 😍😉";
+        if(document.getElementById('dyn-rotate-title')) document.getElementById('dyn-rotate-title').innerText = isMale ? "من فضلكَ، دور الهاتف 🔄" : "من فضلكِ، دوري الهاتف 🔄";
+        if(document.getElementById('dyn-rotate-desc')) document.getElementById('dyn-rotate-desc').innerText = isMale ? "حتى تشوف المفاجأة أحلى😍👌" : "حتى تشوفين المفاجأة أحلى😍👌";
 
-        document.getElementById('dyn-recipient').innerText = db_recipient;
-        document.getElementById('dyn-message').innerHTML = formatted_message;
+        if(document.getElementById('dyn-recipient')) document.getElementById('dyn-recipient').innerText = db_recipient;
+        if(document.getElementById('dyn-message')) document.getElementById('dyn-message').innerHTML = formatted_message;
 
         const introScreen = document.getElementById('introScreen');
         const rotateScreen = document.getElementById('rotateScreen');
@@ -311,7 +327,7 @@
             }
             if (x === undefined || y === undefined) return;
 
-            const emojis = ['❤️', '🧣', '🎀', '💖']; // وشاح ميكاسا الأحمر الأيقوني
+            const emojis = ['❤️', '🧣', '🎀']; 
             for(let i=0; i<3; i++) {
                 const el = document.createElement('div');
                 el.className = 'touch-emoji';
@@ -327,7 +343,7 @@
         document.addEventListener('mousedown', handleTapEffect);
         document.addEventListener('touchstart', handleTapEffect, {passive: true});
 
-        // 🎵 نظام الصوت المتطور
+        // 🎵 نظام الصوت المتطور المحدث 🌟
         const hasExternalAudio = rawAudioUrl.trim().length > 0;
         const isMp3File = rawAudioUrl.toLowerCase().includes('.mp3') || rawAudioUrl.includes('supabase.co/storage');
 
@@ -363,16 +379,29 @@
                 const tag = document.createElement('script');
                 tag.src = "https://www.youtube.com/iframe_api";
                 document.head.appendChild(tag);
+                
                 window.onYouTubeIframeAPIReady = function() {
                     ytPlayer = new YT.Player('yt-audio-player', {
                         videoId: getYoutubeId(rawAudioUrl),
-                        playerVars: { 'autoplay': 0, 'controls': 0, 'start': startTime, 'playsinline': 1 },
+                        playerVars: { 'autoplay': 1, 'controls': 0, 'start': startTime, 'playsinline': 1, 'mute': 1 },
                         events: {
-                            'onReady': () => { isAudioLoaded = true; },
+                            'onReady': (e) => { 
+                                isAudioLoaded = true; 
+                                e.target.pauseVideo();
+                                e.target.unMute();
+                            },
                             'onStateChange': (e) => { 
-                                if(e.data === YT.PlayerState.PLAYING) { playPauseBtn.innerText = '⏸'; } 
-                                else if (e.data === YT.PlayerState.ENDED) { ytPlayer.seekTo(startTime); ytPlayer.playVideo(); } 
-                                else { playPauseBtn.innerText = '▶'; }
+                                if(e.data === YT.PlayerState.PLAYING) { 
+                                    if(playPauseBtn) playPauseBtn.innerText = '⏸'; 
+                                    startProgressTracker();
+                                } 
+                                else if (e.data === YT.PlayerState.ENDED) { 
+                                    ytPlayer.seekTo(startTime); 
+                                    ytPlayer.playVideo(); 
+                                } 
+                                else { 
+                                    if(playPauseBtn) playPauseBtn.innerText = '▶'; 
+                                }
                             }
                         }
                     });
@@ -391,19 +420,21 @@
                 
                 video.play().catch(e => console.log("Video fail:", e));
 
+                // 🌟 تشغيل الصوت بمجرد الدوران بنجاح 🌟
                 if (hasExternalAudio && isAudioLoaded) {
                     if (isMp3File && localAudio && localAudio.paused) {
                         localAudio.currentTime = startTime;
                         localAudio.play().catch(e => console.log(e));
-                        playPauseBtn.innerText = '⏸';
+                        if(playPauseBtn) playPauseBtn.innerText = '⏸';
                         startProgressTracker();
                     } else if (!isMp3File && ytPlayer && ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) {
-                        ytPlayer.unMute();
-                        ytPlayer.setVolume(100);
-                        ytPlayer.seekTo(startTime);
-                        ytPlayer.playVideo();
-                        playPauseBtn.innerText = '⏸';
-                        startProgressTracker();
+                        try {
+                            ytPlayer.unMute();
+                            ytPlayer.seekTo(startTime, true);
+                            ytPlayer.playVideo();
+                            if(playPauseBtn) playPauseBtn.innerText = '⏸';
+                            startProgressTracker();
+                        } catch(e) {}
                     }
                 }
                 setTimeout(() => { tickerContainer.classList.add('show'); }, 1500);
@@ -411,18 +442,31 @@
                 rotateScreen.classList.remove('hidden');
                 videoScreen.classList.add('hidden');
                 video.pause();
+                // 🌟 إيقاف الصوت عند عدم الدوران 🌟
                 if (hasExternalAudio) {
                     if (isMp3File && localAudio) localAudio.pause();
-                    else if (!isMp3File && ytPlayer) ytPlayer.pauseVideo();
+                    else if (!isMp3File && ytPlayer) {
+                        try { ytPlayer.pauseVideo(); } catch(e){}
+                    }
                 }
                 tickerContainer.classList.remove('show');
             }
         }
 
+        // 🌟 زر البداية يكسر حماية المتصفح 🌟
         document.getElementById('startBtn').addEventListener('click', () => {
             userInteracted = true;
             introScreen.classList.add('hidden');
             
+            // 🌟 كسر حماية الصوت هنا 🌟
+            if (hasExternalAudio) {
+                if (isMp3File && localAudio) {
+                    localAudio.play().then(() => localAudio.pause()).catch(e=>{});
+                } else if (!isMp3File && ytPlayer && typeof ytPlayer.playVideo === 'function') {
+                    try { ytPlayer.unMute(); ytPlayer.playVideo(); ytPlayer.pauseVideo(); } catch(e){}
+                }
+            }
+
             video.play().then(() => {
                 video.pause();
                 checkOrientation();
@@ -436,26 +480,35 @@
 
         // 🎵 تفعيل بطاقة الموسيقى المخفية
         function showMusicCard() {
-            isMusicMode = true; // منع ظهور شاشة الدوران
+            isMusicMode = true; 
             videoScreen.classList.add('hidden');
             rotateScreen.classList.add('hidden');
-            video.pause(); // إيقاف الفيديو نهائياً
+            video.pause(); 
             musicCard.classList.add('show');
+            
+            // التأكد من استمرار الصوت عند فتح البطاقة
+            if (hasExternalAudio) {
+                if (isMp3File && localAudio && localAudio.paused) {
+                    localAudio.play();
+                } else if (!isMp3File && ytPlayer && ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) {
+                    try { ytPlayer.playVideo(); } catch(e){}
+                }
+            }
         }
 
         // أزرار التحكم بالموسيقى
         function toggleAudio() {
             if (!hasExternalAudio) return;
             if (isMp3File && localAudio) {
-                if (localAudio.paused) { localAudio.play(); playPauseBtn.innerText = '⏸'; }
-                else { localAudio.pause(); playPauseBtn.innerText = '▶'; }
+                if (localAudio.paused) { localAudio.play(); if(playPauseBtn) playPauseBtn.innerText = '⏸'; }
+                else { localAudio.pause(); if(playPauseBtn) playPauseBtn.innerText = '▶'; }
             } else if (!isMp3File && ytPlayer) {
                 const state = ytPlayer.getPlayerState();
-                if (state === YT.PlayerState.PLAYING) { ytPlayer.pauseVideo(); playPauseBtn.innerText = '▶'; }
-                else { ytPlayer.playVideo(); playPauseBtn.innerText = '⏸'; }
+                if (state === YT.PlayerState.PLAYING) { ytPlayer.pauseVideo(); if(playPauseBtn) playPauseBtn.innerText = '▶'; }
+                else { ytPlayer.playVideo(); if(playPauseBtn) playPauseBtn.innerText = '⏸'; }
             }
         }
-        document.getElementById('playPauseBtn').addEventListener('click', toggleAudio);
+        if(playPauseBtn) playPauseBtn.addEventListener('click', toggleAudio);
 
         function seekAudio(seconds) {
             if (!hasExternalAudio) return;
@@ -493,10 +546,11 @@
         }
 
         function updateProgressFromEvent(e) {
+            if(!progressBar) return 0;
             const rect = progressBar.getBoundingClientRect();
             let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
             let percent = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
-            progressCurrent.style.width = percent + '%';
+            if(progressCurrent) progressCurrent.style.width = percent + '%';
             return percent;
         }
 
@@ -509,13 +563,13 @@
 
             if (isMp3File && localAudio) { localAudio.currentTime = newTime; if(localAudio.paused) localAudio.play(); } 
             else if (!isMp3File && ytPlayer && typeof ytPlayer.seekTo === 'function') { ytPlayer.seekTo(newTime, true); ytPlayer.playVideo(); }
-            playPauseBtn.innerText = '⏸';
+            if(playPauseBtn) playPauseBtn.innerText = '⏸';
         }
 
         if(progressBar) {
-            const handleDragStart = (e) => { isDragging = true; progressKnob.classList.add('dragging'); updateProgressFromEvent(e); };
+            const handleDragStart = (e) => { isDragging = true; if(progressKnob) progressKnob.classList.add('dragging'); updateProgressFromEvent(e); };
             const handleDragMove = (e) => { if(isDragging) updateProgressFromEvent(e); };
-            const handleDragEnd = (e) => { if(isDragging) { let p = updateProgressFromEvent(e); seekToPercent(p); isDragging = false; progressKnob.classList.remove('dragging'); } };
+            const handleDragEnd = (e) => { if(isDragging) { let p = updateProgressFromEvent(e); seekToPercent(p); isDragging = false; if(progressKnob) progressKnob.classList.remove('dragging'); } };
             
             progressBar.addEventListener('mousedown', handleDragStart);
             document.addEventListener('mousemove', handleDragMove);
@@ -526,26 +580,10 @@
                 if (isDragging) {
                     const rect = progressBar.getBoundingClientRect();
                     let p = Math.max(0, Math.min(100, ((e.changedTouches[0].clientX - rect.left) / rect.width) * 100));
-                    seekToPercent(p); isDragging = false; progressKnob.classList.remove('dragging');
+                    seekToPercent(p); isDragging = false; if(progressKnob) progressKnob.classList.remove('dragging');
                 }
             });
         }
-
-        // 🌟 [جديد] إجبار تشغيل الصوت بمجرد لمس الشاشة (لمتصفح الانستغرام والتيك توك) 🌟
-        function forcePlayOnTouch() {
-            if (hasExternalAudio) {
-                if (isMp3File && localAudio && localAudio.paused) {
-                    localAudio.play().catch(e => console.log(e));
-                    if(playPauseBtn) playPauseBtn.innerText = '⏸';
-                } else if (!isMp3File && ytPlayer && typeof ytPlayer.playVideo === 'function') {
-                    try { ytPlayer.playVideo(); if(playPauseBtn) playPauseBtn.innerText = '⏸'; } catch(e){}
-                }
-            }
-            document.removeEventListener('click', forcePlayOnTouch);
-            document.removeEventListener('touchstart', forcePlayOnTouch);
-        }
-        document.addEventListener('click', forcePlayOnTouch, { once: true });
-        document.addEventListener('touchstart', forcePlayOnTouch, { once: true });
     </script>
 </body>
 </html>

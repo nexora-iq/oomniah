@@ -25,22 +25,36 @@
             position: relative;
         }
 
+        /* 🌟 الخدعة الذكية لإخفاء اليوتيوب بدون إيقاف الـ API 🌟 */
+        #youtube-wrapper {
+            position: absolute;
+            top: -9999px;
+            left: -9999px;
+            width: 300px;
+            height: 300px;
+            opacity: 0.01;
+            pointer-events: none;
+            z-index: -100;
+        }
+
         /* حاويات الشاشات */
         .screen {
             text-align: center;
             z-index: 10;
             width: 100%;
+            height: 100vh;
             padding: 20px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             transition: opacity 0.5s ease;
+            position: absolute;
+            top: 0;
+            left: 0;
         }
 
-        .hidden {
-            display: none !important;
-        }
+        .hidden { display: none !important; }
 
         /* الشاشة الأولى */
         .name {
@@ -81,29 +95,12 @@
             font-family: inherit;
         }
 
-        .btn-yes {
-            transition: all 0.2s ease;
-            z-index: 10;
-        }
+        .btn-yes { transition: all 0.2s ease; z-index: 10; }
+        .btn-yes:hover, .btn-yes:active { background-color: #ff0033; color: #000; box-shadow: 0 0 25px #ff0033; transform: scale(1.1); }
 
-        .btn-yes:hover, .btn-yes:active {
-            background-color: #ff0033;
-            color: #000;
-            box-shadow: 0 0 25px #ff0033;
-            transform: scale(1.1);
-        }
-
-        /* زر لا بهروب سلس وأنيميشن */
-        .btn-no {
-            transition: top 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-            z-index: 20;
-        }
+        .btn-no { transition: top 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); z-index: 20; }
 
         /* الشاشة الثانية */
-        #screen2 {
-            gap: 20px;
-        }
-
         .message-box {
             background: rgba(255, 0, 51, 0.1);
             border: 2px solid #ff0033;
@@ -115,34 +112,21 @@
             width: 100%;
             animation: popIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
             min-height: 150px;
+            margin-bottom: 25px;
         }
 
-        .message-text {
-            font-size: 1.5rem;
-            color: #ffffff;
-            line-height: 1.6;
-            margin-bottom: 20px;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-            white-space: pre-wrap;
-        }
+        .message-text { font-size: 1.5rem; color: #ffffff; line-height: 1.6; margin-bottom: 20px; text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); white-space: pre-wrap; }
+        .sender-text { font-size: 1.2rem; color: #ff0033; font-weight: bold; border-top: 1px solid rgba(255, 0, 51, 0.3); padding-top: 15px; opacity: 0; transition: opacity 0.5s ease; }
 
-        .sender-text {
-            font-size: 1.2rem;
-            color: #ff0033;
-            font-weight: bold;
-            border-top: 1px solid rgba(255, 0, 51, 0.3);
-            padding-top: 15px;
-            opacity: 0;
-            transition: opacity 0.5s ease;
-        }
-
-        @keyframes popIn {
-            0% { opacity: 0; transform: scale(0.8); }
-            100% { opacity: 1; transform: scale(1); }
-        }
+        @keyframes popIn { 0% { opacity: 0; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1); } }
 
         /* 🎵 تنسيقات مشغل الموسيقى */
-        .player-card { width: 100%; max-width: 500px; background: rgba(255, 0, 51, 0.05); border: 2px solid rgba(255, 0, 51, 0.4); backdrop-filter: blur(10px); border-radius: 20px; padding: 25px 20px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 10px 30px rgba(255, 0, 51, 0.1); z-index: 15; animation: popIn 1s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .player-card { width: 90%; max-width: 450px; background: rgba(255, 0, 51, 0.05); border: 2px solid rgba(255, 0, 51, 0.4); backdrop-filter: blur(10px); border-radius: 20px; padding: 30px 20px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 10px 30px rgba(255, 0, 51, 0.1); z-index: 15; animation: popIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        /* صورة اللوجو داخل المشغل */
+        .player-art { width: 140px; height: 140px; border-radius: 20px; overflow: hidden; margin-bottom: 25px; border: 1px solid rgba(255, 0, 51, 0.3); background: #fff; display: flex; justify-content: center; align-items: center; padding: 10px; box-shadow: 0 0 20px rgba(255, 0, 51, 0.2); }
+        .player-art img { width: 100%; height: 100%; object-fit: contain; }
+
         .progress-container { width: 100%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; direction: ltr; }
         .progress-bar { width: 100%; height: 8px; background: rgba(255,255,255,0.2); border-radius: 10px; position: relative; cursor: pointer; touch-action: none; }
         .progress-current { width: 0%; height: 100%; background: #ff0033; border-radius: 10px; box-shadow: 0 0 10px #ff0033; position: relative; pointer-events: none; }
@@ -155,67 +139,50 @@
         .play-pause { width: 60px; height: 60px; background: #fff; color: #ff0033; border: 3px solid #ff0033; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.4rem; box-shadow: 0 4px 0 rgba(200, 0, 30, 0.6); cursor: pointer; transition: all 0.1s ease; }
         .play-pause:active { transform: translateY(4px); box-shadow: 0 0px 0 rgba(200, 0, 30, 0.6); }
 
-        /* 🌟 الكلمات اللانهائية التي تبدأ حتماً من أقصى أعلى الشاشة خارج الرؤية */
-        .love-text {
-            position: fixed;
-            top: -60px;
-            color: #ff0033;
-            font-weight: 900;
-            white-space: nowrap;
-            pointer-events: none;
-            z-index: 1;
-            opacity: 0;
-            text-shadow: 0 0 15px #ff0033;
-            animation: fallDown linear forwards;
-        }
+        /* 🌟 الكلمات اللانهائية */
+        .love-text { position: fixed; top: -60px; color: #ff0033; font-weight: 900; white-space: nowrap; pointer-events: none; z-index: 1; opacity: 0; text-shadow: 0 0 15px #ff0033; animation: fallDown linear forwards; }
+        @keyframes fallDown { 0% { transform: translateY(0) translateX(0) scale(0.5); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(115vh) translateX(15vw) scale(1.4); opacity: 0; } }
 
-        @keyframes fallDown {
-            0% { transform: translateY(0) translateX(0) scale(0.5); opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { transform: translateY(115vh) translateX(15vw) scale(1.4); opacity: 0; }
-        }
-
-        /* 🌟 تأثير النقر (القلوب وكلمة love u) */
-        .click-float {
-            position: absolute;
-            pointer-events: none;
-            color: #ff0033;
-            font-size: 1.2rem;
-            font-weight: bold;
-            text-shadow: 0 0 8px rgba(255, 0, 51, 0.8);
-            animation: clickFloatAnim 1s ease-out forwards;
-            z-index: 9999;
-        }
-
-        @keyframes clickFloatAnim {
-            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
-            100% { transform: translate(calc(-50% + var(--random-x)), -80px) scale(1.3); opacity: 0; }
-        }
+        /* 🌟 تأثير النقر */
+        .click-float { position: absolute; pointer-events: none; color: #ff0033; font-size: 1.2rem; font-weight: bold; text-shadow: 0 0 8px rgba(255, 0, 51, 0.8); animation: clickFloatAnim 1s ease-out forwards; z-index: 9999; }
+        @keyframes clickFloatAnim { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; } 100% { transform: translate(calc(-50% + var(--random-x)), -80px) scale(1.3); opacity: 0; } }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;900&display=swap" rel="stylesheet">
 </head>
 <body>
 
+    <!-- 🌟 الحاوية المخفية لليوتيوب -->
+    <div id="youtube-wrapper">
+        <div id="yt-audio-player"></div>
+    </div>
+
     <!-- الشاشة الأولى -->
     <div id="screen1" class="screen">
         <h1 class="name" id="recipientName">جاري التحميل...</h1>
         <div class="buttons-wrapper">
-            <button class="btn btn-yes" onclick="showScreen2()">أكييدد</button>
+            <button class="btn btn-yes" onclick="handleYesClick()">أكييدد</button>
             <button class="btn btn-no" id="noBtn" onmouseover="moveNoButton()" ontouchstart="moveNoButton(event)">لا 😑</button>
         </div>
     </div>
 
-    <!-- الشاشة الثانية -->
+    <!-- الشاشة الثانية (الرسالة المفصولة) -->
     <div id="screen2" class="screen hidden">
         <div class="message-box">
             <div class="message-text" id="messageText"></div>
             <div class="sender-text" id="senderText"></div>
         </div>
+        <button class="btn btn-yes" style="font-size: 1.2rem; padding: 12px 25px; margin-top: 20px;" onclick="goToMusic()">استمع لأغنيتنا 🎵</button>
+    </div>
 
-        <!-- مشغل الموسيقى -->
-        <div class="player-card" id="musicCard" style="display: none;">
-            <div style="color: #fff; font-weight: bold; margin-bottom: 15px; font-size: 1.1rem;">🎵 أغنيتنا</div>
+    <!-- الشاشة الثالثة (مشغل الموسيقى المنفصل) -->
+    <div id="screen3" class="screen hidden">
+        <div class="player-card" id="musicCard">
+            <div style="color: #fff; font-weight: bold; margin-bottom: 20px; font-size: 1.2rem; text-shadow: 0 0 10px rgba(255,0,51,0.5);">🎵 أغنيتنا المفضلة</div>
+            
+            <div class="player-art">
+                <img src="oomniah-logo.png" alt="Oomniah Logo">
+            </div>
+
             <div class="progress-container" id="progressContainer">
                 <div class="progress-bar" id="progressBar">
                     <div class="progress-current" id="progressCurrent">
@@ -235,23 +202,34 @@
         </div>
     </div>
 
-    <div id="youtube-container" style="display: none;"></div>
-
-    <!-- زر إخلاء المسؤولية -->
-    <button onclick="document.getElementById('info-modal-overlay').style.display='flex'" style="position: fixed; bottom: 25px; left: 25px; width: 50px; height: 50px; border-radius: 50%; background: rgba(220, 38, 38, 0.15); border: 1px solid rgba(220, 38, 38, 0.3); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: #dc2626; font-size: 22px; display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 99999; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); transition: all 0.3s ease;">
+    <!-- زر إخلاء المسؤولية المحدث -->
+    <button onclick="document.getElementById('info-modal-overlay').style.display='flex'" style="position: fixed; bottom: 25px; left: 25px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255, 0, 51, 0.15); border: 1px solid rgba(255, 0, 51, 0.3); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: #ff0033; font-size: 22px; display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 99999; box-shadow: 0 0 15px rgba(255, 0, 51, 0.3); transition: all 0.3s ease;">
         📜
     </button>
 
-    <!-- نافذة الشروط وإخلاء المسؤولية -->
-    <div id="info-modal-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 100000; display: none; justify-content: center; align-items: center; direction: rtl; padding: 20px; box-sizing: border-box;">
-        <div style="background: #ffffff; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; border-radius: 24px; padding: 35px 25px; text-align: center; position: relative;">
-            <button onclick="document.getElementById('info-modal-overlay').style.display='none'" style="position: absolute; top: 20px; right: 20px; background: #f1f5f9; border: 1px solid #e2e8f0; width: 36px; height: 36px; border-radius: 50%; color: #64748b; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center;">✕</button>
-            <div style="font-size: 45px; margin-bottom: 10px;">🛡️</div>
-            <h3 style="color: #1e293b; font-size: 22px; margin-top: 0; margin-bottom: 5px; font-weight: 900;">إخلاء مسؤولية</h3>
-            <p style="color: #64748b; font-size: 14px; margin-bottom: 25px;">يرجى قراءة الشروط التالية</p>
-            <div style="text-align: right; display: flex; flex-direction: column; gap: 15px; background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 25px;">
-                <div style="display: flex; gap: 10px; align-items: flex-start;"><span style="color: #dc2626;">⚠️</span><p style="color: #334155; font-size: 13px; margin: 0; font-weight: bold;">تخلي منصة "أمنية" مسؤوليتها الكاملة عن أي استخدام سيء، غير أخلاقي، أو غير قانوني لمواقعنا وثيماتنا.</p></div>
-                <div style="display: flex; gap: 10px; align-items: flex-start;"><span style="color: #dc2626;">©️</span><p style="color: #334155; font-size: 13px; margin: 0; font-weight: bold;">جميع الثيمات مسجلة بحقوق طبع ونشر.</p></div>
+    <!-- نافذة الشروط وإخلاء المسؤولية المحدثة بالروابط (ستايل الثيم) -->
+    <div id="info-modal-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 100000; display: none; justify-content: center; align-items: center; direction: rtl; padding: 20px; box-sizing: border-box;">
+        <div style="background: #111; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; border-radius: 24px; padding: 35px 25px; text-align: center; position: relative; border: 1px solid #ff0033; box-shadow: 0 0 30px rgba(255, 0, 51, 0.3);">
+            <button onclick="document.getElementById('info-modal-overlay').style.display='none'" style="position: absolute; top: 20px; right: 20px; background: #222; border: 1px solid #ff0033; width: 36px; height: 36px; border-radius: 50%; color: #ff0033; font-weight: bold; cursor: pointer; font-size: 16px; display: flex; justify-content: center; align-items: center;">✕</button>
+            <div style="font-size: 45px; margin-bottom: 10px; filter: drop-shadow(0 0 10px rgba(255,0,51,0.5));">🛡️</div>
+            <h3 style="color: #fff; font-size: 22px; margin-top: 0; margin-bottom: 5px; font-weight: 900;">إخلاء مسؤولية وشروط الاستخدام</h3>
+            <p style="color: #aaa; font-size: 14px; margin-bottom: 25px;">يرجى قراءة الشروط التالية بعناية</p>
+            
+            <div style="text-align: right; display: flex; flex-direction: column; gap: 15px; background: #1a0000; padding: 20px; border-radius: 16px; border: 1px solid rgba(255,0,51,0.3); margin-bottom: 25px;">
+                <div style="display: flex; gap: 10px; align-items: flex-start;"><span style="color: #ff0033;">⚠️</span><p style="color: #ddd; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">تخلي منصة "أمنية" مسؤوليتها الكاملة عن أي استخدام سيء أو غير قانوني لمواقعنا وثيماتنا.</p></div>
+                <div style="display: flex; gap: 10px; align-items: flex-start;"><span style="color: #ff0033;">©️</span><p style="color: #ddd; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">جميع الثيمات والتصاميم هي ملكية حصرية لمنصة "أمنية"، ومسجلة بحقوق طبع ونشر.</p></div>
+                <div style="display: flex; gap: 10px; align-items: flex-start;"><span style="color: #ff0033;">🚫</span><p style="color: #ddd; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">لا يتم بيع خدماتنا إلا عبر حساباتنا ووكلائنا المعتمدين المنشورة أسماؤهم بموقعنا.</p></div>
+                <div style="display: flex; gap: 10px; align-items: flex-start;"><span style="color: #ff0033;">💰</span><p style="color: #ddd; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">إذا رصدتم أي جهة تسرق تصاميمنا، يرجى إبلاغنا فوراً. <span style="color: #10b981;">(توجد مكافأة).</span></p></div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <a href="/terms" target="_blank" style="flex: 1; background: #222; color: #fff; text-decoration: none; padding: 12px; border-radius: 12px; font-weight: bold; font-size: 13px; border: 1px solid #ff0033;">📜 الشروط والأحكام</a>
+                <a href="/privacy" target="_blank" style="flex: 1; background: #222; color: #fff; text-decoration: none; padding: 12px; border-radius: 12px; font-weight: bold; font-size: 13px; border: 1px solid #ff0033;">🔒 سياسة الخصوصية</a>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <a href="https://www.instagram.com/oomnia.1/" target="_blank" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color: #ffffff; text-decoration: none; padding: 14px; border-radius: 12px; font-weight: bold; font-size: 15px;">تواصل معنا عبر الانستغرام 📸</a>
+                <a href="/" target="_blank" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: #ff0033; color: #fff; text-decoration: none; padding: 14px; border-radius: 12px; font-weight: bold; font-size: 15px;">زيارة الموقع الرسمي للمنصة 🌐</a>
             </div>
         </div>
     </div>
@@ -264,120 +242,11 @@
         const message = (urlParams.get('message') || 'أحبج هواية ومستحيل أستغني عنج ❤️').replace(/\n/g, '<br>');
         const gender = urlParams.get('gender') || 'female';
         
-        // 🌟 تجهيز صيغة السؤال
         const isMale = (gender === 'male' || gender === 'ذكر');
         const loveWord = isMale ? "تحب" : "تحبين";
         document.getElementById('recipientName').innerText = `${recipient} ${loveWord} ${sender} ؟`;
 
-        // 🌟 تأثير النقر (ظهور love u وقلوب)
-        document.addEventListener('click', function(e) {
-            // منع التأثير عند النقر على الأزرار أو المشغل حتى ما يزعج المستخدم
-            if(e.target.closest('.btn') || e.target.closest('.controls') || e.target.closest('.progress-container') || e.target.closest('button')) return;
-
-            const items = ['love u', '❤️', '💕'];
-            
-            // توليد 3 عناصر صغيرة بكل ضغطة
-            for (let i = 0; i < 3; i++) {
-                const el = document.createElement('div');
-                el.className = 'click-float';
-                el.innerText = items[Math.floor(Math.random() * items.length)];
-                
-                el.style.left = e.clientX + 'px';
-                el.style.top = e.clientY + 'px';
-                
-                // مسار عشوائي لكل عنصر يمين ويسار
-                const randomX = (Math.random() * 80 - 40) + 'px';
-                el.style.setProperty('--random-x', randomX);
-                el.style.animationDelay = (i * 0.1) + 's';
-                
-                document.body.appendChild(el);
-                
-                // إزالة العنصر بعد انتهاء الأنيميشن
-                setTimeout(() => { el.remove(); }, 1200 + (i * 100));
-            }
-        });
-
-        // 🌟 برمجة زر "لا" الهارب السلس
-        const noBtn = document.getElementById('noBtn');
-        let isFirstMove = true;
-
-        function moveNoButton(e) {
-            if (e) e.preventDefault();
-            if (isFirstMove) {
-                noBtn.style.position = 'fixed';
-                isFirstMove = false;
-            }
-            const padding = 20;
-            const maxX = window.innerWidth - noBtn.offsetWidth - padding;
-            const maxY = window.innerHeight - noBtn.offsetHeight - padding;
-            const randomX = Math.max(padding, Math.floor(Math.random() * maxX));
-            const randomY = Math.max(padding, Math.floor(Math.random() * maxY));
-            noBtn.style.left = `${randomX}px`;
-            noBtn.style.top = `${randomY}px`;
-        }
-
-        // 🌟 تأثير الآلة الكاتبة
-        function typeWriter(element, text, index, callback) {
-            if (index < text.length) {
-                if (text.charAt(index) === '<') {
-                    let endIndex = text.indexOf('>', index);
-                    if (endIndex !== -1) {
-                        element.innerHTML += text.substring(index, endIndex + 1);
-                        index = endIndex + 1;
-                        setTimeout(() => typeWriter(element, text, index, callback), 40);
-                        return;
-                    }
-                }
-                element.innerHTML += text.charAt(index);
-                setTimeout(() => typeWriter(element, text, index + 1, callback), 40);
-            } else if (callback) { 
-                callback(); 
-            }
-        }
-
-        // 🌟 الانتقال للشاشة الثانية
-        function showScreen2() {
-            document.getElementById('screen1').classList.add('hidden');
-            document.getElementById('screen2').classList.remove('hidden');
-
-            const msgBox = document.getElementById('messageText');
-            msgBox.innerHTML = ''; 
-            
-            typeWriter(msgBox, message, 0, function() {
-                const senderEl = document.getElementById('senderText');
-                senderEl.innerText = `من: ${sender}`;
-                senderEl.style.opacity = 1;
-            });
-
-            startLoveStream();
-            initAudio();
-        }
-
-        // 🌟 الكلمات اللانهائية من أعلى الشاشة حصراً
-        function startLoveStream() {
-            setInterval(createLoveText, 300); // إطلاق كلمة جديدة كل 0.3 ثانية من أعلى الشاشة
-        }
-
-        function createLoveText() {
-            const el = document.createElement('div');
-            el.classList.add('love-text');
-            const phrases = ['LOVE YOU', 'أحبج', 'عشقي', '❤️', 'أعشقج'];
-            el.innerText = phrases[Math.floor(Math.random() * phrases.length)];
-            const fontSize = Math.floor(Math.random() * 20) + 20; 
-            el.style.fontSize = `${fontSize}px`;
-            
-            // 🌟 ضمان البداية من أعلى الشاشة فقط وخارج حدود الرؤية العلوي
-            const startX = Math.random() * (window.innerWidth - 80);
-            el.style.left = `${Math.max(10, startX)}px`;
-            el.style.top = `-50px`; 
-
-            const duration = Math.random() * 4 + 3; 
-            el.style.animationDuration = `${duration}s`;
-            document.body.appendChild(el);
-            setTimeout(() => { el.remove(); }, duration * 1000);
-        }
-
-        // 🌟 نظام الصوت والعداد
+        // 🌟 إعدادات الصوت (الخدعة السحرية)
         const rawAudioUrl = urlParams.get('yt_clean') || urlParams.get('yt') || '';
         let startTime = parseInt(urlParams.get('start')) || 0;
         if (startTime === 0) {
@@ -387,11 +256,13 @@
 
         const hasAudio = rawAudioUrl.trim().length > 0;
         const isMp3File = rawAudioUrl.toLowerCase().includes('.mp3') || rawAudioUrl.includes('supabase.co');
-        
+
         let ytPlayer = null;
         let localAudio = null;
+        let isAudioLoaded = false;
         let progressInterval;
         let isDragging = false;
+        let appStarted = false;
 
         const playPauseBtn = document.getElementById('playPauseBtn');
         const progressCurrent = document.getElementById('progressCurrent');
@@ -400,16 +271,12 @@
         const durationTimeEl = document.getElementById('durationTime');
         const progressKnob = document.getElementById('progressKnob');
 
-        function initAudio() {
-            if (!hasAudio) return;
-            document.getElementById('musicCard').style.display = 'flex';
-
+        if (hasAudio) {
             if (isMp3File) {
                 localAudio = new Audio(rawAudioUrl);
-                localAudio.currentTime = startTime;
-                localAudio.play().catch(e=>console.log(e));
-                playPauseBtn.innerText = '⏸';
-                startProgressTracker();
+                localAudio.preload = 'auto';
+                localAudio.addEventListener('ended', () => { localAudio.currentTime = startTime; localAudio.play(); });
+                isAudioLoaded = true;
             } else {
                 function getYoutubeId(url) {
                     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -419,20 +286,21 @@
                 const tag = document.createElement('script');
                 tag.src = "https://www.youtube.com/iframe_api";
                 document.head.appendChild(tag);
+                
                 window.onYouTubeIframeAPIReady = function() {
                     let ytContainer = document.createElement('div');
-                    ytContainer.id = 'yt-audio-player';
-                    document.getElementById('youtube-container').appendChild(ytContainer);
-                    
-                    ytPlayer = new YT.Player('yt-audio-player', {
+                    ytContainer.id = 'yt-audio-player-inner';
+                    document.getElementById('youtube-wrapper').appendChild(ytContainer);
+
+                    ytPlayer = new YT.Player('yt-audio-player-inner', {
                         videoId: getYoutubeId(rawAudioUrl),
-                        playerVars: { 'autoplay': 1, 'controls': 0, 'start': startTime, 'playsinline': 1 },
+                        playerVars: { 'autoplay': 1, 'controls': 0, 'start': startTime, 'playsinline': 1, 'mute': 1 },
                         events: {
-                            'onReady': (e) => { e.target.playVideo(); playPauseBtn.innerText = '⏸'; startProgressTracker(); },
+                            'onReady': (e) => { isAudioLoaded = true; e.target.pauseVideo(); e.target.unMute(); },
                             'onStateChange': (e) => { 
-                                if(e.data === YT.PlayerState.PLAYING) playPauseBtn.innerText = '⏸';
-                                else if (e.data === YT.PlayerState.ENDED) { ytPlayer.seekTo(startTime, true); ytPlayer.playVideo(); }
-                                else playPauseBtn.innerText = '▶';
+                                if(e.data === YT.PlayerState.PLAYING) { if(playPauseBtn) playPauseBtn.innerText = '⏸'; startProgressTracker(); } 
+                                else if (e.data === YT.PlayerState.ENDED) { ytPlayer.seekTo(startTime, true); ytPlayer.playVideo(); } 
+                                else { if(playPauseBtn) playPauseBtn.innerText = '▶'; }
                             }
                         }
                     });
@@ -440,18 +308,124 @@
             }
         }
 
-        playPauseBtn.addEventListener('click', () => {
-            if (isMp3File && localAudio) {
-                if (localAudio.paused) { localAudio.play(); playPauseBtn.innerText = '⏸'; }
-                else { localAudio.pause(); playPauseBtn.innerText = '▶'; }
-            } else if (!isMp3File && ytPlayer) {
-                const state = ytPlayer.getPlayerState();
-                if (state === YT.PlayerState.PLAYING) { ytPlayer.pauseVideo(); playPauseBtn.innerText = '▶'; }
-                else { ytPlayer.playVideo(); playPauseBtn.innerText = '⏸'; }
+        // 🌟 زر "لا" الهارب
+        const messages = isMale ? [ "متأكد ؟", "أحبك ❤️", "فكر زين!", "بدون شقة 🙄" ] : [ "متأكدة ؟", "فكري زين!", "بدون شقة 🙄" ];
+        let messageIndex = 0;
+        const noBtn = document.getElementById('noBtn');
+        let isFirstMove = true;
+
+        function moveNoButton(e) {
+            if (e) e.preventDefault();
+            if (isFirstMove) { noBtn.style.position = 'fixed'; isFirstMove = false; }
+            noBtn.textContent = messages[messageIndex];
+            messageIndex = (messageIndex + 1) % messages.length;
+
+            const padding = 20;
+            const maxX = window.innerWidth - noBtn.offsetWidth - padding;
+            const maxY = window.innerHeight - noBtn.offsetHeight - padding;
+            noBtn.style.left = `${Math.max(padding, Math.floor(Math.random() * maxX))}px`;
+            noBtn.style.top = `${Math.max(padding, Math.floor(Math.random() * maxY))}px`;
+        }
+
+        // 🌟 تأثير النقر (قلوب تطفو)
+        document.addEventListener('click', function(e) {
+            if(e.target.closest('.btn') || e.target.closest('.controls') || e.target.closest('.progress-container') || e.target.closest('button')) return;
+            const items = ['love u', '❤️', '💕'];
+            for (let i = 0; i < 3; i++) {
+                const el = document.createElement('div');
+                el.className = 'click-float';
+                el.innerText = items[Math.floor(Math.random() * items.length)];
+                el.style.left = e.clientX + 'px'; el.style.top = e.clientY + 'px';
+                el.style.setProperty('--random-x', (Math.random() * 80 - 40) + 'px');
+                el.style.animationDelay = (i * 0.1) + 's';
+                document.body.appendChild(el);
+                setTimeout(() => { el.remove(); }, 1200 + (i * 100));
             }
         });
 
+        function typeWriter(element, text, index, callback) {
+            if (index < text.length) {
+                if (text.charAt(index) === '<') {
+                    let endIndex = text.indexOf('>', index);
+                    if (endIndex !== -1) {
+                        element.innerHTML += text.substring(index, endIndex + 1);
+                        setTimeout(() => typeWriter(element, text, endIndex + 1, callback), 40);
+                        return;
+                    }
+                }
+                element.innerHTML += text.charAt(index);
+                setTimeout(() => typeWriter(element, text, index + 1, callback), 40);
+            } else if (callback) { callback(); }
+        }
+
+        function startLoveStream() {
+            setInterval(() => {
+                const el = document.createElement('div');
+                el.classList.add('love-text');
+                const phrases = ['LOVE YOU', 'أحبج', 'عشقي', '❤️', 'أعشقج'];
+                el.innerText = phrases[Math.floor(Math.random() * phrases.length)];
+                el.style.fontSize = `${Math.floor(Math.random() * 20) + 20}px`;
+                el.style.left = `${Math.max(10, Math.random() * (window.innerWidth - 80))}px`;
+                el.style.top = `-50px`; 
+                const duration = Math.random() * 4 + 3; 
+                el.style.animationDuration = `${duration}s`;
+                document.body.appendChild(el);
+                setTimeout(() => { el.remove(); }, duration * 1000);
+            }, 300);
+        }
+
+        // 🌟 فتح الشاشة الثانية وتشغيل الصوت
+        function handleYesClick() {
+            if (appStarted) return;
+            appStarted = true;
+
+            document.getElementById('screen1').classList.add('hidden');
+            document.getElementById('screen2').classList.remove('hidden');
+
+            if (hasAudio) {
+                if (isMp3File && localAudio) {
+                    localAudio.currentTime = startTime; localAudio.play().catch(e=>console.log(e));
+                    if(playPauseBtn) playPauseBtn.innerText = '⏸';
+                } else if (!isMp3File && ytPlayer && typeof ytPlayer.playVideo === 'function') {
+                    try { ytPlayer.unMute(); ytPlayer.seekTo(startTime, true); ytPlayer.playVideo(); if(playPauseBtn) playPauseBtn.innerText = '⏸'; } catch(e){}
+                }
+            }
+
+            const msgBox = document.getElementById('messageText');
+            msgBox.innerHTML = ''; 
+            typeWriter(msgBox, message, 0, function() {
+                const senderEl = document.getElementById('senderText');
+                senderEl.innerText = `من: ${sender}`;
+                senderEl.style.opacity = 1;
+            });
+            startLoveStream();
+        }
+
+        // 🌟 الانتقال للشاشة الثالثة (الموسيقى)
+        function goToMusic() {
+            document.getElementById('screen2').classList.add('hidden');
+            document.getElementById('screen3').classList.remove('hidden');
+            if (hasAudio) {
+                if (isMp3File && localAudio && localAudio.paused) localAudio.play();
+                else if (!isMp3File && ytPlayer && ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) { try { ytPlayer.playVideo(); } catch(e){} }
+            }
+        }
+
+        // تحكم المشغل
+        function toggleAudio() {
+            if (!hasAudio) return;
+            if (isMp3File && localAudio) {
+                if (localAudio.paused) { localAudio.play(); if(playPauseBtn) playPauseBtn.innerText = '⏸'; }
+                else { localAudio.pause(); if(playPauseBtn) playPauseBtn.innerText = '▶'; }
+            } else if (!isMp3File && ytPlayer) {
+                if (ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) { ytPlayer.pauseVideo(); if(playPauseBtn) playPauseBtn.innerText = '▶'; }
+                else { ytPlayer.playVideo(); if(playPauseBtn) playPauseBtn.innerText = '⏸'; }
+            }
+        }
+        if(playPauseBtn) playPauseBtn.addEventListener('click', toggleAudio);
+
         function seekAudio(seconds) {
+            if (!hasAudio) return;
             if (isMp3File && localAudio) localAudio.currentTime += seconds;
             else if (!isMp3File && ytPlayer && typeof ytPlayer.getCurrentTime === 'function') ytPlayer.seekTo(ytPlayer.getCurrentTime() + seconds, true);
         }
@@ -468,24 +442,26 @@
                 const totalDuration = actualDuration - startTime;
                 const currentProgress = currentTime - startTime;
                 const progressPercent = Math.max(0, Math.min(100, (currentProgress / totalDuration) * 100));
-                
-                progressCurrent.style.width = `${progressPercent}%`;
+
+                if(progressCurrent) progressCurrent.style.width = `${progressPercent}%`;
 
                 let displayTime = Math.max(0, currentTime - startTime);
-                currentTimeEl.innerText = `${Math.floor(displayTime / 60)}:${Math.floor(displayTime % 60).toString().padStart(2, '0')}`;
-                durationTimeEl.innerText = `${Math.floor(totalDuration / 60)}:${Math.floor(totalDuration % 60).toString().padStart(2, '0')}`;
+                if(currentTimeEl) currentTimeEl.innerText = `${Math.floor(displayTime / 60)}:${Math.floor(displayTime % 60).toString().padStart(2, '0')}`;
+                if(durationTimeEl) durationTimeEl.innerText = `${Math.floor(totalDuration / 60)}:${Math.floor(totalDuration % 60).toString().padStart(2, '0')}`;
             }, 500);
         }
 
         function updateProgressFromEvent(e) {
+            if(!progressBar) return 0;
             const rect = progressBar.getBoundingClientRect();
             let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
             let percent = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
-            progressCurrent.style.width = percent + '%';
+            if(progressCurrent) progressCurrent.style.width = percent + '%';
             return percent;
         }
 
         function seekToPercent(percent) {
+            if (!hasAudio) return;
             let actualDuration = 200;
             if (isMp3File && localAudio) actualDuration = localAudio.duration || 200;
             else if (!isMp3File && ytPlayer) actualDuration = ytPlayer.getDuration() || 200;
@@ -493,15 +469,27 @@
             const newTime = startTime + ((percent / 100) * (actualDuration - startTime));
             if (isMp3File && localAudio) { localAudio.currentTime = newTime; if(localAudio.paused) localAudio.play(); }
             else if (!isMp3File && ytPlayer) { ytPlayer.seekTo(newTime, true); ytPlayer.playVideo(); }
-            playPauseBtn.innerText = '⏸';
+            if(playPauseBtn) playPauseBtn.innerText = '⏸';
         }
 
-        progressBar.addEventListener('mousedown', (e) => { isDragging = true; progressKnob.classList.add('dragging'); updateProgressFromEvent(e); });
-        document.addEventListener('mousemove', (e) => { if (isDragging) updateProgressFromEvent(e); });
-        document.addEventListener('mouseup', (e) => { if (isDragging) { seekToPercent(updateProgressFromEvent(e)); isDragging = false; progressKnob.classList.remove('dragging'); } });
-        progressBar.addEventListener('touchstart', (e) => { isDragging = true; progressKnob.classList.add('dragging'); updateProgressFromEvent(e); }, {passive: true});
-        document.addEventListener('touchmove', (e) => { if (isDragging) updateProgressFromEvent(e); }, {passive: true});
-        document.addEventListener('touchend', (e) => { if (isDragging) { seekToPercent(updateProgressFromEvent(e)); isDragging = false; progressKnob.classList.remove('dragging'); } });
+        if(progressBar) {
+            const handleDragStart = (e) => { isDragging = true; if(progressKnob) progressKnob.classList.add('dragging'); updateProgressFromEvent(e); };
+            const handleDragMove = (e) => { if (isDragging) updateProgressFromEvent(e); };
+            const handleDragEnd = (e) => { if (isDragging) { seekToPercent(updateProgressFromEvent(e)); isDragging = false; if(progressKnob) progressKnob.classList.remove('dragging'); } };
+            
+            progressBar.addEventListener('mousedown', handleDragStart);
+            document.addEventListener('mousemove', handleDragMove);
+            document.addEventListener('mouseup', handleDragEnd);
+            progressBar.addEventListener('touchstart', handleDragStart, {passive: true});
+            document.addEventListener('touchmove', handleDragMove, {passive: true});
+            document.addEventListener('touchend', (e) => {
+                if (isDragging) {
+                    const rect = progressBar.getBoundingClientRect();
+                    let p = Math.max(0, Math.min(100, ((e.changedTouches[0].clientX - rect.left) / rect.width) * 100));
+                    seekToPercent(p); isDragging = false; if(progressKnob) progressKnob.classList.remove('dragging');
+                }
+            });
+        }
     </script>
 </body>
 </html>

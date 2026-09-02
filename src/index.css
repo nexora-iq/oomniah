@@ -1,0 +1,17 @@
+/* إخفاء شكل السكرول مع إبقاء خاصية التمرير (النزول والصعود) شغالة */
+::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+* {
+  -ms-overflow-style: none !important;  /* لمتصفح إنترنت إكسبلورر وإيدج */
+  scrollbar-width: none !important;  /* لمتصفح فايرفوكس */
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden; /* يمنع السكرول العرضي والحدود البيضاء فقط، ويسمح بالسكرول الطولي */
+}

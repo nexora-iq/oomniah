@@ -1,15 +1,17 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../supabase';
+import { supabase } from '../../supabase';
 import Swal from 'sweetalert2';
-import { Toast } from '../toast';
+import { Toast } from '../../toast';
 import { QRCodeSVG } from 'qrcode.react'; 
+import POSDashboard from './POSDashboard';
+import { POSStorage } from './posStorage';
 import { 
   FaStore, FaUserCircle, FaSignOutAlt, FaVenus, FaMars, 
   FaPalette, FaClock, FaUser, FaGift, FaPen, FaMusic, 
   FaUpload, FaYoutube, FaMoneyBillWave, FaLink, 
   FaCheckCircle, FaCopy, FaSpinner, FaQrcode, FaDownload, 
-  FaSave, FaFolderOpen, FaChartPie, FaCalendarDay, FaTicketAlt 
+  FaSave, FaFolderOpen, FaChartPie, FaCalendarDay, FaTicketAlt, FaWhatsapp
 } from 'react-icons/fa';
 
 const DURATION_PRICES = {
@@ -50,7 +52,7 @@ export default function POS() {
   const [barcodeColor, setBarcodeColor] = useState('#000000');
   const [barcodeIcon, setBarcodeIcon] = useState(''); 
 
-  // حالات الإحصائيات الخاصة بالموظف
+  // حالات الإحصائيات
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [loadingStats, setLoadingStats] = useState(false);
   const [employeeStats, setEmployeeStats] = useState({ totalSales: 0, todaySales: 0, linksCount: 0, barcodeCount: 0 });
@@ -59,6 +61,10 @@ export default function POS() {
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<any | null>(null);
   const [validatingCoupon, setValidatingCoupon] = useState(false);
+
+  // 🌟 حالات لوحة الموظف الجديدة
+  const [showDashboard, setShowDashboard] = useState(false);
+  const [todayLinks, setTodayLinks] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
     theme_id: '', sender_name: '', recipient_name: '', recipient_gender: 'female',
@@ -101,6 +107,14 @@ export default function POS() {
         setThemes(branchThemes);
       }
 
+      // 🌟 جلب روابط اليوم للوحة التحكم 🌟
+      const todayString = new Date().toISOString().split('T')[0];
+      const { data: links } = await supabase.from('gift_links')
+         .select('id, short_id, price, sender_name, created_at, themes(slug)')
+         .eq('creator_id', session.user.id)
+         .gte('created_at', todayString);
+      setTodayLinks(links || []);
+
       setLoading(false);
       setTimeout(() => setShowSplash(false), 4000); 
     };
@@ -122,38 +136,26 @@ export default function POS() {
     }
   }, [formData.recipient_gender, themes]); 
 
-  // دوال المسودة (Drafts)
-  const saveDraft = () => {
+  // 🌟 دالة حفظ المسودة المحدثة
+  const handleSaveDraft = async () => {
     if (!formData.sender_name && !formData.message && !formData.song_url) {
       return Toast.fire({ icon: 'warning', title: 'لا توجد معلومات مهمة لحفظها كمسودة.' });
     }
-    const draft = {
-      sender_name: formData.sender_name,
-      message: formData.message,
-      song_url: formData.song_url,
-      song_start_seconds: formData.song_start_seconds
-    };
-    localStorage.setItem('oomniah_pos_draft', JSON.stringify(draft));
-    Toast.fire({ icon: 'success', title: 'تم حفظ المعلومات الحالية لتكرارها لاحقاً!' });
-  };
-
-  const loadDraft = () => {
-    const draftStr = localStorage.getItem('oomniah_pos_draft');
-    if (!draftStr) {
-      return Toast.fire({ icon: 'info', title: 'لا توجد مسودة محفوظة مسبقاً.' });
+    const { value: draftName } = await Swal.fire({
+      title: 'حفظ كمسودة',
+      input: 'text',
+      inputLabel: 'أدخل اسماً لهذه المسودة (مثال: طلب زبون نور)',
+      inputPlaceholder: 'اسم المسودة...',
+      showCancelButton: true,
+      confirmButtonText: 'حفظ',
+      cancelButtonText: 'إلغاء'
+    });
+    if (draftName) {
+      POSStorage.saveDraft(draftName, formData);
+      Toast.fire({ icon: 'success', title: 'تم حفظ المسودة بنجاح!' });
     }
-    const draft = JSON.parse(draftStr);
-    setFormData(prev => ({
-      ...prev,
-      sender_name: draft.sender_name || prev.sender_name,
-      message: draft.message || prev.message,
-      song_url: draft.song_url || prev.song_url,
-      song_start_seconds: draft.song_start_seconds || prev.song_start_seconds
-    }));
-    Toast.fire({ icon: 'success', title: 'تم استرجاع المعلومات بنجاح!' });
   };
 
-  // جلب إحصائيات الموظف
   const fetchEmployeeStats = async () => {
     setLoadingStats(true);
     setShowStatsModal(true);
@@ -181,7 +183,6 @@ export default function POS() {
     setLoadingStats(false);
   };
 
-  // دالة تطبيق الكوبون
   const handleApplyCoupon = async () => {
     if (!couponInput.trim()) return Toast.fire({ icon: 'warning', title: 'الرجاء إدخال كود الخصم أولاً.' });
     setValidatingCoupon(true);
@@ -209,7 +210,6 @@ export default function POS() {
     setValidatingCoupon(false);
   };
 
-  // 🌟 حساب الأسعار النهائية بذكاء (شاملة الثيم الـ VIP إذا وجد)
   const selectedTheme = themes.find(t => t.id === formData.theme_id);
   const durationBasePrice = DURATION_PRICES[formData.duration_type].price;
   
@@ -217,7 +217,6 @@ export default function POS() {
   if (formData.duration_type === 'trial') {
     originalBasePrice = 0;
   } else {
-    // إذا كان الثيم ثنائي (VIP) نجمع سعره وية سعر الباقة، وإذا عادي يبقى سعر الباقة فقط
     if (selectedTheme?.is_multiplayer) {
       originalBasePrice = Number(selectedTheme.price || 0) + durationBasePrice;
     } else {
@@ -495,12 +494,15 @@ export default function POS() {
           <h1 style={{ fontSize: '20px', fontWeight: '900', color: '#dc2626', margin: 0, fontFamily: '"Aref Ruqaa", serif' }}>أمنية</h1>
         </div>
         <div className="header-badges" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <button onClick={() => setShowDashboard(true)} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#1e293b', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px', transition: 'all 0.2s' }}>
+                <FaFolderOpen /> أدوات الموظف
+            </button>
             <button onClick={fetchEmployeeStats} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f0f9ff', color: '#0ea5e9', border: '1px solid #bae6fd', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px', transition: 'all 0.2s' }}>
                 <FaChartPie /> إحصائياتي
             </button>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', padding: '5px 10px', borderRadius: '6px', fontWeight: 'bold', fontSize: '11px' }}><FaStore /> {posName}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#dc2626', color: '#ffffff', padding: '5px 10px', borderRadius: '6px', fontWeight: 'bold', fontSize: '11px' }}><FaUserCircle /> {adminName}</span>
-            <button onClick={handleLogout} disabled={isLoggingOut} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: isLoggingOut ? '#f1f5f9' : '#fff', color: isLoggingOut ? '#94a3b8' : '#64748b', border: '1px solid #cbd5e1', padding: '5px 10px', borderRadius: '6px', cursor: isLoggingOut ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '11px', transition: 'all 0.2s' }}>
+            <button onClick={handleLogout} disabled={isLoggingOut} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: isLoggingOut ? '#f1f5f9' : '#fff', color: isLoggingOut ? '#94a3b8' : '#64748b', border: '1px solid #cbd5e1', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px', transition: 'all 0.2s' }}>
                 {isLoggingOut ? <FaSpinner className="spinner" /> : <FaSignOutAlt />}
                 {isLoggingOut ? 'جاري الخروج...' : 'خروج'}
             </button>
@@ -509,12 +511,13 @@ export default function POS() {
 
       <form onSubmit={handleSubmit} className="form-container">
         
+        {/* 🌟 أزرار المسودة ولوحة الموظف أعلى الفورم 🌟 */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginBottom: '-10px' }}>
-          <button type="button" onClick={saveDraft} className="draft-btn" title="حفظ الرسالة واسم المرسل والأغنية لاستخدامها في روابط أخرى">
+          <button type="button" onClick={handleSaveDraft} className="draft-btn" title="حفظ معلومات الفورم كمسودة لزبون معين">
             <FaSave style={{ color: '#10b981' }} /> حفظ كمسودة
           </button>
-          <button type="button" onClick={loadDraft} className="draft-btn" title="استرجاع آخر معلومات قمت بحفظها">
-            <FaFolderOpen style={{ color: '#0ea5e9' }} /> تعبئة من المسودة
+          <button type="button" onClick={() => setShowDashboard(true)} className="draft-btn" title="فتح المسودات والرسائل المحفوظة">
+            <FaFolderOpen style={{ color: '#0ea5e9' }} /> جلب مسودة / رسالة
           </button>
         </div>
 
@@ -544,7 +547,6 @@ export default function POS() {
                     <FaGift style={{ fontSize: '24px', color: '#94a3b8', marginBottom: '4px' }} />
                   )}
                   <span style={{ fontWeight: 'bold', fontSize: '12px', textAlign: 'center' }}>{t.name}</span>
-                  {/* 🌟 إضافة علامة VIP للثيمات الثنائية */}
                   {t.is_multiplayer && (
                     <span style={{ fontSize: '10px', background: '#f59e0b', color: '#fff', padding: '2px 6px', borderRadius: '4px', marginTop: '4px', fontWeight: 'bold' }}>VIP 👑</span>
                   )}
@@ -559,7 +561,6 @@ export default function POS() {
           <div className="interactive-grid">
             {Object.entries(DURATION_PRICES).map(([key, val]) => {
               let displayPrice = val.price;
-              // تحديث السعر المعروض ليظهر مع زيادة سعر الثيم الـ VIP
               if (key !== 'trial' && selectedTheme?.is_multiplayer) {
                 displayPrice += Number(selectedTheme.price || 0);
               }
@@ -718,6 +719,7 @@ export default function POS() {
         </button>
       </form>
 
+      {/* مودال الإحصائيات (بدون تغيير) */}
       {showStatsModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
           <div style={{ background: '#fff', padding: '24px', borderRadius: '20px', width: '100%', maxWidth: '400px', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', position: 'relative' }}>
@@ -759,6 +761,16 @@ export default function POS() {
         </div>
       )}
 
+      {/* 🌟 استدعاء لوحة الموظف (Dashboard) المحدثة 🌟 */}
+      {showDashboard && (
+        <POSDashboard 
+          onClose={() => setShowDashboard(false)} 
+          todayLinks={todayLinks}
+          onSelectData={(data: any) => setFormData(prev => ({ ...prev, ...data }))} 
+        />
+      )}
+
+      {/* مودال النتيجة النهائية مع زر الواتساب 🌟 */}
       {showModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
           <div style={{ background: '#fff', padding: '24px', borderRadius: '16px', textAlign: 'center', width: '100%', maxWidth: '360px', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -782,21 +794,29 @@ export default function POS() {
                   />
                   <p style={{ color: '#64748b', fontSize: '14px', margin: '15px 0 0', fontWeight: 'bold' }}>امسح الباركود لفتح الهدية 🎁</p>
                   <button onClick={downloadQRCode} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#1e293b', color: '#fff', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', width: '100%', marginTop: '15px', transition: '0.2s' }}>
-                    <FaDownload /> تحميل كبطاقة إهداء (صورة)
+                    <FaDownload /> تحميل كبطاقة إهداء
                   </button>
                 </div>
               </>
             ) : (
               <>
-                <p style={{ color: '#64748b', margin: '0 0 16px', fontSize: '13px' }}>{formData.duration_type === 'trial' ? 'الرابط التجريبي صالح 5 دقائق' : 'انسخ الرابط الآن'}</p>
+                <p style={{ color: '#64748b', margin: '0 0 16px', fontSize: '13px' }}>{formData.duration_type === 'trial' ? 'الرابط التجريبي صالح 5 دقائق' : 'رابط الهدية جاهز'}</p>
                 <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', color: '#3b82f6', marginBottom: '16px', direction: 'ltr', overflowX: 'auto', fontSize: '13px', fontWeight: 'bold' }}>{generatedLink}</div>
-                <button onClick={() => { navigator.clipboard.writeText(generatedLink); Toast.fire({ icon: 'success', title: 'تم نسخ الرابط!' }); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#dc2626', color: '#fff', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', width: '100%', transition: 'all 0.2s', marginBottom: '10px' }}>
-                  <FaCopy /> نسخ الرابط النصي
-                </button>
               </>
             )}
 
-            <button onClick={() => setShowModal(false)} style={{ background: 'transparent', color: '#64748b', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', width: '100%', padding: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+               <button onClick={() => { navigator.clipboard.writeText(generatedLink); Toast.fire({ icon: 'success', title: 'تم نسخ الرابط!' }); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#dc2626', color: '#fff', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', width: '100%', transition: 'all 0.2s' }}>
+                 <FaCopy /> نسخ الرابط النصي
+               </button>
+               
+               {/* 🌟 زر الإرسال للواتساب 🌟 */}
+               <a href={`https://wa.me/?text=${encodeURIComponent(`هديتك جاهزة! 🎁\nافتح الرابط من هنا:\n${generatedLink}`)}`} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#25D366', color: '#fff', padding: '12px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', width: '100%', transition: 'all 0.2s' }}>
+                 <FaWhatsapp style={{ fontSize: '18px' }}/> إرسال عبر واتساب
+               </a>
+            </div>
+
+            <button onClick={() => setShowModal(false)} style={{ background: 'transparent', color: '#64748b', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', width: '100%', padding: '10px', marginTop: '10px' }}>
               إغلاق
             </button>
           </div>

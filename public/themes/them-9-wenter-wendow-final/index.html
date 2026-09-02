@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>النافذة الشتوية ❄️</title>
+    <link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Tajawal:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        /* 🌟 حل مشكلة الحدود البيضاء جذرياً */
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; outline: none; }
+        html, body { position: fixed; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; background-color: #050a15; font-family: 'Tajawal', sans-serif; }
+        canvas, video { display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+        #youtube-wrapper { position: absolute; top: -9999px; left: -9999px; width: 10px; height: 10px; opacity: 0; pointer-events: none; z-index: -100; }
+
+        /* 🎬 الطبقة 1: فيديو الخلفية */
+        .bg-video { object-fit: cover; z-index: 1; filter: brightness(0.7); pointer-events: none; }
+
+        /* 💧 الطبقة 2: المطر */
+        #rainCanvas { z-index: 2; pointer-events: none; }
+
+        /* 🌫️ الطبقة 3: الضباب */
+        #fogCanvas { z-index: 3; touch-action: none; }
+
+        /* 📊 عداد المسح */
+        .progress-circle { 
+            position: absolute; top: 15%; left: 50%; transform: translateX(-50%); 
+            width: 70px; height: 70px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.8); 
+            display: flex; justify-content: center; align-items: center; color: #fff; font-weight: 900; font-size: 18px; 
+            background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(5px); z-index: 7; transition: opacity 0.5s ease;
+            pointer-events: none; box-shadow: 0 0 15px rgba(255,255,255,0.2);
+        }
+
+        /* 💌 النص المزخرف */
+        .pure-text-container {
+            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
+            width: 90%; text-align: center; z-index: 10; pointer-events: none;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .message-text {
+            font-family: 'Aref Ruqaa', serif; font-size: 38px; line-height: 1.6; color: #ffffff;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.8), 0 0 30px rgba(0, 0, 0, 0.8);
+            opacity: 1; transition: opacity 1s ease; min-height: 100px;
+        }
+        .cursor { display: inline-block; width: 3px; height: 1em; background-color: #fff; animation: blink 1s step-end infinite; vertical-align: text-bottom; margin-right: 4px; box-shadow: 0 0 10px #fff;}
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        /* 🌟 حاوية الأزرار (مرتبة واحد جوة الثاني) */
+        .action-buttons-container {
+            display: none; flex-direction: column; gap: 15px; margin-top: 40px; width: 100%; align-items: center;
+            position: absolute; top: 75%; left: 50%; transform: translate(-50%, -50%); z-index: 11;
+        }
+
+        .msg-btn, .pulse-music-btn {
+            width: 280px; padding: 15px 20px;
+            backdrop-filter: blur(10px); color: #fff; font-family: 'Tajawal', sans-serif; font-size: 18px; font-weight: bold;
+            border-radius: 30px; cursor: pointer; pointer-events: auto; transition: all 0.2s ease;
+        }
+        .msg-btn {
+            background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.4); box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .pulse-music-btn {
+            background: rgba(255, 255, 255, 0.25); border: 1px solid rgba(255, 255, 255, 0.8); box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+            animation: pulseBtn 1.5s infinite alternate;
+        }
+        .msg-btn:active, .pulse-music-btn:active { transform: scale(0.95); }
+        @keyframes pulseBtn { 0% { transform: scale(1); box-shadow: 0 0 15px rgba(255,255,255,0.2); } 100% { transform: scale(1.05); box-shadow: 0 0 25px rgba(255,255,255,0.6); } }
+
+        /* 🎵 بطاقة الموسيقى والرسالة */
+        .music-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px);
+            z-index: 9999; display: none; justify-content: center; align-items: center;
+            opacity: 0; transition: opacity 0.5s ease;
+        }
+        .music-modal-overlay.show { display: flex; opacity: 1; }
+        
+        .player-card { 
+            width: 88%; max-width: 400px; 
+            background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.4); 
+            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            border-radius: 30px; padding: 35px 25px; 
+            display: flex; flex-direction: column; align-items: center; 
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(255,255,255,0.2); 
+            position: relative; transform: scale(0.9); transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .music-modal-overlay.show .player-card { transform: scale(1); }
+        .close-modal { position: absolute; top: 15px; right: 20px; color: #fff; font-size: 24px; cursor: pointer; background: none; border: none; font-weight: bold; text-shadow: 0 0 5px rgba(0,0,0,0.5);}
+        .player-header { color: #ffffff; font-size: 1.4rem; font-weight: 900; margin-bottom: 25px; text-shadow: 0 0 15px rgba(255,255,255,0.8);}
+        .player-logo { width: 120px; height: 120px; border-radius: 25px; margin-bottom: 30px; background: rgba(255, 255, 255, 0.95); padding: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .player-logo img { width: 100%; height: 100%; object-fit: contain; }
+
+        .progress-container { width: 100%; display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px; direction: ltr; }
+        .progress-bar { width: 100%; height: 6px; background: rgba(255, 255, 255, 0.3); border-radius: 10px; position: relative; cursor: pointer; touch-action: none; }
+        .progress-current { position: absolute; left: 0; top: 0; width: 0%; height: 100%; background: #ffffff; border-radius: 10px; box-shadow: 0 0 10px #ffffff; pointer-events: none; }
+        .progress-knob { position: absolute; right: -8px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; background: #fff; border-radius: 50%; box-shadow: 0 0 8px rgba(0,0,0,0.6); pointer-events: auto; }
+        .progress-bar:hover .progress-knob, .progress-bar:active .progress-knob, .progress-knob.dragging { transform: translateY(-50%) scale(1.3); }
+        
+        .time-info { display: flex; justify-content: space-between; color: #fff; font-size: 0.85rem; font-weight: bold; text-shadow: 0 0 5px rgba(0,0,0,0.5); }
+        .controls { display: flex; align-items: center; justify-content: center; gap: 30px; width: 100%; direction: ltr; }
+        .control-btn { background: none; border: none; color: #fff; font-size: 1.8rem; cursor: pointer; transition: color 0.2s; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.4));}
+        .control-btn:active { color: #e2e8f0; transform: scale(0.9); }
+        .play-pause { width: 65px; height: 65px; background: #ffffff; color: #0f172a; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.8rem; box-shadow: 0 5px 20px rgba(0,0,0, 0.3); cursor: pointer; }
+        .play-pause:active { transform: scale(0.95); }
+
+        /* نافذة الرسالة كاملة */
+        .msg-modal-card {
+            width: 90%; max-width: 400px; background: rgba(253, 248, 245, 0.95);
+            border-radius: 20px; padding: 40px 30px; text-align: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5); position: relative;
+        }
+        .full-message-text {
+            font-family: 'Aref Ruqaa', serif; font-size: 26px; line-height: 1.8; color: #1e293b;
+            font-weight: bold; white-space: pre-wrap;
+        }
+        .close-msg-modal { position: absolute; top: 15px; left: 20px; color: #64748b; font-size: 24px; cursor: pointer; background: none; border: none; font-weight: bold;}
+    </style>
+</head>
+<body>
+
+    <div id="youtube-wrapper"><div id="yt-audio-player"></div></div>
+
+    <!-- 🌟 فيديو الخلفية (محفوظ بالكاش) -->
+    <video id="bgVideo" class="bg-video" loop muted playsinline preload="auto">
+        <source src="assets/video/rain.mp4" type="video/mp4">
+    </video>
+
+    <!-- المطر الزجاجي التفاعلي -->
+    <canvas id="rainCanvas"></canvas>
+
+    <!-- شاشة الضباب -->
+    <canvas id="fogCanvas"></canvas>
+
+    <!-- العداد -->
+    <div class="progress-circle" id="progressCircle">0%</div>
+
+    <!-- النص المزخرف -->
+    <div class="pure-text-container" id="messageContainer">
+        <div class="message-text" id="dyn-message"></div>
+    </div>
+
+    <!-- 🌟 الأزرار المدمجة تظهر بعد النص -->
+    <div class="action-buttons-container" id="actionButtons">
+        <button class="msg-btn" onclick="openMsgModal()">📜 اضغط لترى الرسالة كاملة</button>
+        <button class="pulse-music-btn" onclick="openMusicModal()">🎵 أغنيتنا المفضلة</button>
+    </div>
+
+    <!-- نافذة الأغنية الشفافة البيضاء -->
+    <div class="music-modal-overlay" id="musicModal">
+        <div class="player-card">
+            <button class="close-modal" onclick="closeMusicModal()">✕</button>
+            <div class="player-header">🎵 أغنيتنا المفضلة</div>
+            <div class="player-logo"><img src="oomniah-logo.png" alt="Oomniah"></div>
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress-current" id="progressCurrent"><div class="progress-knob" id="progressKnob"></div></div>
+                </div>
+                <div class="time-info"><span id="currentTime">0:00</span><span id="durationTime">0:00</span></div>
+            </div>
+            <div class="controls">
+                <button class="control-btn" onclick="seekAudio(-10)">⏮</button>
+                <div class="play-pause" id="playPauseBtn">⏸</div>
+                <button class="control-btn" onclick="seekAudio(10)">⏭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة قراءة الرسالة كاملة -->
+    <div class="music-modal-overlay" id="fullMsgModal">
+        <div class="msg-modal-card">
+            <button class="close-msg-modal" onclick="closeMsgModal()">✕</button>
+            <div class="full-message-text" id="fullMessageContent"></div>
+        </div>
+    </div>
+
+    <!-- كود الشروط وإخلاء المسؤولية المرفق -->
+    <button onclick="document.getElementById('info-modal-overlay').style.display='flex'" style="position: fixed; bottom: 25px; left: 25px; width: 50px; height: 50px; border-radius: 50%; background: rgba(220, 38, 38, 0.15); border: 1px solid rgba(220, 38, 38, 0.3); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: #dc2626; font-size: 22px; display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 99999; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); transition: all 0.3s ease;">
+        📜
+    </button>
+    <div id="info-modal-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 100000; display: none; justify-content: center; align-items: center; direction: rtl; font-family: 'Tajawal', 'Segoe UI', sans-serif; padding: 20px; box-sizing: border-box; opacity: 1; transition: opacity 0.3s ease;">
+        <div style="background: #ffffff; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; border-radius: 24px; padding: 35px 25px; text-align: center; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); box-sizing: border-box;">
+            <button onclick="document.getElementById('info-modal-overlay').style.display='none'" style="position: absolute; top: 20px; right: 20px; background: #f1f5f9; border: 1px solid #e2e8f0; width: 36px; height: 36px; border-radius: 50%; color: #64748b; font-weight: bold; cursor: pointer; font-size: 16px; display: flex; justify-content: center; align-items: center; transition: all 0.2s ease;">✕</button>
+            <div style="font-size: 45px; margin-bottom: 10px; filter: drop-shadow(0 4px 6px rgba(220,38,38,0.2));">🛡️</div>
+            <h3 style="color: #1e293b; font-size: 22px; margin-top: 0; margin-bottom: 5px; font-weight: 900;">إخلاء مسؤولية وشروط الاستخدام</h3>
+            <p style="color: #64748b; font-size: 14px; margin-bottom: 25px; font-weight: 600;">يرجى قراءة الشروط التالية بعناية</p>
+            <div style="text-align: right; display: flex; flex-direction: column; gap: 15px; background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 25px;">
+                <div style="display: flex; gap: 10px; align-items: flex-start;"><span style="color: #dc2626; font-size: 16px; margin-top: 2px;">⚠️</span><p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">تخلي منصة "أمنية" مسؤوليتها الكاملة عن أي استخدام سيء، غير أخلاقي، أو غير قانوني لمواقعنا وثيماتنا من قبل أي شخص.</p></div>
+                <div style="display: flex; gap: 10px; align-items: flex-start;"><span style="color: #dc2626; font-size: 16px; margin-top: 2px;">©️</span><p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">جميع الثيمات والتصاميم والمواقع هي ملكية فكرية حصرية لمنصة "أمنية"، ومسجلة بحقوق طبع ونشر.</p></div>
+                <div style="display: flex; gap: 10px; align-items: flex-start;"><span style="color: #dc2626; font-size: 16px; margin-top: 2px;">🚫</span><p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">لا يتم بيع أو تداول خدماتنا في أي مكان آخر إلا عبر حساباتنا الرسمية ووكلائنا المعتمدين المنشورة أسماؤهم في موقعنا فقط.</p></div>
+                <div style="display: flex; gap: 10px; align-items: flex-start;"><span style="color: #dc2626; font-size: 16px; margin-top: 2px;">💰</span><p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; font-weight: bold;">إذا رصدتم أي جهة أو حساب يسرق تصاميمنا أو ينتحل صفتنا، يرجى إبلاغنا فوراً عبر حساباتنا الرسمية. <span style="color: #16a34a;">(توجد مكافأة  للإبلاغ الصحيح).</span></p></div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <a href="/terms" target="_blank" style="flex: 1; background: #f1f5f9; color: #475569; text-decoration: none; padding: 12px; border-radius: 12px; font-weight: bold; font-size: 13px; transition: all 0.2s ease; border: 1px solid #e2e8f0;">📜 الشروط والأحكام</a>
+                <a href="/privacy" target="_blank" style="flex: 1; background: #f1f5f9; color: #475569; text-decoration: none; padding: 12px; border-radius: 12px; font-weight: bold; font-size: 13px; transition: all 0.2s ease; border: 1px solid #e2e8f0;">🔒 سياسة الخصوصية</a>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <a href="https://www.instagram.com/oomnia.1/" target="_blank" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: #ffffff; text-decoration: none; padding: 14px; border-radius: 12px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 15px rgba(220, 39, 67, 0.3); transition: all 0.2s ease;">تواصل معنا عبر الانستغرام 📸</a>
+                <a href="/" target="_blank" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: #1e293b; color: #ffffff; text-decoration: none; padding: 14px; border-radius: 12px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 15px rgba(30, 41, 59, 0.3); transition: all 0.2s ease;">زيارة الموقع الرسمي للمنصة 🌐</a>
+            </div>
+            <p style="color: #94a3b8; font-size: 12px; font-weight: bold; margin-top: 20px; margin-bottom: 0;">شاكرين تعاونكم — إدارة أمنية (Oomniah)</p>
+        </div>
+    </div>
+
+    <!-- 🌟 صوت المطر (مع إضافة كود لمنع التقطيع عند الإعادة) -->
+    <audio id="rainAudio" src="assets/audio/rain.mp3" loop preload="auto"></audio>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const rawMessage = (urlParams.get('message') || 'إلى سارة..\nفي كل شتاء أنتِ دفئ أيامي\nوشعاع ليلي..\nمن: أحمد').replace(/\n/g, '<br>');
+        document.getElementById('fullMessageContent').innerHTML = rawMessage;
+        
+        const rawAudioUrl = urlParams.get('yt_clean') || urlParams.get('yt') || '';
+        let startTime = parseInt(urlParams.get('start')) || 0;
+
+        const hasAudio = rawAudioUrl.trim().length > 0;
+        const isMp3File = rawAudioUrl.toLowerCase().includes('.mp3') || rawAudioUrl.includes('supabase.co');
+        let ytPlayer = null; let localAudio = null;
+        let isAudioLoaded = false; let progressInterval; let isDragging = false;
+
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const progressCurrent = document.getElementById('progressCurrent');
+        const progressBar = document.getElementById('progressBar');
+        const currentTimeEl = document.getElementById('currentTime');
+        const durationTimeEl = document.getElementById('durationTime');
+        const rainAudio = document.getElementById('rainAudio');
+        const bgVideo = document.getElementById('bgVideo');
+
+        // 🌟 حل مشكلة التقطيع في صوت المطر (Seamless Loop)
+        rainAudio.addEventListener('timeupdate', function() {
+            if (this.duration - this.currentTime < 0.3) { this.currentTime = 0; this.play(); }
+        });
+
+        if (hasAudio) {
+            if (isMp3File) {
+                localAudio = new Audio(rawAudioUrl);
+                localAudio.preload = 'auto';
+                localAudio.volume = 1.0; 
+                localAudio.addEventListener('ended', () => { localAudio.currentTime = startTime; localAudio.play(); });
+                isAudioLoaded = true;
+            } else {
+                function getYoutubeId(url) {
+                    const m = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/);
+                    return (m && m[2].length === 11) ? m[2] : 'dQw4w9WgXcQ';
+                }
+                const tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(tag);
+                window.onYouTubeIframeAPIReady = function() {
+                    ytPlayer = new YT.Player('yt-audio-player', {
+                        videoId: getYoutubeId(rawAudioUrl),
+                        playerVars: { 'autoplay': 1, 'controls': 0, 'start': startTime, 'playsinline': 1 },
+                        events: {
+                            'onReady': (e) => { isAudioLoaded = true; ytPlayer.setVolume(100); }, 
+                            'onStateChange': (e) => {
+                                if (e.data === YT.PlayerState.PLAYING) { if(playPauseBtn) playPauseBtn.innerText = '⏸'; startProgressTracker(); }
+                                else if (e.data === YT.PlayerState.ENDED) { ytPlayer.seekTo(startTime); ytPlayer.playVideo(); }
+                                else { if(playPauseBtn) playPauseBtn.innerText = '▶'; }
+                            }
+                        }
+                    });
+                }
+            }
+        }
+
+        function forcePlayMedia() {
+            bgVideo.play().catch(e=>{});
+            rainAudio.volume = 0.8; rainAudio.play().catch(e=>{});
+            if (hasAudio) {
+                if (isMp3File && localAudio && localAudio.paused) {
+                    localAudio.currentTime = startTime; localAudio.play().catch(e=>{});
+                    if(playPauseBtn) playPauseBtn.innerText = '⏸';
+                } else if (!isMp3File && ytPlayer && typeof ytPlayer.playVideo === 'function') {
+                    try { ytPlayer.unMute(); ytPlayer.playVideo(); if(playPauseBtn) playPauseBtn.innerText = '⏸'; } catch(e){}
+                }
+            }
+        }
+        document.addEventListener('touchstart', forcePlayMedia, { once: true }); document.addEventListener('mousedown', forcePlayMedia, { once: true });
+
+        // المطر الزجاجي
+        const rainCanvas = document.getElementById('rainCanvas');
+        const rainCtx = rainCanvas.getContext('2d');
+        let drops = []; let ripples = [];
+
+        function resizeRain() { rainCanvas.width = window.innerWidth; rainCanvas.height = window.innerHeight; }
+        window.addEventListener('resize', resizeRain); resizeRain();
+
+        function animateGlassRain() {
+            rainCtx.clearRect(0, 0, rainCanvas.width, rainCanvas.height);
+            if(Math.random() < 0.15) {
+                let isStatic = Math.random() > 0.3; 
+                drops.push({ x: Math.random() * rainCanvas.width, y: isStatic ? Math.random() * rainCanvas.height : -20, r: Math.random() * 2 + 1.5, speedY: isStatic ? 0 : Math.random() * 3 + 2, isStatic: isStatic, life: 600 });
+            }
+            for(let i=0; i<drops.length; i++) {
+                let d = drops[i];
+                rainCtx.beginPath(); rainCtx.arc(d.x, d.y, d.r, 0, Math.PI*2);
+                rainCtx.fillStyle = 'rgba(220, 230, 255, 0.2)'; rainCtx.fill();
+                rainCtx.strokeStyle = 'rgba(0, 0, 0, 0.1)'; rainCtx.lineWidth = 1; rainCtx.stroke(); 
+                rainCtx.beginPath(); rainCtx.arc(d.x - d.r*0.3, d.y - d.r*0.3, d.r*0.3, 0, Math.PI*2);
+                rainCtx.fillStyle = 'rgba(255, 255, 255, 0.6)'; rainCtx.fill();
+                if (!d.isStatic) {
+                    d.y += d.speedY;
+                    if (Math.random() < 0.05) { drops.push({ x: d.x, y: d.y - d.r, r: d.r * 0.4, speedY: 0, isStatic: true, life: 150 }); }
+                } else { d.life--; }
+                if (d.y > rainCanvas.height + 20 || d.life <= 0) { drops.splice(i, 1); i--; }
+            }
+            for(let i=0; i<ripples.length; i++) {
+                let r = ripples[i];
+                rainCtx.beginPath(); rainCtx.arc(r.x, r.y, r.radius, 0, Math.PI*2);
+                rainCtx.strokeStyle = `rgba(255, 255, 255, ${r.alpha})`;
+                rainCtx.lineWidth = 1.5; rainCtx.stroke();
+                r.radius += 2; r.alpha -= 0.04;
+                if(r.alpha <= 0) { ripples.splice(i, 1); i--; }
+            }
+            requestAnimationFrame(animateGlassRain);
+        }
+        animateGlassRain();
+
+        function handleRainInteraction(e) {
+            if(!isRevealed) return; 
+            let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            for(let i = 0; i < drops.length; i++) {
+                let d = drops[i];
+                if (Math.hypot(clientX - d.x, clientY - d.y) < 40) { ripples.push({ x: d.x, y: d.y, radius: d.r, alpha: 0.8 }); drops.splice(i, 1); i--; }
+            }
+            ripples.push({ x: clientX, y: clientY, radius: 2, alpha: 0.5 });
+        }
+        document.addEventListener('mousedown', handleRainInteraction);
+        document.addEventListener('touchstart', handleRainInteraction, {passive:true});
+
+        // 🌟 إعدادات الضباب (مسح سلس بخطوط متصلة وواقعي)
+        const canvas = document.getElementById('fogCanvas');
+        const ctx = canvas.getContext('2d');
+        const progressCircle = document.getElementById('progressCircle');
+        const msgElement = document.getElementById('dyn-message');
+        const actionButtons = document.getElementById('actionButtons');
+        
+        let isDrawingFog = false; let isRevealed = false;
+        let lastX, lastY; 
+
+      function initCanvas() {
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight; 
+            
+            // شفافية الضباب 
+            ctx.fillStyle = 'rgba(160, 185, 205, 0.75)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 🌟 إضافة وهج (Glow) ناعم خلف النص
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+            ctx.shadowBlur = 15;
+
+            // 🌟 النص الرئيسي (مباشر وأنيق)
+            ctx.font = 'bold 45px "Aref Ruqaa", serif'; 
+            ctx.fillStyle = '#ffffff'; 
+            ctx.textAlign = 'center'; 
+            ctx.textBaseline = 'middle';
+            ctx.fillText('امسح الشاشة..', canvas.width / 2, canvas.height / 2 - 20);
+
+            // 🌟 النص الفرعي (قريب للقلب)
+            ctx.shadowBlur = 5;
+            ctx.font = 'bold 22px Tajawal'; 
+            ctx.fillStyle = '#f8fafc'; 
+            ctx.fillText('واقرأ المكتوب إلك ❤️👆', canvas.width / 2, canvas.height / 2 + 35);
+
+            // تصفير الظل بالنهاية
+            ctx.shadowBlur = 0; 
+        }
+
+        window.addEventListener('resize', () => { if(!isRevealed) initCanvas(); });
+        initCanvas();
+
+        function erase(x, y, isStart = false) {
+            if (isRevealed) return;
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 80; // فرشاة المسح
+            
+            ctx.beginPath();
+            if (isStart) { ctx.moveTo(x, y); ctx.lineTo(x+1, y+1); } 
+            else { ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); }
+            ctx.stroke();
+            lastX = x; lastY = y;
+        }
+
+        let lastCalcTime = 0;
+        function calculateFogProgress() {
+            const now = Date.now();
+            if (now - lastCalcTime < 300) return; lastCalcTime = now;
+            const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            let transparentPixels = 0; 
+            for (let i = 3; i < pixels.length; i += 16) { if (pixels[i] < 50) transparentPixels++; }
+            const totalSampledPixels = pixels.length / 16;
+            const percent = Math.min(100, Math.round((transparentPixels / totalSampledPixels) * 100 * 1.15));
+            progressCircle.innerText = `${percent}%`;
+            if (percent >= 90 && !isRevealed) { revealContent(); }
+        }
+
+        function playSequentialText() {
+            const lines = rawMessage.split('<br>').filter(line => line.trim() !== ''); 
+            let currentLine = 0;
+            function typeWriterHTML(htmlStr, element, speed, onComplete) {
+                element.innerHTML = ''; let i = 0; let text = '';
+                function type() {
+                    if (i < htmlStr.length) {
+                        text += htmlStr.charAt(i); element.innerHTML = text + '<span class="cursor"></span>';
+                        i++; setTimeout(type, speed);
+                    } else { element.innerHTML = text; if (onComplete) onComplete(); }
+                }
+                type();
+            }
+            function playNextLine() {
+                if (currentLine < lines.length) {
+                    msgElement.style.opacity = 1;
+                    typeWriterHTML(lines[currentLine], msgElement, 70, () => {
+                        setTimeout(() => {
+                            msgElement.style.opacity = 0; 
+                            setTimeout(() => { msgElement.innerHTML = ''; currentLine++; playNextLine(); }, 1000); 
+                        }, 2500); 
+                    });
+                } else { 
+                    // 🌟 ظهور الأزرار ونافذة الأغنية تلقائيا
+                    actionButtons.style.display = 'flex';
+                    openMusicModal();
+                }
+            }
+            playNextLine();
+        }
+
+        function revealContent() {
+            isRevealed = true;
+            canvas.style.transition = 'opacity 1.5s ease'; canvas.style.opacity = '0';
+            progressCircle.style.opacity = '0'; progressCircle.innerText = `100%`;
+            setTimeout(() => { canvas.style.display = 'none'; }, 1500);
+            setTimeout(() => { playSequentialText(); }, 1000);
+        }
+
+        const getTouchPos = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        };
+
+        canvas.addEventListener('mousedown', (e) => { isDrawingFog = true; let p = getTouchPos(e); erase(p.x, p.y, true); forcePlayMedia(); }); 
+        canvas.addEventListener('mousemove', (e) => { if (!isDrawingFog) return; let p = getTouchPos(e); erase(p.x, p.y); calculateFogProgress(); });
+        canvas.addEventListener('mouseup', () => isDrawingFog = false); canvas.addEventListener('mouseleave', () => isDrawingFog = false);
+        canvas.addEventListener('touchstart', (e) => { isDrawingFog = true; let p = getTouchPos(e); erase(p.x, p.y, true); forcePlayMedia(); }, {passive: true}); 
+        canvas.addEventListener('touchmove', (e) => { if (!isDrawingFog) return; let p = getTouchPos(e); erase(p.x, p.y); calculateFogProgress(); }, {passive: true});
+        canvas.addEventListener('touchend', () => isDrawingFog = false);
+
+        // النوافذ
+        const musicModal = document.getElementById('musicModal');
+        const fullMsgModal = document.getElementById('fullMsgModal');
+        function openMusicModal() { musicModal.classList.add('show'); }
+        function closeMusicModal() { musicModal.classList.remove('show'); }
+        function openMsgModal() { fullMsgModal.classList.add('show'); }
+        function closeMsgModal() { fullMsgModal.classList.remove('show'); }
+
+        // تحكم الصوت
+        function toggleAudio() {
+            if (!hasAudio) return;
+            if (isMp3File && localAudio) {
+                if (localAudio.paused) { localAudio.play(); if(playPauseBtn) playPauseBtn.innerText = '⏸'; }
+                else { localAudio.pause(); if(playPauseBtn) playPauseBtn.innerText = '▶'; }
+            } else if (!isMp3File && ytPlayer) {
+                const state = ytPlayer.getPlayerState();
+                if (state === YT.PlayerState.PLAYING) { ytPlayer.pauseVideo(); if(playPauseBtn) playPauseBtn.innerText = '▶'; }
+                else { ytPlayer.playVideo(); if(playPauseBtn) playPauseBtn.innerText = '⏸'; }
+            }
+        }
+        if(playPauseBtn) playPauseBtn.addEventListener('click', toggleAudio);
+
+        function seekAudio(seconds) {
+            if (!hasAudio) return;
+            if (isMp3File && localAudio) { localAudio.currentTime += seconds; } 
+            else if (!isMp3File && ytPlayer && typeof ytPlayer.getCurrentTime === 'function') { ytPlayer.seekTo(ytPlayer.getCurrentTime() + seconds, true); }
+        }
+
+        function startProgressTracker() {
+            clearInterval(progressInterval);
+            progressInterval = setInterval(() => {
+                if (isDragging) return; 
+                let currentTime = 0; let actualDuration = 0;
+                if (isMp3File && localAudio) { currentTime = localAudio.currentTime; actualDuration = localAudio.duration || 200; } 
+                else if (!isMp3File && ytPlayer && typeof ytPlayer.getCurrentTime === 'function') { currentTime = ytPlayer.getCurrentTime() || 0; actualDuration = ytPlayer.getDuration() || 200; } 
+                else return;
+
+                const totalDuration = actualDuration - startTime;
+                const currentProgress = currentTime - startTime;
+                const progressPercent = Math.max(0, Math.min(100, (currentProgress / totalDuration) * 100));
+                
+                if(progressCurrent) progressCurrent.style.width = `${progressPercent}%`;
+
+                let displayTime = Math.max(0, currentTime - startTime);
+                let currentMins = Math.floor(displayTime / 60); let currentSecs = Math.floor(displayTime % 60);
+                if (currentSecs < 10) currentSecs = '0' + currentSecs;
+                if(currentTimeEl) currentTimeEl.innerText = `${currentMins}:${currentSecs}`;
+
+                let durationMins = Math.floor(totalDuration / 60); let durationSecs = Math.floor(totalDuration % 60);
+                if (durationSecs < 10) durationSecs = '0' + durationSecs;
+                if(durationTimeEl) durationTimeEl.innerText = `${durationMins}:${durationSecs}`;
+            }, 500);
+        }
+
+        function updateProgressFromEvent(e) {
+            if(!progressBar) return 0;
+            const rect = progressBar.getBoundingClientRect();
+            let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            let percent = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+            if(progressCurrent) progressCurrent.style.width = percent + '%';
+            return percent;
+        }
+
+        function seekToPercent(percent) {
+            if (!hasAudio) return;
+            let actualDuration = 200;
+            if (isMp3File && localAudio) actualDuration = localAudio.duration || 200;
+            else if (!isMp3File && ytPlayer && typeof ytPlayer.getDuration === 'function') actualDuration = ytPlayer.getDuration() || 200;
+            const newTime = startTime + ((percent / 100) * (actualDuration - startTime));
+
+            if (isMp3File && localAudio) { localAudio.currentTime = newTime; if(localAudio.paused) localAudio.play(); } 
+            else if (!isMp3File && ytPlayer && typeof ytPlayer.seekTo === 'function') { ytPlayer.seekTo(newTime, true); ytPlayer.playVideo(); }
+            if(playPauseBtn) playPauseBtn.innerText = '⏸';
+        }
+
+        if(progressBar) {
+            const handleDragStart = (e) => { isDragging = true; updateProgressFromEvent(e); };
+            const handleDragMove = (e) => { if(isDragging) updateProgressFromEvent(e); };
+            const handleDragEnd = (e) => { if(isDragging) { let p = updateProgressFromEvent(e); seekToPercent(p); isDragging = false; } };
+            
+            progressBar.addEventListener('mousedown', handleDragStart); document.addEventListener('mousemove', handleDragMove); document.addEventListener('mouseup', handleDragEnd);
+            progressBar.addEventListener('touchstart', handleDragStart, {passive: true}); document.addEventListener('touchmove', handleDragMove, {passive: true}); 
+            document.addEventListener('touchend', (e) => {
+                if (isDragging) {
+                    const rect = progressBar.getBoundingClientRect();
+                    let p = Math.max(0, Math.min(100, ((e.changedTouches[0].clientX - rect.left) / rect.width) * 100));
+                    seekToPercent(p); isDragging = false;
+                }
+            });
+        }
+    </script>
+</body>
+</html>
