@@ -395,8 +395,9 @@ function RedThread({ active }: { active: boolean }) {
   }, []);
   const geo = useMemo(() => new THREE.BufferGeometry().setFromPoints(points), [points]);
   return active ? (
-    <line ref={ref} geometry={geo}>
-      <lineBasicMaterial color="#ff173f" linewidth={3} transparent opacity={1} />
+// @ts-ignore
+<line ref={ref} geometry={geo}>
+    <lineBasicMaterial color="#ff173f" linewidth={3} transparent opacity={1} />
     </line>
   ) : null;
 }
